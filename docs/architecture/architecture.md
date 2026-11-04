@@ -23,7 +23,18 @@ Dependencies only point downward. `core` has no runtime dependencies and compile
 
 **Test a sample.** Take a local FASTA or chromatogram, run it against a chosen panel, and return per-group statuses with evidence. Short queries return `not_evaluable` for groups they share no sites with.
 
-Every run writes an immutable record: resolved profile, accessions and hashes, tool versions, seed, structured event log, outputs and diagnostics. Failures stop a run; nothing is skipped silently.
+Every run writes an immutable record: resolved profile, artifacts, tool versions, structured event log and diagnostics. Failures stop a run; nothing is skipped silently.
+
+## Steps and artifacts
+
+Work is made of named steps: `search`, `fetch`, `anchor`, `gate`, `panel`, `validate`, `sample` and `tree`. Each produces one typed artifact in `artifacts/<type>/<key>/`:
+
+- **Key:** the hash of the step's name and version, its input keys, parameters and tool versions.
+- **Manifest:** written last, so its presence means the step finished. It holds inputs, parameters, tools and a hash of each file.
+- **Reuse:** a step is reused only if the key matches and every file still verifies. Loading checks the type and hashes too.
+- **Tracing:** `traceArtifact` follows any artifact back to the search.
+
+Human-friendly copies are published to `runs/`, `panels/` and `results/`.
 
 ## Running native tools
 

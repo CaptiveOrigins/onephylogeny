@@ -1,88 +1,29 @@
 import {
-  ALIGNER, alignToReference, assessAlignment, buildPanel, collapseHaplotypes, DEFAULT_GATES, evaluateQuery, extractLocation, findGeneFeatures, leaveOneBlockOut, leaveOneGroupOut, parseFasta, parseGenBank,
-  sha256Hex, canonicalJson, toRecordSheet, toSequenceRecord, validatePanel, validateProfile, validateResult, writeFasta,
-  type Curation, type Diagnostic, type GateSettings, type GenBankRecord, type Panel, type PanelBundle, type PanelMember, type Profile, type Result, type Run, type RunEvent, type SequenceRecord, type Snapshot, type ValidationReport,
+  ALIGNER, alignToReference, assessAlignment, buildPanel, canonicalJson, collapseHaplotypes, DEFAULT_GATES, extractLocation, findGeneFeatures, leaveOneBlockOut, leaveOneGroupOut, parseFasta, parseGenBank,
+  evaluateQuery, toRecordSheet, toSequenceRecord, validatePanel, validateProfile, validateResult, writeFasta,
+  type Alignment, type Curation, type Diagnostic, type GateSettings, type GenBankRecord, type Panel, type PanelBundle, type PanelMember, type Profile, type Result, type Run, type SequenceRecord, type Snapshot, type ValidationInput,
 } from '@captiveorigins/onephylogeny-core'
-import { NcbiClient, selectionQuery, type NcbiOptions } from '@captiveorigins/onephylogeny-acquire'
+import { NcbiClient, selectionQuery } from '@captiveorigins/onephylogeny-acquire'
+import { hashText, loadArtifact, type Artifact, type ArtifactRef } from './artifacts.js'
+import type { EngineContext, Store, ValidationReports } from './context.js'
+import { EngineError } from './errors.js'
+import { ENGINE, json, profilePaths, withRun, type RunScope } from './run.js'
 
-/** Where files live. A folder on disk, in the CLI and the Mac app. */
-export interface Store {
-  read(path: string): Promise<string>
-  /** Must be atomic: a crash leaves the old file or the new one, never half of it. */
-  write(path: string, text: string): Promise<void>
-  exists(path: string): Promise<boolean>
-  /** Adds to a log without rewriting it. Optional: without it, logs are written whole. */
-  append?(path: string, text: string): Promise<void>
-}
-
-/** Bump with each engine release. Recorded in every run, panel and result. */
-export const ENGINE_VERSION = '0.1.0-alpha.0'
-const ENGINE = { name: 'onephylogeny-engine', version: ENGINE_VERSION }
-
-/** How native programs run. Only tree building needs one. */
-export interface ToolRunner {
-  version(tool: string): Promise<string | null>
-  run(tool: string, args: string[], options: { cwd: string }): Promise<{ code: number; stdout: string; stderr: string }>
-}
-
-export type EngineContext = {
-  store: Store
-  ncbi: Omit<NcbiOptions, 'log'>
-  tools?: ToolRunner
-  now?: () => Date
-  onEvent?: (event: RunEvent) => void
-}
-
-export class RunError extends Error {}
-
-/** Panel versions are immutable: changed content needs a new version. */
-export class PanelVersionExists extends RunError {
-  constructor(id: string, version: string) {
-    super(`Panel ${id} version ${version} already exists with different content. Give this build a new version, so earlier results stay true`)
-  }
-}
-
-const paths = (profileId: string) => ({
-  profile: `profiles/${profileId}/profile.json`,
-  curation: `profiles/${profileId}/curation.json`,
-  latest: `profiles/${profileId}/latest-run.txt`,
-  run: (id: string) => `profiles/${profileId}/runs/${id}`,
-  panel: (id: string, version: string) => `profiles/${profileId}/panels/${id}-${version}`,
-  results: `profiles/${profileId}/results`,
-})
-export const profilePaths = paths
+export * from './errors.js'
+export type { EngineContext, Store, ToolRunner, Compute, ValidationReports } from './context.js'
+export { traceArtifact, loadArtifact, type ArtifactRef, type ArtifactType, type ArtifactManifest, type TraceNode } from './artifacts.js'
+export { ENGINE_VERSION, profilePaths } from './run.js'
 
 const cachePath = (version: string) => `cache/genbank/${version.replace(/[^A-Za-z0-9._-]/g, '_')}.gb`
 
-/** Writes the event log as the run goes, so a crash still leaves a record. */
-class RunLog {
-  readonly events: RunEvent[] = []
-  private pending = Promise.resolve()
-  constructor(private readonly ctx: EngineContext, private readonly file: string) {}
-  private stamp() { return (this.ctx.now?.() ?? new Date()).toISOString() }
-  add(level: RunEvent['level'], step: string, message: string, data?: Record<string, unknown>) {
-    const event: RunEvent = { at: this.stamp(), level, step, message, ...(data ? { data } : {}) }
-    this.events.push(event)
-    this.ctx.onEvent?.(event)
-    const { store } = this.ctx
-    if (store.append) {
-      const line = `${JSON.stringify(event)}\n`
-      this.pending = this.pending.then(() => store.append!(this.file, line))
-    } else {
-      const text = `${this.events.map((e) => JSON.stringify(e)).join('\n')}\n`
-      this.pending = this.pending.then(() => store.write(this.file, text))
-    }
-  }
-  flush() { return this.pending }
-}
-
-const runId = (ctx: EngineContext) => (ctx.now?.() ?? new Date()).toISOString().replace(/[:.]/g, '-')
-const json = (v: unknown) => `${JSON.stringify(v, null, 2)}\n`
-const hash = (s: string) => `sha256:${sha256Hex(s)}`
+const ref = (a: Artifact): ArtifactRef => ({ type: a.manifest.type, key: a.manifest.key })
+const artifactOf = (run: Run, type: ArtifactRef['type']) => run.artifacts.find((a) => a.type === type)
 
 export type RecordOutcome = { record: string; organism?: string; status: 'passed' | 'excluded'; diagnostics: Diagnostic[]; columns: number; identity: number; extractedFrom: 'annotation' | 'whole-record' }
 
 export type FetchOutcome = { run: Run; records: SequenceRecord[]; outcomes: RecordOutcome[] }
+
+type Anchored = { record: string; organism?: string; alignment: Alignment | null; extractedFrom: RecordOutcome['extractedFrom']; length: number; ambiguous: number; unverified: boolean }
 
 function geneSequence(rec: GenBankRecord, profile: Profile): { sequence: string; from: RecordOutcome['extractedFrom'] } {
   const marker = profile.selection.marker
@@ -98,180 +39,255 @@ function geneSequence(rec: GenBankRecord, profile: Profile): { sequence: string;
   return { sequence: rec.sequence, from: 'whole-record' }
 }
 
-/**
- * Fetches everything a profile selects, keeps raw files, anchors each record to the reference, and writes the
- * record sheet, gate outcomes and run log. Writes are per record, so an interrupted run resumes from its cache.
- */
-export async function fetchAndAnchor(ctx: EngineContext, profile: Profile, options: { batchSize?: number } = {}): Promise<FetchOutcome> {
-  const errors = validateProfile(profile).filter((d) => d.severity === 'error')
-  if (errors.length) throw new RunError(`The profile can't run: ${errors.map((e) => e.message).join('; ')}`)
-  if (!profile.reference) throw new RunError('The profile needs a reference accession to anchor records to')
-  const P = paths(profile.id)
-  const id = runId(ctx)
-  const dir = P.run(id)
-  const log = new RunLog(ctx, `${dir}/events.jsonl`)
-  const run: Run = { schemaVersion: 1, id, profile, tools: [ENGINE, ALIGNER], status: 'running', startedAt: (ctx.now?.() ?? new Date()).toISOString(), events: [], outputs: [], diagnostics: [] }
-  const client = new NcbiClient({ ...ctx.ncbi, log: (level, message, data) => log.add(level, 'ncbi', message, data) })
-  const finish = async (status: Run['status']) => {
-    await log.flush()
-    run.status = status
-    run.finishedAt = (ctx.now?.() ?? new Date()).toISOString()
-    run.events = log.events
-    await ctx.store.write(`${dir}/run.json`, json(run))
-    // A failed run stays on record, but it never replaces the last good one.
-    if (status === 'succeeded') await ctx.store.write(P.latest, id)
-  }
-  await ctx.store.write(`${dir}/run.json`, json(run))
-  try {
-    const term = selectionQuery(profile.selection)
-    log.add('info', 'search', 'Searching NCBI', { term })
-    const found = await client.searchAccessions(term)
-    const extra = [profile.reference.accession, ...profile.selection.outgroups.map((o) => o.accession).filter((a): a is string => Boolean(a))]
-    const excluded = new Map(profile.selection.exclude.map((e) => [e.accession, e.reason]))
-    const wanted = [...new Set([...found, ...extra])]
-    log.add('info', 'search', `Found ${found.length} records, plus ${extra.length} named in the profile`, { found: found.length })
-
-    const texts = new Map<string, string>()
-    const missing: string[] = []
-    for (const version of wanted) {
-      const path = cachePath(version)
-      if (await ctx.store.exists(path)) texts.set(version, await ctx.store.read(path))
-      else missing.push(version)
-    }
-    log.add('info', 'fetch', `${texts.size} records already cached, ${missing.length} to download`)
-    const batchSize = options.batchSize ?? 100
-    for (let i = 0; i < missing.length; i += batchSize) {
-      const batch = missing.slice(i, i + batchSize)
-      const { text, records } = await client.fetchGenBankText(batch)
-      const blocks = text.split(/^\/\/\s*$/m).filter((b) => b.includes('LOCUS'))
-      for (const [n, rec] of records.entries()) {
-        const raw = `${blocks[n]!.trimStart()}//\n`
-        const key = rec.version || rec.accession
-        await ctx.store.write(cachePath(key), raw)
-        texts.set(key, raw)
-      }
-      log.add('info', 'fetch', `Downloaded ${Math.min(i + batchSize, missing.length)} of ${missing.length}`)
-    }
-    const parsed = new Map<string, GenBankRecord>()
-    for (const [version, text] of texts) {
-      const rec = parseGenBank(text)[0]
-      if (!rec) throw new RunError(`The cached file for ${version} has no record in it`)
-      parsed.set(rec.version || version, rec)
-    }
-    const refRec = [...parsed.values()].find((r) => r.version === profile.reference!.accession || r.accession === profile.reference!.accession)
-    if (!refRec) throw new RunError(`The reference ${profile.reference.accession} was not retrieved`)
-    const reference = geneSequence(refRec, profile).sequence
-    log.add('info', 'anchor', `Reference ${refRec.version}: ${reference.length} columns`)
-    await ctx.store.write(`${dir}/reference.fasta`, writeFasta([{ id: refRec.version, sequence: reference }]))
-
-    const gates: GateSettings = { ...DEFAULT_GATES, ...(profile.reference.codonStart !== undefined ? { codonStart: profile.reference.codonStart } : {}), ...(profile.reference.geneticCode ? { geneticCode: profile.reference.geneticCode } : {}) }
-    const records: SequenceRecord[] = []
-    const outcomes: RecordOutcome[] = []
-    const aligned: { id: string; sequence: string }[] = []
-    const filters = profile.selection.filters
-    for (const rec of parsed.values()) {
-      const key = rec.version || rec.accession
-      const sr = toSequenceRecord(rec)
-      records.push(sr)
-      const { sequence, from } = geneSequence(rec, profile)
-      const a = alignToReference(sequence, reference)
-      const diagnostics = assessAlignment(a, gates)
-      const ambiguous = (sequence.match(/[^ACGTacgt]/g) ?? []).length
-      const fail = (code: string, message: string) => diagnostics.push({ severity: 'error', code, message })
-      if (excluded.has(key) || excluded.has(rec.accession)) fail('excluded-by-profile', excluded.get(key) ?? excluded.get(rec.accession)!)
-      if (filters.minLength !== undefined && sequence.length < filters.minLength) fail('too-short', `${sequence.length} bp is under the minimum of ${filters.minLength}`)
-      if (filters.maxLength !== undefined && sequence.length > filters.maxLength) fail('too-long', `${sequence.length} bp is over the maximum of ${filters.maxLength}`)
-      if (filters.maxAmbiguous !== undefined && ambiguous > filters.maxAmbiguous) fail('too-ambiguous', `${ambiguous} ambiguous bases is over the maximum of ${filters.maxAmbiguous}`)
-      if (rec.definition.startsWith('UNVERIFIED')) fail('unverified', 'NCBI marks this record UNVERIFIED')
-      const passed = !diagnostics.some((d) => d.severity === 'error')
-      outcomes.push({ record: key, ...(rec.organism ? { organism: rec.organism } : {}), status: passed ? 'passed' : 'excluded', diagnostics, columns: a ? a.matches + a.mismatches : 0, identity: a?.identity ?? 0, extractedFrom: from })
-      if (a && passed) aligned.push({ id: key, sequence: a.aligned })
-    }
-    const pass = outcomes.filter((o) => o.status === 'passed').length
-    log.add('info', 'gates', `${pass} records passed, ${outcomes.length - pass} excluded`)
-    const counts = new Map<string, number>()
-    for (const o of outcomes) for (const d of o.diagnostics) counts.set(d.code, (counts.get(d.code) ?? 0) + 1)
-    for (const [code, n] of counts) log.add('info', 'gates', `${code}: ${n}`)
-
-    const snapshot: Snapshot = {
-      schemaVersion: 1, id, createdAt: run.startedAt, sources: [{ name: 'NCBI nuccore', query: term, retrievedAt: run.startedAt }], records,
-      rawFiles: records.map((r) => ({ path: cachePath(r.version || r.accession), sha256: hash(texts.get(r.version || r.accession) ?? '') })),
-    }
-    snapshot.checksum = hash(canonicalJson(snapshot))
-    run.snapshot = { id, checksum: snapshot.checksum }
-    const write = async (name: string, text: string) => {
-      await ctx.store.write(`${dir}/${name}`, text)
-      run.outputs.push({ path: name, sha256: hash(text) })
-    }
-    await write('snapshot.json', json(snapshot))
-    await write('records.csv', toRecordSheet(records, { checks: outcomes.map((o) => ({ record: o.record, status: o.status, reasons: o.diagnostics.map((d) => d.message) })) }))
-    await write('outcomes.json', json(outcomes))
-    await write('aligned.fasta', writeFasta(aligned))
-    await finish('succeeded')
-    return { run, records, outcomes }
-  } catch (e) {
-    log.add('error', 'run', e instanceof Error ? e.message : String(e))
-    await finish('failed')
-    throw e
-  }
+/** Step: the list of what to fetch. Always asks the source; reuse downstream depends on the answer being the same. */
+async function searchStep(scope: RunScope, profile: Profile, client: NcbiClient, options: { allowEmpty?: boolean }) {
+  const term = selectionQuery(profile.selection)
+  scope.log('info', 'search', 'Searching NCBI', { term })
+  const found = await client.searchAccessions(term)
+  if (!found.length && !options.allowEmpty) throw new EngineError('empty-search', 'NCBI found no records for this taxon and marker', 'Check the taxon, gene names and organelle in Setup')
+  const extra = [profile.reference!.accession, ...profile.selection.outgroups.map((o) => o.accession).filter((a): a is string => Boolean(a))]
+  const accessions = [...new Set([...found, ...extra])].sort()
+  scope.log('info', 'search', `Found ${found.length} records, plus ${extra.length} named in the profile`, { found: found.length })
+  const artifact = await scope.step({
+    type: 'accession-list', step: { name: 'search', version: 1 }, inputs: [], parameters: { term, accessions: hashText(accessions.join('\n')) },
+    run: async (put) => { await put('accessions.json', json({ term, accessions })) },
+  })
+  return { artifact, accessions, term }
 }
 
-export type PanelBuildOutcome = { bundle: PanelBundle; diagnostics: Diagnostic[]; validation: { blocks: ValidationReport; groups: ValidationReport }; unassigned: number }
+/** Step: raw files. Each is cached as it arrives, so an interrupted download continues where it stopped. */
+function rawStep(scope: RunScope, list: Artifact, accessions: string[], client: NcbiClient, batchSize: number) {
+  const { store } = scope.ctx
+  return scope.step({
+    type: 'raw-records', step: { name: 'fetch', version: 1 }, inputs: [ref(list)], parameters: {},
+    run: async (put) => {
+      const texts = new Map<string, string>()
+      const missing: string[] = []
+      for (const version of accessions) {
+        const path = cachePath(version)
+        if (await store.exists(path)) texts.set(version, await store.read(path))
+        else missing.push(version)
+      }
+      scope.log('info', 'fetch', `${texts.size} records already downloaded, ${missing.length} to fetch`, { done: texts.size, total: accessions.length })
+      for (let i = 0; i < missing.length; i += batchSize) {
+        scope.checkpoint()
+        const batch = missing.slice(i, i + batchSize)
+        const { text, records } = await client.fetchGenBankText(batch)
+        const blocks = text.split(/^\/\/\s*$/m).filter((b) => b.includes('LOCUS'))
+        for (const [n, rec] of records.entries()) {
+          const raw = `${blocks[n]!.trimStart()}//\n`
+          const key = rec.version || rec.accession
+          await store.write(cachePath(key), raw)
+          texts.set(key, raw)
+        }
+        scope.log('info', 'fetch', `Fetched ${Math.min(i + batchSize, missing.length)} of ${missing.length}`, { done: texts.size, total: accessions.length })
+      }
+      const index = Object.fromEntries([...texts].map(([k, t]) => [k, hashText(t)]).sort(([a], [b]) => String(a).localeCompare(String(b))))
+      await put('index.json', json(index))
+    },
+    ensure: async (read) => (Object.keys(JSON.parse(await read('index.json'))).length ? null : 'no records were fetched'),
+  })
+}
 
-/** Builds and validates a candidate panel from a finished run and the curation file. */
+const markerParameters = (profile: Profile) => ({ marker: profile.selection.marker, reference: profile.reference?.accession })
+
+/** Step: every record in reference coordinates. Pure, and independent of filters, so changing a filter doesn't redo it. */
+function anchorStep(scope: RunScope, profile: Profile, raw: Artifact) {
+  const { store } = scope.ctx
+  return scope.step({
+    type: 'anchored-records', step: { name: 'anchor', version: 1 }, inputs: [ref(raw)], parameters: markerParameters(profile), tools: [ALIGNER],
+    run: async (put) => {
+      const index = JSON.parse(await raw.read('index.json')) as Record<string, string>
+      const parsed = new Map<string, GenBankRecord>()
+      for (const [version, sha] of Object.entries(index)) {
+        const text = await store.read(cachePath(version))
+        if (hashText(text) !== sha) throw new EngineError('raw-file-changed', `The downloaded file for ${version} changed after it was fetched`, `Delete ${cachePath(version)} and fetch again`)
+        const rec = parseGenBank(text)[0]
+        if (!rec) throw new EngineError('raw-file-changed', `The downloaded file for ${version} has no record in it`, `Delete ${cachePath(version)} and fetch again`)
+        parsed.set(version, rec)
+      }
+      const accession = profile.reference!.accession
+      const refRec = [...parsed.values()].find((r) => r.version === accession || r.accession === accession)
+      if (!refRec) throw new EngineError('reference-missing', `The reference ${accession} wasn't retrieved`, 'Check the reference accession in Setup')
+      const reference = geneSequence(refRec, profile).sequence
+      scope.log('info', 'anchor', `Reference ${refRec.version}: ${reference.length} columns`)
+      const anchored: Anchored[] = []
+      const records: SequenceRecord[] = []
+      let done = 0
+      for (const [version, rec] of parsed) {
+        await scope.breathe()
+        const { sequence, from } = geneSequence(rec, profile)
+        anchored.push({
+          record: rec.version || version, ...(rec.organism ? { organism: rec.organism } : {}), alignment: alignToReference(sequence, reference), extractedFrom: from, length: sequence.length,
+          ambiguous: (sequence.match(/[^ACGTacgt]/g) ?? []).length, unverified: rec.definition.startsWith('UNVERIFIED'),
+        })
+        records.push(toSequenceRecord(rec))
+        if (++done % 100 === 0) scope.log('debug', 'anchor', `Anchored ${done} of ${parsed.size}`, { done, total: parsed.size })
+      }
+      await put('reference.fasta', writeFasta([{ id: refRec.version, sequence: reference }]))
+      await put('anchored.json', JSON.stringify(anchored))
+      await put('records.json', JSON.stringify(records))
+    },
+    ensure: async (read) => (parseFasta(await read('reference.fasta'))[0]?.sequence.length ? null : 'the reference has no sequence'),
+  })
+}
+
+/** Step: which records pass, and why the others don't. Every record gets an outcome. */
+function gateStep(scope: RunScope, profile: Profile, anchoredArtifact: Artifact) {
+  const { filters, exclude } = profile.selection
+  const gates: GateSettings = { ...DEFAULT_GATES, ...(profile.reference?.codonStart !== undefined ? { codonStart: profile.reference.codonStart } : {}), ...(profile.reference?.geneticCode ? { geneticCode: profile.reference.geneticCode } : {}) }
+  return scope.step({
+    type: 'gated-records', step: { name: 'gate', version: 1 }, inputs: [ref(anchoredArtifact)], parameters: { filters, exclude, gates },
+    run: async (put) => {
+      const excluded = new Map(exclude.map((e) => [e.accession, e.reason]))
+      const anchored = JSON.parse(await anchoredArtifact.read('anchored.json')) as Anchored[]
+      const records = JSON.parse(await anchoredArtifact.read('records.json')) as SequenceRecord[]
+      const outcomes: RecordOutcome[] = []
+      const aligned: { id: string; sequence: string }[] = []
+      for (const a of anchored) {
+        const diagnostics = assessAlignment(a.alignment, gates)
+        const fail = (code: string, message: string) => diagnostics.push({ severity: 'error', code, message })
+        const reason = excluded.get(a.record) ?? excluded.get(a.record.split('.')[0]!)
+        if (reason) fail('excluded-by-profile', reason)
+        if (filters.minLength !== undefined && a.length < filters.minLength) fail('too-short', `${a.length} bp is under the minimum of ${filters.minLength}`)
+        if (filters.maxLength !== undefined && a.length > filters.maxLength) fail('too-long', `${a.length} bp is over the maximum of ${filters.maxLength}`)
+        if (filters.maxAmbiguous !== undefined && a.ambiguous > filters.maxAmbiguous) fail('too-ambiguous', `${a.ambiguous} ambiguous bases is over the maximum of ${filters.maxAmbiguous}`)
+        if (a.unverified) fail('unverified', 'NCBI marks this record UNVERIFIED')
+        const passed = !diagnostics.some((d) => d.severity === 'error')
+        outcomes.push({ record: a.record, ...(a.organism ? { organism: a.organism } : {}), status: passed ? 'passed' : 'excluded', diagnostics, columns: a.alignment ? a.alignment.matches + a.alignment.mismatches : 0, identity: a.alignment?.identity ?? 0, extractedFrom: a.extractedFrom })
+        if (a.alignment && passed) aligned.push({ id: a.record, sequence: a.alignment.aligned })
+      }
+      const passing = outcomes.filter((o) => o.status === 'passed').length
+      scope.log('info', 'gate', `${passing} records passed, ${outcomes.length - passing} excluded`)
+      const counts = new Map<string, number>()
+      for (const o of outcomes) for (const d of o.diagnostics) counts.set(d.code, (counts.get(d.code) ?? 0) + 1)
+      for (const [code, n] of counts) scope.log('info', 'gate', `${code}: ${n}`)
+      await put('outcomes.json', json(outcomes))
+      await put('aligned.fasta', writeFasta(aligned))
+      await put('reference.fasta', await anchoredArtifact.read('reference.fasta'))
+      await put('records.csv', toRecordSheet(records, { checks: outcomes.map((o) => ({ record: o.record, status: o.status, reasons: o.diagnostics.map((d) => d.message) })) }))
+    },
+  })
+}
+
+/**
+ * Fetches everything a profile selects, keeps raw files, anchors and checks each record, and writes the sheet and log.
+ * Each stage reuses earlier work when its inputs and settings are unchanged.
+ */
+export async function fetchAndAnchor(ctx: EngineContext, profile: Profile, options: { batchSize?: number; allowEmpty?: boolean } = {}): Promise<FetchOutcome> {
+  const errors = validateProfile(profile).filter((d) => d.severity === 'error')
+  if (errors.length) throw new EngineError('invalid-profile', `The profile can't run: ${errors.map((e) => e.message).join('; ')}`, 'Fix it in Setup')
+  if (!profile.reference?.accession) throw new EngineError('invalid-profile', 'The profile needs a reference accession to anchor records to', 'Add one in Setup')
+  const P = profilePaths(profile.id)
+  const { value, run } = await withRun(ctx, profile, 'fetch', async (scope) => {
+    scope.run.tools.push(ALIGNER)
+    const client = new NcbiClient({ ...ctx.ncbi, log: (level, message, data) => scope.log(level, 'ncbi', message, data) })
+    const { artifact: list, accessions, term } = await searchStep(scope, profile, client, options)
+    const raw = await rawStep(scope, list, accessions, client, options.batchSize ?? 100)
+    const anchored = await anchorStep(scope, profile, raw)
+    const gated = await gateStep(scope, profile, anchored)
+    const records = JSON.parse(await anchored.read('records.json')) as SequenceRecord[]
+    const outcomes = JSON.parse(await gated.read('outcomes.json')) as RecordOutcome[]
+    const index = JSON.parse(await raw.read('index.json')) as Record<string, string>
+    const snapshot: Snapshot = {
+      schemaVersion: 1, id: scope.run.id, createdAt: scope.run.startedAt, sources: [{ name: 'NCBI nuccore', query: term, retrievedAt: scope.run.startedAt }], records,
+      rawFiles: records.map((r) => ({ path: cachePath(r.version || r.accession), sha256: index[r.version || r.accession] ?? '' })),
+    }
+    snapshot.checksum = hashText(canonicalJson(snapshot))
+    scope.run.snapshot = { id: scope.run.id, checksum: snapshot.checksum }
+    const publish = async (name: string, text: string) => {
+      await ctx.store.write(`${scope.dir}/${name}`, text)
+      scope.run.outputs.push({ path: name, sha256: hashText(text) })
+    }
+    await publish('snapshot.json', json(snapshot))
+    for (const name of ['records.csv', 'outcomes.json', 'aligned.fasta', 'reference.fasta']) await publish(name, await gated.read(name))
+    return { records, outcomes }
+  })
+  // A failed run stays on record, but it never replaces the last good one.
+  await ctx.store.write(P.latest, run.id)
+  return { run, records: value.records, outcomes: value.outcomes }
+}
+
+export type PanelBuildOutcome = { bundle: PanelBundle; diagnostics: Diagnostic[]; validation: ValidationReports; unassigned: number; run: Run; published: boolean }
+
+const defaultValidate = async (input: ValidationInput): Promise<ValidationReports> => ({ blocks: leaveOneBlockOut(input), groups: leaveOneGroupOut(input) })
+
+/** Builds and validates a candidate panel from a finished fetch run and the curation file. */
 export async function buildPanelFromRun(ctx: EngineContext, profile: Profile, curation: Curation, id?: string): Promise<PanelBuildOutcome> {
-  if (!profile.panel) throw new RunError('The profile has no panel settings')
-  const P = paths(profile.id)
-  const latest = id ?? (await ctx.store.read(P.latest)).trim()
-  const dir = P.run(latest)
-  const snapshot = JSON.parse(await ctx.store.read(`${dir}/snapshot.json`)) as Snapshot
-  const aligned = parseFasta(await ctx.store.read(`${dir}/aligned.fasta`))
-  const reference = parseFasta(await ctx.store.read(`${dir}/reference.fasta`))[0]!
-  const byId = new Map(snapshot.records.map((r) => [r.version, r]))
-  const groupIds = new Set(profile.panel.groups.map((g) => g.id))
-  const members: (PanelMember & { block?: string })[] = []
-  let unassigned = 0
-  const diagnostics: Diagnostic[] = []
-  for (const e of aligned) {
-    const decision = curation.records[e.id]
-    if (decision?.exclude) continue
-    if (!decision?.group) { unassigned++; continue }
-    if (!groupIds.has(decision.group)) { diagnostics.push({ severity: 'error', code: 'unknown-group', message: `${e.id} names group ${decision.group}, which isn't in the panel settings`, ids: [e.id] }); continue }
-    members.push({
-      record: e.id, group: decision.group, aligned: e.sequence,
-      provenanceClass: decision.provenanceClass ?? byId.get(e.id)?.provenanceClass ?? 'unknown',
-      ...(decision.use ? { use: decision.use } : {}),
-      ...(decision.site ? { block: decision.site } : {}),
+  const settings = profile.panel
+  if (!settings) throw new EngineError('invalid-profile', 'The profile has no panel settings', 'Add groups in the Panel tab')
+  const P = profilePaths(profile.id)
+  const sourceId = id ?? (await ctx.store.exists(P.latest) ? (await ctx.store.read(P.latest)).trim() : '')
+  if (!sourceId) throw new EngineError('run-missing', 'No finished fetch run exists yet', 'Fetch records first')
+  const source = JSON.parse(await ctx.store.read(`${P.run(sourceId)}/run.json`)) as Run
+  const gatedRef = artifactOf(source, 'gated-records')
+  if (!gatedRef) throw new EngineError('run-missing', `Run ${sourceId} didn't finish fetching`, 'Fetch records again')
+  const { value, run } = await withRun(ctx, profile, 'panel', async (scope) => {
+    scope.run.tools.push(ALIGNER)
+    const gated = await loadArtifact(ctx.store, { type: 'gated-records', key: gatedRef.key })
+    const aligned = parseFasta(await gated.read('aligned.fasta'))
+    const reference = parseFasta(await gated.read('reference.fasta'))[0]!
+    const groupIds = new Set(settings.groups.map((g) => g.id))
+    const members: (PanelMember & { block?: string })[] = []
+    const diagnostics: Diagnostic[] = []
+    let unassigned = 0
+    for (const e of aligned) {
+      const decision = curation.records[e.id]
+      if (decision?.exclude) continue
+      if (!decision?.group) { unassigned++; continue }
+      if (!groupIds.has(decision.group)) { diagnostics.push({ severity: 'error', code: 'unknown-group', message: `${e.id} names group ${decision.group}, which isn't in the panel settings`, ids: [e.id] }); continue }
+      members.push({ record: e.id, group: decision.group, aligned: e.sequence, provenanceClass: decision.provenanceClass ?? 'unknown', ...(decision.use ? { use: decision.use } : {}), ...(decision.site ? { block: decision.site } : {}) })
+    }
+    if (!members.length && !diagnostics.some((d) => d.severity === 'error')) throw new EngineError('empty-panel', 'No records are assigned to a group, so there is nothing to build', 'Assign records to groups in the Records tab')
+    const records = JSON.parse(await (await loadArtifact(ctx.store, gated.manifest.inputs[0]!)).read('records.json')) as SequenceRecord[]
+    const memberIds = new Set(members.map((m) => m.record))
+    const citations = new Map<string, { citation: string }>()
+    for (const r of records) if (memberIds.has(r.version)) for (const p of r.publications) if (p.title) citations.set(p.title, { citation: [p.authors, p.title, p.journal].filter(Boolean).join('. ') })
+    const input = {
+      settings, taxa: profile.selection.taxa, marker: profile.selection.marker,
+      reference: { accession: reference.id, length: reference.sequence.length, ...(profile.reference?.codonStart !== undefined ? { codonStart: profile.reference.codonStart } : {}), ...(profile.reference?.geneticCode ? { geneticCode: profile.reference.geneticCode } : {}) },
+      sources: [...citations.values()], builtBy: gated.manifest.key, referenceSequence: reference.sequence, builtWith: [ENGINE, ALIGNER],
+    }
+    const bundle = buildPanel({ ...input, members })
+    diagnostics.push(...validatePanel(bundle.panel))
+    const empty = { scheme: 'leave-one-block-out' as const, tested: 0, skipped: 0, groups: [], diagnostics: [] }
+    const hasErrors = diagnostics.some((d) => d.severity === 'error')
+    if (hasErrors) return { bundle, diagnostics, validation: { blocks: empty, groups: { ...empty, scheme: 'leave-one-group-out' as const } }, unassigned, published: false }
+    const out = P.panel(bundle.panel.id, bundle.panel.version)
+    if (await ctx.store.exists(`${out}/panel.json`)) {
+      const existing = JSON.parse(await ctx.store.read(`${out}/panel.json`)) as Panel
+      if (existing.checksum !== bundle.panel.checksum) throw new EngineError('panel-version-exists', `Panel ${bundle.panel.id} version ${bundle.panel.version} already exists with different content`, 'Give this build a new version, so earlier results stay true')
+    }
+    const panelArtifact = await scope.step({
+      type: 'panel', step: { name: 'panel', version: 1 }, inputs: [ref(gated)], parameters: { checksum: bundle.panel.checksum }, tools: [ENGINE, ALIGNER],
+      run: async (put) => {
+        await put('panel.json', json(bundle.panel))
+        await put('panel.fasta', writeFasta([{ id: '__reference__', sequence: reference.sequence }, ...Object.entries(bundle.sequences).map(([k, sequence]) => ({ id: k, sequence }))]))
+      },
     })
-  }
-  const input = {
-    settings: profile.panel,
-    taxa: profile.selection.taxa,
-    marker: profile.selection.marker,
-    reference: { accession: reference.id, length: reference.sequence.length, ...(profile.reference?.codonStart !== undefined ? { codonStart: profile.reference.codonStart } : {}), ...(profile.reference?.geneticCode ? { geneticCode: profile.reference.geneticCode } : {}) },
-    sources: [...new Map(snapshot.records.filter((r) => members.some((m) => m.record === r.version)).flatMap((r) => r.publications).filter((p) => p.title).map((p) => [p.title!, { citation: [p.authors, p.title, p.journal].filter(Boolean).join('. ') }])).values()],
-    builtBy: latest,
-    referenceSequence: reference.sequence,
-    builtWith: [ENGINE, ALIGNER],
-  }
-  const bundle = buildPanel({ ...input, members })
-  const out = P.panel(bundle.panel.id, bundle.panel.version)
-  if (await ctx.store.exists(`${out}/panel.json`)) {
-    const existing = JSON.parse(await ctx.store.read(`${out}/panel.json`)) as Panel
-    if (existing.checksum !== bundle.panel.checksum) throw new PanelVersionExists(bundle.panel.id, bundle.panel.version)
-  }
-  diagnostics.push(...validatePanel(bundle.panel))
-  const validation = { blocks: leaveOneBlockOut({ ...input, members }), groups: leaveOneGroupOut({ ...input, members }) }
-  await ctx.store.write(`${out}/panel.json`, json(bundle.panel))
-  await ctx.store.write(`${out}/panel.fasta`, writeFasta([{ id: '__reference__', sequence: reference.sequence }, ...Object.entries(bundle.sequences).map(([k, sequence]) => ({ id: k, sequence }))]))
-  await ctx.store.write(`${out}/validation.json`, json(validation))
-  await ctx.store.write(`${out}/diagnostics.json`, json({ diagnostics, unassigned }))
-  return { bundle, diagnostics, validation, unassigned }
+    const blocks = Object.fromEntries(members.map((m) => [m.record, m.block ?? '']))
+    const validationArtifact = await scope.step({
+      type: 'validation', step: { name: 'validate', version: 1 }, inputs: [ref(panelArtifact)], parameters: { blocks: hashText(canonicalJson(blocks)) },
+      run: async (put) => {
+        const reports = await (ctx.compute?.validate ?? defaultValidate)({ ...input, members })
+        await put('validation.json', json(reports))
+      },
+    })
+    const validation = JSON.parse(await validationArtifact.read('validation.json')) as ValidationReports
+    await ctx.store.write(`${out}/panel.json`, await panelArtifact.read('panel.json'))
+    await ctx.store.write(`${out}/panel.fasta`, await panelArtifact.read('panel.fasta'))
+    await ctx.store.write(`${out}/validation.json`, json(validation))
+    await ctx.store.write(`${out}/diagnostics.json`, json({ diagnostics, unassigned }))
+    await ctx.store.write(`${out}/artifact.json`, json(ref(panelArtifact)))
+    return { bundle, diagnostics, validation, unassigned, published: true }
+  })
+  return { ...value, run }
 }
 
 export async function loadPanel(store: Store, dir: string): Promise<PanelBundle> {
+  if (!(await store.exists(`${dir}/panel.json`))) throw new EngineError('panel-missing', 'This panel hasn\'t been built yet', 'Build it in the Panel tab')
   const panel = JSON.parse(await store.read(`${dir}/panel.json`)) as Panel
-  if (!panel.thresholds) throw new RunError(`Panel ${panel.id} version ${panel.version} was built before panels carried their thresholds. Build it again under a new version`)
+  if (!panel.thresholds) throw new EngineError('panel-outdated', `Panel ${panel.id} version ${panel.version} was built before panels carried their thresholds`, 'Build it again under a new version')
   const fasta = parseFasta(await store.read(`${dir}/panel.fasta`))
   const referenceSequence = fasta.find((f) => f.id === '__reference__')?.sequence
   return { panel, sequences: Object.fromEntries(fasta.filter((f) => f.id !== '__reference__').map((f) => [f.id, f.sequence])), ...(referenceSequence ? { referenceSequence } : {}) }
@@ -279,50 +295,86 @@ export async function loadPanel(store: Store, dir: string): Promise<PanelBundle>
 
 export type SampleOutcome = { result: Result; diagnostics: Diagnostic[]; aligned: string; insertions: number; deletions: number; identity: number; clipped: { start: number; end: number } } | { result: null; diagnostics: Diagnostic[] }
 
-/** Tests one local sequence against one panel. Pure TypeScript: runs in the app, the CLI or a hosted site. */
+/** Tests one sequence against one panel. Pure TypeScript: runs in the app, the CLI or a hosted site. */
 export function testSample(sequence: string, queryId: string, bundle: PanelBundle, options: { runId?: string } = {}): SampleOutcome {
-  if (!bundle.referenceSequence) throw new RunError('This panel has no reference sequence')
+  if (!bundle.referenceSequence) throw new EngineError('panel-outdated', 'This panel has no reference sequence', 'Build it again')
   const a = alignToReference(sequence, bundle.referenceSequence)
   const r = bundle.panel.reference
   const diagnostics = assessAlignment(a, { ...DEFAULT_GATES, ...(r.codonStart !== undefined ? { codonStart: r.codonStart } : {}), ...(r.geneticCode ? { geneticCode: r.geneticCode } : {}) })
   if (!a || diagnostics.some((d) => d.severity === 'error')) return { result: null, diagnostics }
   const result = evaluateQuery(a.aligned, bundle, {
-    queryId, runId: options.runId ?? 'sample', querySha256: hash(sequence.toUpperCase()), producedBy: [ENGINE, ALIGNER],
+    queryId, runId: options.runId ?? 'sample', querySha256: hashText(sequence.toUpperCase()), producedBy: [ENGINE, ALIGNER],
     caveats: ['Thresholds are configured values and these statuses are not probabilities', ...diagnostics.filter((d) => d.severity === 'warning').map((d) => d.message)],
   })
   diagnostics.push(...validateResult(result, bundle.panel))
   return { result, diagnostics, aligned: a.aligned, insertions: a.insertions.reduce((s, x) => s + x.length, 0), deletions: a.deletions.reduce((s, x) => s + x.length, 0), identity: a.identity, clipped: a.clipped }
 }
 
-export type TreeOutcome = { tool: string; version: string; newick: string; tips: { id: string; members: string[] }[]; log: string }
+/** Tests a sequence with a full record: a saved result that traces back to its panel, the records and raw files. */
+export async function runSample(ctx: EngineContext, profile: Profile, sequence: string, queryId: string): Promise<SampleOutcome & { run: Run; artifact: ArtifactRef }> {
+  if (!profile.panel) throw new EngineError('invalid-profile', 'The profile has no panel settings', 'Add groups in the Panel tab')
+  const P = profilePaths(profile.id)
+  const dir = P.panel(profile.panel.id, profile.panel.version)
+  const bundle = await loadPanel(ctx.store, dir)
+  const panelRef = JSON.parse(await ctx.store.read(`${dir}/artifact.json`)) as ArtifactRef
+  const { value, run } = await withRun(ctx, profile, 'sample', async (scope) => {
+    scope.run.tools.push(ALIGNER)
+    const panelArtifact = await loadArtifact(ctx.store, panelRef)
+    const artifact = await scope.step({
+      type: 'sample-result', step: { name: 'sample', version: 1 }, inputs: [ref(panelArtifact)], parameters: { queryId, sequence: hashText(sequence.toUpperCase()) }, tools: [ENGINE, ALIGNER],
+      run: async (put) => { await put('outcome.json', json(testSample(sequence, queryId, bundle, { runId: scope.run.id }))) },
+    })
+    const text = await artifact.read('outcome.json')
+    await ctx.store.write(`${P.results}/${bundle.panel.id}-${bundle.panel.version}/${queryId.replace(/[^A-Za-z0-9._-]/g, '_')}.json`, text)
+    return { outcome: JSON.parse(text) as SampleOutcome, artifact: ref(artifact) }
+  })
+  return { ...value.outcome, run, artifact: value.artifact }
+}
 
-/** Builds a tree with IQ-TREE from one coverage window of a run's aligned records. Requires a tool runner. */
+export type TreeOutcome = { tool: string; version: string; newick: string; tips: { id: string; members: string[] }[]; run: Run; artifact: ArtifactRef }
+
+/** Builds a tree with IQ-TREE from one coverage window of a run's records. */
 export async function buildTree(ctx: EngineContext, profile: Profile, options: { runId?: string; absoluteDir: string; tool?: string; window?: { start: number; end: number }; minCoverage?: number }): Promise<TreeOutcome> {
-  if (!ctx.tools) throw new RunError('Building a tree needs a tool runner')
-  if (!profile.tree) throw new RunError('The profile has no tree settings')
+  if (!ctx.tools) throw new EngineError('tool-missing', 'Building a tree needs a tool runner')
+  const settings = profile.tree
+  if (!settings) throw new EngineError('invalid-profile', 'The profile has no tree settings')
   const tool = options.tool ?? 'iqtree3'
   const version = await ctx.tools.version(tool)
-  if (!version) throw new RunError(`${tool} isn't installed or can't be found`)
-  const P = paths(profile.id)
-  const id = options.runId ?? (await ctx.store.read(P.latest)).trim()
-  const dir = P.run(id)
-  const aligned = parseFasta(await ctx.store.read(`${dir}/aligned.fasta`))
-  const w = options.window ?? { start: 0, end: aligned[0]?.sequence.length ?? 0 }
-  const min = options.minCoverage ?? 0.85
-  const usable = aligned.map((e) => ({ id: e.id, aligned: e.sequence.slice(w.start, w.end) })).filter((e) => (e.aligned.match(/[ACGT]/gi) ?? []).length >= min * (w.end - w.start))
-  const haps = collapseHaplotypes(usable)
-  const outgroups = profile.selection.outgroups.map((o) => o.accession).filter((a): a is string => Boolean(a))
-  const names = new Map(haps.map((h, i) => [h, `H${String(i + 1).padStart(4, '0')}`]))
-  const fasta = writeFasta(haps.map((h) => ({ id: names.get(h)!, sequence: h.representative })))
-  const outdir = `${dir}/tree`
-  await ctx.store.write(`${outdir}/input.fasta`, fasta)
-  const og = haps.filter((h) => h.members.some((m) => outgroups.includes(m))).map((h) => names.get(h)!)
-  const t = profile.tree
-  const args = ['-s', 'input.fasta', '-m', t.model, '-B', String(t.bootstrap), '--alrt', String(t.shAlrt), '--seed', String(t.seed), '-T', String(t.threads), '-pre', 'tree', '-redo', ...(og.length ? ['-o', og.join(',')] : [])]
-  const res = await ctx.tools.run(tool, args, { cwd: `${options.absoluteDir}/${outdir}` })
-  if (res.code !== 0) throw new RunError(`${tool} failed: ${res.stderr || res.stdout}`.slice(0, 800))
-  const newick = await ctx.store.read(`${outdir}/tree.treefile`)
-  const tips = haps.map((h) => ({ id: names.get(h)!, members: h.members }))
-  await ctx.store.write(`${outdir}/tips.json`, json(tips))
-  return { tool, version, newick, tips, log: res.stdout }
+  if (!version) throw new EngineError('tool-missing', `${tool} isn't installed or can't be found`, `Install it with: brew install ${tool}`)
+  const tools = ctx.tools
+  const P = profilePaths(profile.id)
+  const sourceId = options.runId ?? (await ctx.store.exists(P.latest) ? (await ctx.store.read(P.latest)).trim() : '')
+  if (!sourceId) throw new EngineError('run-missing', 'No finished fetch run exists yet', 'Fetch records first')
+  const source = JSON.parse(await ctx.store.read(`${P.run(sourceId)}/run.json`)) as Run
+  const gatedRef = artifactOf(source, 'gated-records')
+  if (!gatedRef) throw new EngineError('run-missing', `Run ${sourceId} didn't finish fetching`, 'Fetch records again')
+  const { value, run } = await withRun(ctx, profile, 'tree', async (scope) => {
+    scope.run.tools.push({ name: tool, version })
+    const gated = await loadArtifact(ctx.store, { type: 'gated-records', key: gatedRef.key })
+    const aligned = parseFasta(await gated.read('aligned.fasta'))
+    const w = options.window ?? { start: 0, end: aligned[0]?.sequence.length ?? 0 }
+    const min = options.minCoverage ?? 0.85
+    const usable = aligned.map((e) => ({ id: e.id, aligned: e.sequence.slice(w.start, w.end) })).filter((e) => (e.aligned.match(/[ACGT]/gi) ?? []).length >= min * (w.end - w.start))
+    const haps = collapseHaplotypes(usable)
+    if (haps.length < 4) throw new EngineError('step-output-invalid', `Only ${haps.length} haplotypes cover this window, and a tree needs at least 4`, 'Choose another window, or lower the coverage needed')
+    const outgroups = profile.selection.outgroups.map((o) => o.accession).filter((a): a is string => Boolean(a))
+    const names = new Map(haps.map((h, i) => [h, `H${String(i + 1).padStart(4, '0')}`]))
+    const og = haps.filter((h) => h.members.some((m) => outgroups.includes(m))).map((h) => names.get(h)!)
+    const artifact = await scope.step({
+      type: 'tree', step: { name: 'tree', version: 1 }, inputs: [ref(gated)], parameters: { window: w, minCoverage: min, tree: settings, outgroups: og }, tools: [{ name: tool, version }],
+      run: async (put, dir, register) => {
+        await put('input.fasta', writeFasta(haps.map((h) => ({ id: names.get(h)!, sequence: h.representative }))))
+        await put('tips.json', json(haps.map((h) => ({ id: names.get(h)!, members: h.members }))))
+        const args = ['-s', 'input.fasta', '-m', settings.model, '-B', String(settings.bootstrap), '--alrt', String(settings.shAlrt), '--seed', String(settings.seed), '-T', String(settings.threads), '-pre', 'tree', '-redo', ...(og.length ? ['-o', og.join(',')] : [])]
+        const res = await tools.run(tool, args, { cwd: `${options.absoluteDir}/${dir}` })
+        await ctx.store.write(`${dir}/tool.log`, `${res.stdout}\n${res.stderr}`)
+        if (res.code !== 0) throw new EngineError('tool-failed', `${tool} failed: ${(res.stderr || res.stdout).slice(0, 600)}`, `See ${dir}/tool.log`)
+        await register('tree.treefile')
+        await register('tree.iqtree')
+      },
+      ensure: async (read) => ((await read('tree.treefile')).includes('(') ? null : 'the tree file has no tree in it'),
+    })
+    return { newick: await artifact.read('tree.treefile'), tips: JSON.parse(await artifact.read('tips.json')) as TreeOutcome['tips'], artifact: ref(artifact) }
+  })
+  return { tool, version, ...value, run }
 }

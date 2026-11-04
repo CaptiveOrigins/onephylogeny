@@ -46,6 +46,7 @@ onephylogeny fetch     --workspace DIR --profile ID   # download, anchor, gate; 
 onephylogeny panel     --workspace DIR --profile ID   # build and validate a panel
 onephylogeny test      --workspace DIR --profile ID --fasta sample.fasta
 onephylogeny tree      --workspace DIR --profile ID   # needs IQ-TREE
+onephylogeny trace     --workspace DIR --profile ID --type T --key K   # everything that produced an artifact
 ```
 
 A profile is plain JSON and holds every choice: taxa, marker, reference, filters, outgroups, groups and thresholds.
@@ -62,6 +63,7 @@ pnpm --filter onephylogeny-desktop dev       # browser preview with made-up data
 ## Documentation
 
 - [Architecture](docs/architecture/architecture.md), [data schema](docs/architecture/data-schema.md), [decisions](docs/architecture/adr/README.md)
+- [One family guidelines](docs/family/guidelines.md), shared with OnePedigree and OneTaxonomy (draft)
 - [Roadmap](docs/architecture/roadmap.md), [phase plan](docs/architecture/phase-plan.md), [limitations](docs/architecture/limitations.md)
 
 ## License

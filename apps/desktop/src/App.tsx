@@ -1,11 +1,12 @@
 import { NcbiClient, suggestOutgroups, type OutgroupLadder } from '@captiveorigins/onephylogeny-acquire'
 import { parseCuration, parseFasta, parseProfile, validateProfile, type Curation, type Diagnostic, type EvidenceUse, type Panel, type Profile, type ProvenanceClass, type Result, type RunEvent, type SequenceRecord, type Snapshot } from '@captiveorigins/onephylogeny-core'
-import { buildPanelFromRun, buildTree, fetchAndAnchor, loadPanel, profilePaths, testSample, type EngineContext, type RecordOutcome, type TreeOutcome } from '@captiveorigins/onephylogeny-engine'
+import { buildPanelFromRun, buildTree, EngineError, fetchAndAnchor, isCancelled, loadPanel, profilePaths, runSample, type EngineContext, type RecordOutcome, type TreeOutcome } from '@captiveorigins/onephylogeny-engine'
 import { EventLog, OutgroupLadderView, PanelSummary, ResultView, TreeFigure, ValidationView } from '@captiveorigins/onephylogeny-react'
 import { treeToPhylogeny } from '@captiveorigins/onephylogeny-onetaxonomy'
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Platform, Settings } from './platform'
 import { PREVIEW_SAMPLE } from './platform-preview'
+import { validateInWorker } from './validate'
 
 const PROVENANCE: { value: ProvenanceClass; label: string }[] = [
   { value: 'unknown', label: 'Unknown' }, { value: 'wild-documented', label: 'Wild, documented' }, { value: 'museum-documented', label: 'Museum, documented' },
@@ -45,6 +46,7 @@ export function App({ platform }: { platform: Platform }) {
   const [events, setEvents] = useState<RunEvent[]>([])
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [action, setAction] = useState<string | null>(null)
   const [saved, setSaved] = useState(true)
   const [records, setRecords] = useState<SequenceRecord[]>([])
   const [outcomes, setOutcomes] = useState<RecordOutcome[]>([])
@@ -67,11 +69,25 @@ export function App({ platform }: { platform: Platform }) {
   const refresh = useCallback(async () => { if (platform.root()) setProfiles(await platform.list('profiles')) }, [platform])
   useEffect(() => { void refresh() }, [refresh, root])
 
-  const engine = (): EngineContext => ({ store: platform.store, ncbi: { fetch: platform.fetch, tool: 'onephylogeny-mac' }, ...(platform.tools ? { tools: platform.tools } : {}), onEvent: (e) => setEvents((x) => [...x, e]) })
+  const controller = useRef<AbortController | null>(null)
+  const engine = (): EngineContext => ({
+    store: platform.store, ncbi: { fetch: platform.fetch, tool: 'onephylogeny-mac' }, ...(platform.tools ? { tools: platform.tools } : {}),
+    ...(controller.current ? { signal: controller.current.signal } : {}),
+    compute: { validate: validateInWorker },
+    onEvent: (e) => { if (e.level !== 'debug') setEvents((x) => [...x, e]) },
+  })
   const attempt = async (label: string, work: () => Promise<void>) => {
+    controller.current = new AbortController()
     setBusy(label)
     setError(null)
-    try { await work() } catch (e) { setError(e instanceof Error ? e.message : String(e)) } finally { setBusy(null) }
+    setAction(null)
+    try { await work() } catch (e) {
+      if (isCancelled(e)) setError('Cancelled. Finished steps are kept and will be reused.')
+      else {
+        setError(e instanceof Error ? e.message : String(e))
+        setAction(e instanceof EngineError ? e.action ?? null : null)
+      }
+    } finally { setBusy(null); controller.current = null }
   }
 
   const loadRun = async (p: Profile) => {
@@ -155,9 +171,9 @@ export function App({ platform }: { platform: Platform }) {
         <header className="top">
           <h2>{profile.title}</h2>
           <div role="tablist" className="tabs">{TABS.map((t) => <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'selected' : ''} onClick={() => setTab(t.id)}>{t.label}</button>)}</div>
-          {busy && <span role="status" className="busy">{busy}…</span>}
+          {busy && <span role="status" className="busy">{busy}… <button onClick={() => controller.current?.abort()}>Cancel</button></span>}
         </header>
-        {error && <p role="alert" className="error">{error}</p>}
+        {error && <div role="alert" className="error"><p>{error}</p>{action && <p className="next">What to do: {action}</p>}</div>}
         {tab === 'setup' && <Setup profile={profile} edit={edit} save={save} saved={saved} platform={platform} attempt={attempt} client={() => new NcbiClient(engine().ncbi)} />}
         {tab === 'records' && <Records profile={profile} curation={curation} decide={decide} records={records} outcomes={outcomes} runId={runId} platform={platform} busy={Boolean(busy)} onFetch={() => attempt('Fetching records', async () => {
           await save()
@@ -170,7 +186,7 @@ export function App({ platform }: { platform: Platform }) {
           const out = await buildPanelFromRun(engine(), profile, curation)
           setPanelState({ panel: out.bundle.panel, diagnostics: out.diagnostics, validation: out.validation, unassigned: out.unassigned })
         })} />}
-        {tab === 'sample' && <SampleTab profile={profile} platform={platform} hasPanel={Boolean(panelState)} attempt={attempt} />}
+        {tab === 'sample' && <SampleTab profile={profile} platform={platform} hasPanel={Boolean(panelState)} attempt={attempt} context={engine} />}
         {tab === 'tree' && <TreeTab profile={profile} edit={edit} platform={platform} records={records} attempt={attempt} run={(w) => buildTree(engine(), profile, { absoluteDir: platform.root()!, ...(w ? { window: w } : {}) })} hasRun={Boolean(runId)} />}
         {tab === 'log' && <section className="pane"><p className="muted">{runId ? `Run ${runId}` : 'No run yet'}</p><EventLog events={events} />{runId && P && <button onClick={() => platform.reveal(`${P.run(runId)}/run.json`)}>Show run files</button>}</section>}
       </main>
@@ -343,7 +359,7 @@ function PanelTab({ profile, edit, save, state, hasRun, busy, platform, onBuild 
   )
 }
 
-function SampleTab({ profile, platform, hasPanel, attempt }: { profile: Profile; platform: Platform; hasPanel: boolean; attempt: (l: string, w: () => Promise<void>) => Promise<void> }) {
+function SampleTab({ profile, platform, hasPanel, attempt, context }: { profile: Profile; platform: Platform; hasPanel: boolean; attempt: (l: string, w: () => Promise<void>) => Promise<void>; context: () => EngineContext }) {
   const [text, setText] = useState(platform.kind === 'preview' ? PREVIEW_SAMPLE : '')
   const [out, setOut] = useState<{ id: string; panel: Panel; result: Result | null; diagnostics: Diagnostic[]; aligned?: string }[]>([])
   const P = profilePaths(profile.id)
@@ -351,12 +367,12 @@ function SampleTab({ profile, platform, hasPanel, attempt }: { profile: Profile;
     const entries = parseFasta(text)
     if (!entries.length) throw new Error('Paste a FASTA sequence, starting with a line such as >my-sample')
     const bundle = await loadPanel(platform.store, P.panel(profile.panel!.id, profile.panel!.version))
-    const results = entries.map((e) => {
-      const r = testSample(e.sequence, e.id, bundle)
-      return { id: e.id, panel: bundle.panel, result: r.result, diagnostics: r.diagnostics, ...(r.result ? { aligned: r.aligned } : {}) }
-    })
+    const results = []
+    for (const e of entries) {
+      const r = await runSample(context(), profile, e.sequence, e.id)
+      results.push({ id: e.id, panel: bundle.panel, result: r.result, diagnostics: r.diagnostics, ...(r.result ? { aligned: r.aligned } : {}) })
+    }
     setOut(results)
-    for (const r of results) if (r.result) await platform.store.write(`${P.results}/${bundle.panel.id}-${bundle.panel.version}/${r.id.replace(/[^A-Za-z0-9._-]/g, '_')}.json`, `${JSON.stringify(r.result, null, 2)}\n`)
   })
   return (
     <section className="pane form">

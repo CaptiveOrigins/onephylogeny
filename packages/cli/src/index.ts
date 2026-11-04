@@ -4,7 +4,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeF
 import { dirname, join, resolve } from 'node:path'
 import { parseCuration, parseFasta, parseProfile } from '@captiveorigins/onephylogeny-core'
 import { NcbiClient, suggestOutgroups } from '@captiveorigins/onephylogeny-acquire'
-import { buildPanelFromRun, buildTree, fetchAndAnchor, loadPanel, profilePaths, testSample, type EngineContext, type Store, type ToolRunner } from '@captiveorigins/onephylogeny-engine'
+import { buildPanelFromRun, buildTree, EngineError, fetchAndAnchor, isCancelled, profilePaths, runSample, traceArtifact, type ArtifactType, type EngineContext, type Store, type ToolRunner } from '@captiveorigins/onephylogeny-engine'
 
 const USAGE = `onephylogeny <command> --workspace DIR --profile ID [options]
 
@@ -14,6 +14,7 @@ const USAGE = `onephylogeny <command> --workspace DIR --profile ID [options]
   panel                    Build and validate a panel from the latest run
   test --fasta FILE        Test local sequences against the panel
   tree [--start N --end N] Build a tree from one window with IQ-TREE
+  trace --type T --key K   Show everything that produced an artifact
 
 Options: --events (print JSON Lines events). Set NCBI_API_KEY to fetch faster.`
 
@@ -73,8 +74,10 @@ async function main() {
   const store = nodeStore(root)
   const P = profilePaths(id)
   const profile = parseProfile(await store.read(P.profile))
+  const controller = new AbortController()
+  process.on('SIGINT', () => controller.abort())
   const ctx: EngineContext = {
-    store, tools,
+    store, tools, signal: controller.signal,
     ncbi: { fetch: (url, init) => fetch(url, init), tool: 'onephylogeny', ...(process.env.NCBI_API_KEY ? { apiKey: process.env.NCBI_API_KEY } : {}) },
     onEvent: (e) => { if (has('events')) console.log(JSON.stringify(e)); else if (e.level !== 'debug') console.error(`[${e.step}] ${e.message}`) },
   }
@@ -92,17 +95,22 @@ async function main() {
     const file = flag('fasta')
     if (!file) throw new Error('--fasta is required')
     if (!profile.panel) throw new Error('The profile has no panel settings')
-    const bundle = await loadPanel(store, P.panel(profile.panel.id, profile.panel.version))
-    for (const e of parseFasta(readFileSync(file, 'utf8'))) console.log(JSON.stringify(testSample(e.sequence, e.id, bundle), (k, v) => (k === 'aligned' ? undefined : v), 2))
+    for (const e of parseFasta(readFileSync(file, 'utf8'))) console.log(JSON.stringify(await runSample(ctx, profile, e.sequence, e.id), (k, v) => (k === 'aligned' || k === 'run' && typeof v === 'object' ? undefined : v), 2))
   } else if (command === 'tree') {
     const start = flag('start')
     const end = flag('end')
     const t = await buildTree(ctx, profile, { absoluteDir: root, ...(start && end ? { window: { start: Number(start), end: Number(end) } } : {}) })
     console.log(JSON.stringify({ tool: t.tool, version: t.version, tips: t.tips.length, newick: t.newick.trim() }, null, 2))
+  } else if (command === 'trace') {
+    const type = flag('type') as ArtifactType | undefined
+    const key = flag('key')
+    if (!type || !key) throw new Error('--type and --key are required')
+    console.log(JSON.stringify(await traceArtifact(store, { type, key }), null, 2))
   } else throw new Error(`Unknown command ${command}\n\n${USAGE}`)
 }
 
 main().catch((e) => {
   console.error(e instanceof Error ? e.message : e)
-  process.exit(1)
+  if (e instanceof EngineError && e.action) console.error(`What to do: ${e.action}`)
+  process.exit(isCancelled(e) ? 130 : 1)
 })

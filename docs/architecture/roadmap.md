@@ -29,11 +29,11 @@ Found by auditing the code against those tools (2026-11-04).
 | Rebuilding could overwrite a panel version | Fixed: changed content needs a new version |
 | Runs recorded no software versions; a crash left no record | Fixed |
 | Writes weren't atomic; logs were rewritten on each event | Fixed |
-| Saved files were trusted when loaded | Fixed for profiles and curation; other artifacts are in stage 1 |
+| Saved files were trusted when loaded | Fixed in stage 1 |
 | The spreadsheet left out why records were excluded | Fixed |
-| The engine is one file of fixed procedures: no step model, partial resume or cancellation | Stage 1 |
-| Only fetching produces a full run record; panel builds, samples and trees don't | Stage 1 |
-| Heavy work runs on the Mac app's interface thread | Stage 1 |
+| The engine was one file of fixed procedures, with no step model, partial resume or cancellation | Fixed in stage 1 |
+| Only fetching produced a full run record | Fixed in stage 1 |
+| Heavy work ran on the Mac app's interface thread | Improved in stage 1: anchoring yields and validation runs in a worker |
 | A panel is a folder of files, not a shareable dataset | Stage 2 |
 | Assigning hundreds of records by hand doesn't scale | Stage 3 |
 | Thresholds aren't calibrated, and hold-out validation only tests full-length records | Stage 4 |
@@ -43,6 +43,8 @@ Fragment tests ran better than expected. Across 543 held-out tests at each of 10
 ## Stage 1: Make execution trustworthy
 
 Everything later depends on this. It replaces fixed procedures with one model, not new features.
+
+**Status: done (2026-11-04), with two limits.** Checked on real data: a `kill -9` at 100 of 294 downloads resumed without re-downloading; an unchanged rerun ran no steps; changing only a threshold ran only `panel` and `validate`; and a sample result traces back to the search. A test also crashes the engine at every file write and confirms it recovers to the same result. Limits: Cancel can't stop IQ-TREE mid-run, and anchoring yields on the interface thread rather than running in a worker.
 
 1. **Artifacts.** Each output has a declared type, schema version, hash and provenance (inputs, parameters, tool versions). Loading checks all of it, so a tree can't be passed where a panel belongs.
 2. **Steps.** Small named steps declare inputs, parameters and output checks. Split the engine into `fetch`, `extract`, `anchor`, `gate`, `sheet`, `panel`, `validate`, `sample` and `tree`.

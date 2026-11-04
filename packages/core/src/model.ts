@@ -126,7 +126,10 @@ export type RunEvent = {
 export type Run = {
   schemaVersion: 1
   id: Id
+  kind: 'fetch' | 'panel' | 'sample' | 'tree'
   profile: Profile
+  /** The typed, content-addressed outputs of this run, each traceable to its inputs. */
+  artifacts: { type: string; key: string; reused: boolean }[]
   snapshot?: { id: Id; checksum: string }
   tools: { name: string; version: string; sha256?: string }[]
   seed?: number

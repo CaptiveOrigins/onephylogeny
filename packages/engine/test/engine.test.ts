@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Curation, Profile } from '@captiveorigins/onephylogeny-core'
-import { buildPanelFromRun, ENGINE_VERSION, fetchAndAnchor, loadPanel, profilePaths, testSample, type EngineContext, type Store } from '../src/index.js'
+import { buildPanelFromRun, EngineError, ENGINE_VERSION, fetchAndAnchor, loadArtifact, loadPanel, profilePaths, runSample, testSample, traceArtifact, type EngineContext, type Store } from '../src/index.js'
 
 function randomSeq(n: number, seed: number): string {
   let a = seed >>> 0
@@ -119,13 +119,11 @@ describe('panel and sample', () => {
 describe('runs and panels stay true', () => {
   const curation: Curation = { schemaVersion: 1, records: { 'A1.1': { group: 'a', provenanceClass: 'wild-documented' }, 'B1.1': { group: 'b', provenanceClass: 'wild-documented' } } }
   it('a failed run never replaces the last good one', async () => {
-    let fail = false
-    const ctx = makeContext(() => fail)
+    const ctx = makeContext()
     const good = await fetchAndAnchor(ctx, profile)
     const P = profilePaths('demo')
     expect(await ctx.store.read(P.latest)).toBe(good.run.id)
-    fail = true
-    ctx.store.files.forEach((_, k) => { if (k.startsWith('cache/')) ctx.store.files.delete(k) })
+    ctx.ncbi = { ...ctx.ncbi, fetch: async () => ({ ok: false, status: 500, text: async () => '' }) }
     await expect(fetchAndAnchor(ctx, profile)).rejects.toThrow()
     expect(await ctx.store.read(P.latest)).toBe(good.run.id)
     await expect(buildPanelFromRun(ctx, profile, curation)).resolves.toBeTruthy()
@@ -142,6 +140,7 @@ describe('runs and panels stay true', () => {
     const ctx = makeContext()
     const { run } = await fetchAndAnchor(ctx, profile)
     expect(run.tools.map((t) => t.name)).toEqual(['onephylogeny-engine', 'alignToReference'])
+    expect(run.artifacts.map((a) => a.type)).toEqual(['accession-list', 'raw-records', 'anchored-records', 'gated-records'])
     const { bundle } = await buildPanelFromRun(ctx, profile, curation)
     expect(bundle.panel.builtWith?.[0]?.version).toBe(ENGINE_VERSION)
     const sample = testSample(mutate([10, 200, 450]), 's', bundle)
@@ -180,5 +179,176 @@ describe('runs and panels stay true', () => {
     const sheet = ctx.store.files.get(`${profilePaths('demo').run(run.id)}/records.csv`)!
     expect(sheet.split('\n')[0]).toContain('check_status,check_reasons')
     expect(sheet).toContain('excluded')
+  })
+})
+
+const stepsRun = (events: { step: string; data?: Record<string, unknown> }[], status: string) => events.filter((e) => e.data?.status === status).map((e) => e.step)
+function withEvents() {
+  const ctx = makeContext()
+  const events: { step: string; data?: Record<string, unknown> }[] = []
+  ctx.onEvent = (e) => events.push(e)
+  return { ctx, events, reset: () => { events.length = 0 } }
+}
+const curation2: Curation = { schemaVersion: 1, records: {
+  'A1.1': { group: 'a', provenanceClass: 'wild-documented', site: 's1' }, 'A2.1': { group: 'a', provenanceClass: 'wild-documented', site: 's2' }, 'B1.1': { group: 'b', provenanceClass: 'wild-documented', site: 's3' },
+} }
+
+describe('content-addressed steps', () => {
+  it('reuses every step when nothing changed', async () => {
+    const { ctx, events, reset } = withEvents()
+    await fetchAndAnchor(ctx, profile)
+    reset()
+    const requests = ctx.requested.length
+    await fetchAndAnchor(ctx, profile)
+    expect(stepsRun(events, 'running')).toEqual([])
+    expect(stepsRun(events, 'reused')).toEqual(['search', 'fetch', 'anchor', 'gate'])
+    expect(ctx.requested.length).toBe(requests)
+  })
+  it('changing a filter reruns only the gate', async () => {
+    const { ctx, events, reset } = withEvents()
+    await fetchAndAnchor(ctx, profile)
+    reset()
+    await fetchAndAnchor(ctx, { ...profile, selection: { ...profile.selection, filters: { minLength: 200 } } })
+    expect(stepsRun(events, 'running')).toEqual(['gate'])
+    expect(stepsRun(events, 'reused')).toEqual(['search', 'fetch', 'anchor'])
+  })
+  it('changing a threshold rebuilds only the panel steps, under a new version', async () => {
+    const { ctx, events, reset } = withEvents()
+    await fetchAndAnchor(ctx, profile)
+    await buildPanelFromRun(ctx, profile, curation2)
+    reset()
+    const changed = { ...profile, panel: { ...profile.panel!, version: '2', thresholds: { ...profile.panel!.thresholds, tolerance: 3 } } }
+    await buildPanelFromRun(ctx, changed, curation2)
+    expect(stepsRun(events, 'running')).toEqual(['panel', 'validate'])
+    expect(stepsRun(events, 'running')).not.toContain('anchor')
+  })
+  it('rebuilding when a stored output was altered, not trusting it', async () => {
+    const { ctx, events, reset } = withEvents()
+    const { run } = await fetchAndAnchor(ctx, profile)
+    const gate = run.artifacts.find((a) => a.type === 'gated-records')!
+    ctx.store.files.set(`artifacts/gated-records/${gate.key.replace('sha256:', '')}/aligned.fasta`, 'tampered')
+    reset()
+    await fetchAndAnchor(ctx, profile)
+    expect(stepsRun(events, 'running')).toEqual(['gate'])
+  })
+  it('notices a raw file that changed after it was fetched', async () => {
+    const ctx = makeContext()
+    await fetchAndAnchor(ctx, profile)
+    ctx.store.files.set('cache/genbank/A1.1.gb', 'changed')
+    await expect(fetchAndAnchor(ctx, { ...profile, reference: { accession: 'R1.1', codonStart: 0 } })).resolves.toBeTruthy()
+    const other = { ...profile, selection: { ...profile.selection, marker: { kind: 'gene' as const, gene: 'y' } } }
+    await expect(fetchAndAnchor(ctx, other)).rejects.toMatchObject({ code: 'raw-file-changed' })
+  })
+})
+
+describe('surviving a crash at any point', () => {
+  it('recovers to the same result, wherever a write fails', async () => {
+    const clean = makeContext()
+    const baseline = await fetchAndAnchor(clean, profile)
+    await buildPanelFromRun(clean, profile, curation2)
+    const cleanPanel = (await loadPanel(clean.store, profilePaths('demo').panel('p', '1'))).panel.checksum
+    let total = 0
+    const counting = makeContext()
+    const countWrite = counting.store.write
+    counting.store.write = async (p, t) => { total++; return countWrite(p, t) }
+    await fetchAndAnchor(counting, profile)
+    await buildPanelFromRun(counting, profile, curation2)
+    let crashes = 0
+    for (let failAt = 1; failAt <= total; failAt++) {
+      const ctx = makeContext()
+      const write = ctx.store.write
+      let writes = 0
+      ctx.store.write = async (p, t) => { if (++writes === failAt) throw new Error('simulated crash'); return write(p, t) }
+      await (async () => {
+        await fetchAndAnchor(ctx, profile)
+        await buildPanelFromRun(ctx, profile, curation2)
+      })().then(() => {}, () => { crashes++ })
+      ctx.store.write = write
+      const { outcomes } = await fetchAndAnchor(ctx, profile)
+      expect(outcomes).toEqual(baseline.outcomes)
+      await buildPanelFromRun(ctx, profile, curation2)
+      expect((await loadPanel(ctx.store, profilePaths('demo').panel('p', '1'))).panel.checksum).toBe(cleanPanel)
+      expect(new Set(ctx.requested).size).toBe(7)
+    }
+    expect(crashes).toBeGreaterThan(10)
+  })
+})
+
+describe('cancelling', () => {
+  it('stops at a safe point, records it, keeps finished steps, and resumes', async () => {
+    const controller = new AbortController()
+    const { ctx, events, reset } = withEvents()
+    ctx.signal = controller.signal
+    ctx.onEvent = (e) => { events.push(e); if (e.step === 'anchor' && e.data?.status === 'running') controller.abort() }
+    await expect(fetchAndAnchor(ctx, profile)).rejects.toMatchObject({ code: 'cancelled' })
+    const record = [...ctx.store.files.entries()].find(([k]) => k.endsWith('run.json'))!
+    expect(JSON.parse(record[1]).status).toBe('cancelled')
+    expect(await ctx.store.exists(profilePaths('demo').latest)).toBe(false)
+    ctx.signal = undefined
+    reset()
+    await fetchAndAnchor(ctx, profile)
+    expect(stepsRun(events, 'reused')).toEqual(['search', 'fetch'])
+    expect(stepsRun(events, 'running')).toEqual(['anchor', 'gate'])
+  })
+})
+
+describe('errors say what to do', () => {
+  it('an empty search is a failure unless allowed', async () => {
+    const ctx = makeContext()
+    const inner = ctx.ncbi.fetch
+    ctx.ncbi = { ...ctx.ncbi, fetch: async (url, init) => (url.includes('esearch') ? { ok: true, status: 200, text: async () => JSON.stringify({ esearchresult: { count: '0', idlist: [] } }) } : inner(url, init)) }
+    const e = await fetchAndAnchor(ctx, profile).catch((x) => x)
+    expect(e).toBeInstanceOf(EngineError)
+    expect(e.code).toBe('empty-search')
+    expect(e.action).toMatch(/Setup/)
+    await expect(fetchAndAnchor(ctx, profile, { allowEmpty: true })).resolves.toBeTruthy()
+  })
+  it('a source failure keeps downloads and explains', async () => {
+    const ctx = makeContext(() => true)
+    const e = await fetchAndAnchor(ctx, profile).catch((x) => x)
+    expect(e.code).toBe('source-failed')
+    expect(e.action).toMatch(/already downloaded/)
+  })
+  it('panels with no records fail clearly', async () => {
+    const ctx = makeContext()
+    await fetchAndAnchor(ctx, profile)
+    await expect(buildPanelFromRun(ctx, profile, { schemaVersion: 1, records: {} })).rejects.toMatchObject({ code: 'empty-panel' })
+  })
+  it('asks for a fetch before a panel', async () => {
+    await expect(buildPanelFromRun(makeContext(), profile, curation2)).rejects.toMatchObject({ code: 'run-missing' })
+  })
+})
+
+describe('artifacts and provenance', () => {
+  it('traces a sample result all the way back to the search', async () => {
+    const ctx = makeContext()
+    await fetchAndAnchor(ctx, profile)
+    await buildPanelFromRun(ctx, profile, curation2)
+    const sample = await runSample(ctx, profile, mutate([10, 200, 450]), 'sample-1')
+    const trace = await traceArtifact(ctx.store, sample.artifact)
+    const chain: string[] = []
+    for (let n: typeof trace | undefined = trace; n; n = n.inputs[0]) chain.push(n.type)
+    expect(chain).toEqual(['sample-result', 'panel', 'gated-records', 'anchored-records', 'raw-records', 'accession-list'])
+    expect(trace.tools.map((t) => t.name)).toContain('alignToReference')
+    expect(sample.run.kind).toBe('sample')
+    expect(sample.result?.findings.find((f) => f.group === 'a')?.status).toBe('consistent')
+  })
+  it('refuses the wrong type of artifact', async () => {
+    const ctx = makeContext()
+    const { run } = await fetchAndAnchor(ctx, profile)
+    const gated = run.artifacts.find((a) => a.type === 'gated-records')!
+    await expect(loadArtifact(ctx.store, { type: 'panel', key: gated.key })).rejects.toMatchObject({ code: 'artifact-missing' })
+    const dir = (t: string) => `artifacts/${t}/${gated.key.replace('sha256:', '')}`
+    ctx.store.files.set(`${dir('panel')}/manifest.json`, ctx.store.files.get(`${dir('gated-records')}/manifest.json`)!)
+    await expect(loadArtifact(ctx.store, { type: 'panel', key: gated.key })).rejects.toMatchObject({ code: 'artifact-wrong-type' })
+  })
+  it('gives panel builds, samples and refused samples their own records', async () => {
+    const ctx = makeContext()
+    await fetchAndAnchor(ctx, profile)
+    const { run } = await buildPanelFromRun(ctx, profile, curation2)
+    expect(run.kind).toBe('panel')
+    const refused = await runSample(ctx, profile, randomSeq(400, 1234), 'wrong')
+    expect(refused.result).toBeNull()
+    expect(refused.run.status).toBe('succeeded')
   })
 })

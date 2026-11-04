@@ -22,3 +22,5 @@ Every package keeps these rules. A rule without a passing test is pending, and i
 | P16 | **Saved panels are never rewritten.** Changed content needs a new version, and results name the exact version. | `engine.test.ts` (runs and panels stay true) |
 | P17 | **A panel's conclusions can't change after sealing.** Thresholds are sealed into it. | `engine.test.ts`, `panel.test.ts` |
 | P18 | **A failed run never replaces the last good one.** | `engine.test.ts` |
+| P19 | **A crash can't produce wrong results.** Recovery from a failure at any write gives the same outcome. | `engine.test.ts` (surviving a crash) |
+| P20 | **Every input gets an outcome.** Excluded records stay in the output with their reasons. | `engine.test.ts`, `golden.test.ts` |

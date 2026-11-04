@@ -76,3 +76,6 @@ main { overflow-y: auto; min-width: 0; }
 .settings { display: flex; flex-direction: column; gap: 8px; }
 .check { display: flex; gap: 6px; align-items: center; font-size: 13px; }
 .check input { width: auto; min-height: 0; }
+.error p { margin: 0; }
+.error .next { color: var(--text); margin-top: 4px; }
+.busy button { min-height: 26px; padding: 1px 8px; margin-inline-start: 6px; }
