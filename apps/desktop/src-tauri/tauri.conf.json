@@ -3,15 +3,47 @@
   "productName": "OnePhylogeny",
   "version": "0.1.0",
   "identifier": "org.captiveorigins.onephylogeny",
-  "build": { "beforeDevCommand": "pnpm dev", "devUrl": "http://localhost:1420", "beforeBuildCommand": "pnpm build", "frontendDist": "../dist" },
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
   "app": {
-    "windows": [{ "title": "OnePhylogeny", "width": 1320, "height": 860, "minWidth": 980, "minHeight": 620 }],
-    "security": { "csp": null }
+    "windows": [
+      {
+        "title": "OnePhylogeny",
+        "width": 1320,
+        "height": 860,
+        "minWidth": 980,
+        "minHeight": 620
+      }
+    ],
+    "security": {
+      "csp": null
+    }
   },
   "bundle": {
     "active": true,
-    "targets": ["app", "dmg"],
+    "targets": [
+      "app",
+      "dmg"
+    ],
     "category": "Education",
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.png"]
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.png"
+    ]
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/mgilardi/onephylogeny/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEI1OTE2RTFERDMxNUJBQUEKUldTcXVoWFRIVzZSdFd5b2NISmlGdy94dVRtUWxUUklpa0tEZHVoU0tvbUtNaTFJWGRPTUFoZ2YK"
+    }
   }
 }

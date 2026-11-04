@@ -33,6 +33,7 @@ export function createPreviewPlatform(): Platform {
   const respond = (text: string) => ({ ok: true, status: 200, text: async () => text })
   return {
     kind: 'preview',
+    settings: { load: async () => ({ autoUpdate: false, appearance: 'auto' }), save: async () => {} },
     root: () => 'preview (nothing is saved)',
     chooseWorkspace: async () => null,
     store: {

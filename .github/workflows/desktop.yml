@@ -1,6 +1,7 @@
 # OnePhylogeny for Mac: on a desktop-v* tag, build a universal app and publish a GitHub release.
-# Apple notarization (APPLE_* secrets) and signed updates can be added later; until then macOS asks
-# people to confirm the first launch (right-click > Open). IQ-TREE is optional and not bundled.
+# To ship signed updates, add the TAURI_SIGNING_PRIVATE_KEY secret and set bundle.createUpdaterArtifacts in
+# tauri.conf.json. Apple notarization (APPLE_* secrets) can be added later; until then macOS asks people to
+# confirm the first launch (right-click > Open). IQ-TREE is optional and not bundled.
 name: Desktop app
 
 on:
@@ -29,11 +30,14 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: apps/desktop
           tagName: ${{ github.ref_name }}
           releaseName: 'OnePhylogeny for Mac ${{ github.ref_name }}'
-          releaseBody: 'Download the .dmg below. macOS asks you to confirm the first launch: right-click the app, then choose Open.'
+          releaseBody: 'Download the .dmg below. macOS asks you to confirm the first launch: right-click the app, then choose Open. Early alpha: results are not forensically validated.'
           releaseDraft: false
-          prerelease: true
+          prerelease: false
           args: --target universal-apple-darwin
+          includeUpdaterJson: true

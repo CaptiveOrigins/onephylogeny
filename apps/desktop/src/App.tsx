@@ -4,7 +4,7 @@ import { buildPanelFromRun, buildTree, fetchAndAnchor, loadPanel, profilePaths, 
 import { EventLog, OutgroupLadderView, PanelSummary, ResultView, TreeFigure, ValidationView } from '@captiveorigins/onephylogeny-react'
 import { treeToPhylogeny } from '@captiveorigins/onephylogeny-onetaxonomy'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import type { Platform } from './platform'
+import type { Platform, Settings } from './platform'
 import { PREVIEW_SAMPLE } from './platform-preview'
 
 const PROVENANCE: { value: ProvenanceClass; label: string }[] = [
@@ -50,6 +50,18 @@ export function App({ platform }: { platform: Platform }) {
   const [outcomes, setOutcomes] = useState<RecordOutcome[]>([])
   const [runId, setRunId] = useState<string | null>(null)
   const [panelState, setPanelState] = useState<{ panel: Panel; diagnostics: Diagnostic[]; validation: any; unassigned: number } | null>(null)
+
+  const [settings, setSettings] = useState<Settings>({ autoUpdate: false, appearance: 'auto' })
+  const [showSettings, setShowSettings] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
+  useEffect(() => {
+    void platform.settings.load().then(async (s) => {
+      setSettings(s)
+      if (s.autoUpdate && platform.settings.checkForUpdates) { const m = await platform.settings.checkForUpdates(false); if (m) setNotice(m) }
+    })
+  }, [platform])
+  useEffect(() => { document.documentElement.dataset.appearance = settings.appearance }, [settings.appearance])
+  const changeSettings = async (patch: Partial<Settings>) => { const next = { ...settings, ...patch }; setSettings(next); await platform.settings.save(next) }
 
   const P = profile ? profilePaths(profile.id) : null
   const refresh = useCallback(async () => { if (platform.root()) setProfiles(await platform.list('profiles')) }, [platform])
@@ -119,6 +131,15 @@ export function App({ platform }: { platform: Platform }) {
       <nav aria-label="Profiles">{profiles.map((id) => <button key={id} className={profile?.id === id ? 'selected' : ''} onClick={() => open(id)}>{id}</button>)}</nav>
       {!profiles.length && root && <p className="muted">Each profile is one species and marker, with its own records and panels.</p>}
       <div className="side-foot">
+        {notice && <p role="status" className="muted">{notice}</p>}
+        <button onClick={() => setShowSettings((v) => !v)} aria-expanded={showSettings}>Settings</button>
+        {showSettings && <div className="settings">
+          <Field label="Appearance"><select value={settings.appearance} onChange={(e) => void changeSettings({ appearance: e.target.value as Settings['appearance'] })}><option value="auto">Auto (match macOS)</option><option value="light">Light</option><option value="dark">Dark</option></select></Field>
+          {platform.settings.checkForUpdates && <>
+            <label className="check"><input type="checkbox" checked={settings.autoUpdate} onChange={(e) => void changeSettings({ autoUpdate: e.target.checked })} /> Check for updates automatically</label>
+            <button onClick={async () => setNotice((await platform.settings.checkForUpdates!(true)) ?? 'You have the latest version.')}>Check for updates</button>
+          </>}
+        </div>}
         <small title={root ?? ''}>{root ?? 'No workspace chosen'}</small>
         {platform.kind === 'mac' && <button onClick={async () => { const r = await platform.chooseWorkspace(); if (r) { setRoot(r); setProfile(null) } }}>{root ? 'Change workspace' : 'Choose workspace'}</button>}
         {platform.kind === 'preview' && <p className="muted">Browser preview with made-up data. Nothing is saved.</p>}

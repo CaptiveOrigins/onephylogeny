@@ -2,7 +2,9 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "What the OnePhylogeny window may do",
-  "windows": ["main"],
+  "windows": [
+    "main"
+  ],
   "permissions": [
     "core:default",
     "dialog:default",
@@ -13,9 +15,31 @@
     "fs:allow-mkdir",
     "fs:allow-read-dir",
     "fs:allow-rename",
-    { "identifier": "fs:scope", "allow": [{ "path": "$HOME" }, { "path": "$HOME/**" }, { "path": "/Volumes/**" }] },
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        {
+          "path": "$HOME"
+        },
+        {
+          "path": "$HOME/**"
+        },
+        {
+          "path": "/Volumes/**"
+        }
+      ]
+    },
     "store:default",
     "opener:allow-reveal-item-in-dir",
-    { "identifier": "http:default", "allow": [{ "url": "https://eutils.ncbi.nlm.nih.gov/*" }] }
+    {
+      "identifier": "http:default",
+      "allow": [
+        {
+          "url": "https://eutils.ncbi.nlm.nih.gov/*"
+        }
+      ]
+    },
+    "process:allow-restart",
+    "updater:default"
   ]
 }

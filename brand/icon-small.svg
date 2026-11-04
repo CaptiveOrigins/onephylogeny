@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="oy-ts">
+  <title id="oy-ts">OnePhylogeny</title>
+  <!-- Small sizes (16 to 32 px: menu bar, lists, favicons): the same tile and glyph without the heart badge,
+       a larger tile and heavier lines so it stays legible. Use brand/icon.svg from 64 px up. -->
+  <defs>
+    <linearGradient id="oy-gs" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e6d6d2" />
+      <stop offset="1" stop-color="#c9aca5" />
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="992" height="992" rx="220" fill="url(#oy-gs)" />
+  <path d="M250 512H430M430 240V784M430 240H570M430 512H570M430 784H570" fill="none" stroke="#4c312c" stroke-width="72" stroke-linejoin="round" />
+  <g fill="#fbf8f2">
+    <rect x="110" y="420" width="180" height="184" rx="50" />
+    <rect x="570" y="150" width="310" height="180" rx="50" />
+    <rect x="570" y="422" width="310" height="180" rx="50" />
+    <rect x="570" y="694" width="310" height="180" rx="50" />
+  </g>
+</svg>

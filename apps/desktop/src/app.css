@@ -5,11 +5,17 @@
   --ophy-muted: #5b6577; --ophy-border: #eaddd6; --ophy-ink: #91645d; --ophy-accent: #cf8137; --ophy-good: #1d6b47; --ophy-warning: #8a5a14; --ophy-flag: #a23a3d;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-appearance='light']) {
     --bg: #12151b; --panel: #181c24; --text: #e8ecf2; --muted: #a3acbb; --border: #2c3340; --field: #12151b; --accent: #e7a066;
     --ophy-muted: #a3acbb; --ophy-border: #2c3340; --ophy-ink: #c79a92; --ophy-accent: #e7a066; --ophy-good: #62c196; --ophy-warning: #dfb269; --ophy-flag: #eda9ac;
   }
 }
+:root[data-appearance='dark'] {
+  color-scheme: dark;
+  --bg: #12151b; --panel: #181c24; --text: #e8ecf2; --muted: #a3acbb; --border: #2c3340; --field: #12151b; --accent: #e7a066;
+    --ophy-muted: #a3acbb; --ophy-border: #2c3340; --ophy-ink: #c79a92; --ophy-accent: #e7a066; --ophy-good: #62c196; --ophy-warning: #dfb269; --ophy-flag: #eda9ac;
+}
+:root[data-appearance='light'] { color-scheme: light; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 button, select, input, textarea { font: inherit; color: var(--text); background: var(--field); border: 1px solid var(--border); border-radius: 8px; padding: 5px 10px; min-height: 32px; }
@@ -67,3 +73,6 @@ main { overflow-y: auto; min-width: 0; }
 .new-profile .actions { margin: 6px 0 0; }
 .dim { opacity: 0.55; }
 .sample { border-top: 1px solid var(--border); margin-top: 18px; }
+.settings { display: flex; flex-direction: column; gap: 8px; }
+.check { display: flex; gap: 6px; align-items: center; font-size: 13px; }
+.check input { width: auto; min-height: 0; }
