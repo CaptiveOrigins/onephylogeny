@@ -4,7 +4,7 @@ A source-available, species-agnostic framework for acquiring sequence evidence, 
 
 > **Status: early alpha.** The core science, NCBI acquisition, engine, CLI, React views, bridges, Payload plugin and Mac app work and are tested. Nothing is on npm yet, the Mac app isn't notarized, and results aren't forensically validated. See [the roadmap](docs/architecture/roadmap.md) and [limitations](docs/architecture/limitations.md).
 
-OnePhylogeny is one of three tools from one maker. Each runs on its own:
+OnePhylogeny is part of the [OneOrigin suite](docs/oneorigin/README.md): three independent tools, with no subscriptions, that work alone or together.
 
 | Tool | Question it answers |
 | --- | --- |
@@ -63,7 +63,7 @@ pnpm --filter onephylogeny-desktop dev       # browser preview with made-up data
 ## Documentation
 
 - [Architecture](docs/architecture/architecture.md), [data schema](docs/architecture/data-schema.md), [decisions](docs/architecture/adr/README.md)
-- [One family guidelines](docs/family/guidelines.md), shared with OnePedigree and OneTaxonomy (draft)
+- [The OneOrigin suite](docs/oneorigin/README.md) and its [guidelines](docs/oneorigin/guidelines.md) (draft)
 - [Roadmap](docs/architecture/roadmap.md), [phase plan](docs/architecture/phase-plan.md), [limitations](docs/architecture/limitations.md)
 
 ## License

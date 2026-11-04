@@ -1,8 +1,8 @@
-# One family guidelines
+# OneOrigin suite guidelines
 
-**Status: draft for the owner's review (2026-11-04).** These apply to OnePedigree, OneTaxonomy and OnePhylogeny. They replace nothing yet. `brand/README.md` in each repo stays in force until this is accepted.
+**Status: draft for the owner's review (2026-11-04).** These apply to OnePedigree, OneTaxonomy and OnePhylogeny, the [OneOrigin suite](README.md). They replace nothing yet. `brand/README.md` in each repo stays in force until this is accepted.
 
-They exist so the three tools feel like one family and keep working together as they change, without any one of them depending on another.
+They exist so the three tools feel like one suite and keep working together as they change, while each stays its own and none depends on another.
 
 **How to read this.** "Must" is a rule a pull request can fail on. "Should" is the default, and leaving it takes a stated reason. Section 9 shows where each tool stands today.
 
@@ -237,6 +237,6 @@ From a review of the three repos on 2026-11-04. These are gaps to close, not fai
 
 ### Open questions for the owner
 
-1. Where should this live long term? It's here for now. A small public `one-family` repo would suit it better, once the draft settles.
+1. Where should this live long term? It's here for now. A small public repo for the suite would suit it better, once the draft settles.
 2. Should shared look move into a shared package? Today it's copied under each prefix, which keeps tools independent. A shared `@captiveorigins/one-ui` would reduce drift, but each tool would then depend on it.
 3. Should OnePedigree's green accent change to the family orange?
