@@ -1,0 +1,7 @@
+OnePhylogeny
+Copyright 2026 Captive Origins and OnePhylogeny contributors
+
+This product includes software developed by Captive Origins (https://captiveorigins.com).
+
+packages/core/src/sha256.ts comes from OneTaxonomy (https://github.com/mgilardi/onetaxonomy),
+Copyright (c) 2026 Captive Origins and OneTaxonomy contributors, under the MIT License.

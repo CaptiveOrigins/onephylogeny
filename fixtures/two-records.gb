@@ -1,0 +1,128 @@
+LOCUS       PQ562694                 719 bp    DNA     linear   VRT 08-DEC-2024
+DEFINITION  Chelonoidis carbonarius isolate EBTRFCCO5 cytochrome b (cytb) gene,
+            partial cds; mitochondrial.
+ACCESSION   PQ562694
+VERSION     PQ562694.1
+KEYWORDS    .
+SOURCE      mitochondrion Chelonoidis carbonarius (red-footed tortoise)
+  ORGANISM  Chelonoidis carbonarius
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Archelosauria; Testudinata; Testudines; Cryptodira; Durocryptodira;
+            Testudinoidea; Testudinidae; Chelonoidis.
+REFERENCE   1  (bases 1 to 719)
+  AUTHORS   Arias,L.A.
+  TITLE     From captive to freedom: use of mitochondrial sequencing to guide
+            the management and release of captive turtles in Colombia
+  JOURNAL   Unpublished
+REFERENCE   2  (bases 1 to 719)
+  AUTHORS   Arias,L.A.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (04-NOV-2024) Biology, Universidad Nacional de Colombia,
+            Ave Cra 30 #45-3, Bogota, Bogota 111321, Colombia
+COMMENT     ##Assembly-Data-START##
+            Sequencing Technology :: Sanger dideoxy sequencing
+            ##Assembly-Data-END##
+FEATURES             Location/Qualifiers
+     source          1..719
+                     /organism="Chelonoidis carbonarius"
+                     /organelle="mitochondrion"
+                     /mol_type="genomic DNA"
+                     /isolate="EBTRFCCO5"
+                     /db_xref="taxon:50047"
+                     /geo_loc_name="Colombia"
+     gene            <1..>719
+                     /gene="cytb"
+     CDS             <1..>719
+                     /gene="cytb"
+                     /EC_number="7.1.1.8"
+                     /codon_start=1
+                     /transl_table=2
+                     /product="cytochrome b"
+                     /protein_id="XKW85935.1"
+                     /translation="VITNLLSAIPYIGNTLVQWIWGGFSVDNATLTRFFTFHFLLPFT
+                     IMGLAIVHLLFLHETGSNNPTGLNSNTDKIPFHPYFSYKDLLGLTLMLTLLLTLTLFS
+                     PNLLGDPDNFTPANPLSTPPHIKPEWYFLFAYAILRSIPNKLGGVLALLLSILVLFMM
+                     PTLHTSKQRSTMFRPLNQILLWCLMADLLMLTWIGGQPVENPFIIIGQMASILYFTIL
+                     LILMPMAGMIENKMLNLKYSS"
+ORIGIN      
+        1 gtcatcacca acctactttc agccattccc tacatcggca acaccctagt acaatgaatc
+       61 tgaggaggtt tctcagtaga caacgccacc ctgacccgct tctttacctt ccatttccta
+      121 ctacccttca ccatcatagg actagcaatc gtacacctac tcttcctcca cgagacagga
+      181 tcaaacaacc caacaggatt aaactcaaac accgataaaa ttcccttcca cccatacttc
+      241 tcctacaaag acttactagg actaacctta atactaaccc tactgttaac tctaacatta
+      301 ttctccccaa acctcctagg agatccagat aatttcacac cagccaaccc cctatcaact
+      361 ccacctcata ttaaaccaga atgatatttc ctattcgcct acgcaatcct tcgatccatc
+      421 ccaaacaaac taggaggcgt actcgccctt ctactctcca tcctagtact attcatgatg
+      481 ccaaccctac acacatcaaa acaacgttca actatatttc gacccttaaa ccaaattcta
+      541 ctctgatgcc taatagctga ccttctaata ctcacatgaa ttggaggcca accagtcgaa
+      601 aatccattca ttatcatcgg tcaaatagcc tctatcctat acttcaccat cctcctgatc
+      661 cttataccca tagcaggaat aattgaaaac aaaatactaa acttgaaata ttctagtag
+//
+LOCUS       FN185755                1179 bp    DNA     linear   VRT 25-JUL-2016
+DEFINITION  Chelonoidis carbonaria mitochondrial partial cytb gene for
+            cytochrome b, isolate MTD4800.
+ACCESSION   FN185755
+VERSION     FN185755.1
+KEYWORDS    .
+SOURCE      mitochondrion Chelonoidis carbonarius (red-footed tortoise)
+  ORGANISM  Chelonoidis carbonarius
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Archelosauria; Testudinata; Testudines; Cryptodira; Durocryptodira;
+            Testudinoidea; Testudinidae; Chelonoidis.
+REFERENCE   1
+  AUTHORS   Vargas-Ramirez,M., Maran,J. and Fritz,U.
+  TITLE     Red- and yellow-footed tortoises (Chelonoidis carbonaria, C.
+            denticulata) in South American savannahs and forests: Do their
+            phylogeographies reflect distinct habitats?
+  JOURNAL   Unpublished
+REFERENCE   2  (bases 1 to 1179)
+  AUTHORS   Vargas-Ramirez,M.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (03-MAR-2009) Vargas-Ramirez M., Tierkundemuseum Dresden,
+            Staatliche Naturhistorische Sammlungen, Koenigsbruecker Landstrasse
+            159, D 01109 Dresden, GERMANY
+FEATURES             Location/Qualifiers
+     source          1..1179
+                     /organism="Chelonoidis carbonarius"
+                     /organelle="mitochondrion"
+                     /mol_type="genomic DNA"
+                     /isolate="MTD4800"
+                     /db_xref="taxon:50047"
+     gene            <1..>1179
+                     /gene="cytb"
+     CDS             <1..>1179
+                     /gene="cytb"
+                     /codon_start=3
+                     /transl_table=2
+                     /product="cytochrome b"
+                     /protein_id="CAX51733.1"
+                     /translation="RKTHPMIKIINNSFIDLPSPSNISAWWNFGSLLGICLILQTVTG
+                     IFLAMHYSSNISLAFSSIAHITRDVQYGWLIRNMHANGASIFFMCIYLHIGRGLYYGS
+                     YLYKETWNTGIIMLLLVMATAFVGYVLPWGQMSFWGATVITNLLSAIPYIGNTLVQWI
+                     WGGFSVDNATLTRFFTFHFLLPFTIMGLAIVHLLFLHETGSNNPTGLNSNTDKIPFHP
+                     YFSYKDLLGLTLMLTLLLTLTLFSPNLLGDPDNFTPANPLSTPPHIKPEWYFLFAYAI
+                     LRSIPNKLGGVLALLLSILVLFMMPTLHTSKQRSTMFRPLNQILLWCLMADLLMLTWI
+                     GGQPVENPFIIIGQMASILYFTILLILMPMAGMIENKMLNLKYSSSLMLKHWSCKPKL
+                     "
+ORIGIN      
+        1 tacgaaaaac ccacccaata attaagatta tcaacaactc attcattgac ctgcccagtc
+       61 catccaacat ctctgcctga tgaaacttcg gatcactatt aggcatctgc ctaatcctac
+      121 aaaccgttac cggaatcttc ctagcaatgc actattcatc aaacatctca ctggcattct
+      181 catcaatcgc ccatattacc cgagatgtgc aatacggatg actcatccga aatatacatg
+      241 ctaacggagc ctccatcttc ttcatatgta tctaccttca catcggccga ggactttact
+      301 atggctccta cctatataaa gaaacctgaa acacaggaat tattatatta ctcctagtca
+      361 tagccaccgc attcgtaggc tacgtcctac catgaggcca aatatcgttc tgaggtgcta
+      421 ccgtcatcac caacctactt tcagccattc cctacatcgg caacacccta gtacaatgaa
+      481 tctgaggagg tttctcagta gacaacgcca ccctgacccg cttctttacc ttccatttcc
+      541 tactaccctt caccatcata ggactagcaa tcgtacacct actcttcctc cacgagacag
+      601 gatcaaacaa cccaacagga ttaaactcaa acaccgataa aattcccttc cacccatact
+      661 tctcctacaa agacttacta ggactaacct taatactaac cctactgtta actctaacat
+      721 tattctcccc aaacctccta ggagatccag ataatttcac accagccaac cccctatcaa
+      781 ctccacctca tattaaacca gaatgatatt tcctattcgc ctacgcaatc cttcgatcca
+      841 tcccaaacaa actaggaggc gtactcgccc ttctactctc catcctagta ctattcatga
+      901 tgccaaccct acacacatca aaacaacgtt caactatatt tcgaccctta aaccaaattc
+      961 tactctgatg cctaatagct gaccttctaa tactcacatg aattggaggc caaccagtcg
+     1021 aaaatccatt cattatcatc ggtcaaatag cctctatcct atacttcacc atcctcctga
+     1081 tccttatacc catagcagga ataattgaaa acaaaatact aaacttgaaa tattctagta
+     1141 gcttaatact aaagcattgg tcttgtaaac caaaactga
+//
