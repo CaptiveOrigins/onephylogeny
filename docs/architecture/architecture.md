@@ -38,7 +38,7 @@ Human-friendly copies are published to `runs/`, `panels/` and `results/`.
 
 ## Running native tools
 
-Anchoring is pure TypeScript (`alignToReference`), so fetching, gates, panels and sample tests need no native programs and can run in the Mac app, the CLI or a hosted site. On 202 real records it differed from `mafft --addfragments --keeplength` in 23 of about 150,000 columns. Only tree building needs a native program (IQ-TREE), behind a `ToolRunner` port.
+Anchoring is pure TypeScript (`alignToReference`), so fetching, gates, panels and sample tests need no native programs and can run in the Mac app, the CLI or a hosted site. Its results are tested against published distances and stored MAFFT anchored strings. An earlier version clipped terminal bases that carried real differences, which distorted distances even though few columns differed, so end placement now has its own tests. Only tree building needs a native program (IQ-TREE), behind a `ToolRunner` port.
 
 ## The three tools together
 

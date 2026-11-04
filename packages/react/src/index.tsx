@@ -130,20 +130,20 @@ export function PanelSummary({ panel }: { panel: Panel }) {
 const pct = (a: number, b: number) => (b ? `${a} of ${b}` : '–')
 
 export function ValidationView({ blocks, groups }: { blocks: ValidationReport; groups: ValidationReport }) {
-  const tested = new Set(blocks.groups.map((g) => g.group))
-  const skippedGroups = groups.groups.map((g) => g.group).filter((g) => !tested.has(g))
+  const noEvidence = groups.groups.reduce((sum, g) => sum + g.notEvaluable, 0)
   return (
     <section>
       <h4>Holding out each sampling site</h4>
       <table className="ophy-table">
-        <thead><tr><th>Group</th><th>True group consistent</th><th>Only the true group</th><th>True group excluded</th><th>Not evaluable</th></tr></thead>
+        <thead><tr><th>Group</th><th>True group consistent</th><th>Only the true group</th><th>True group excluded</th><th>Inconclusive or flagged</th><th>Not evaluable</th></tr></thead>
         <tbody>
-          {blocks.groups.map((g) => <tr key={g.group}><th scope="row">{g.group}</th><td>{pct(g.includedTruth, g.tested)}</td><td>{pct(g.onlyTruth, g.tested)}</td><td>{pct(g.excludedTruth, g.tested)}</td><td>{pct(g.notEvaluable, g.tested)}</td></tr>)}
+          {blocks.groups.map((g) => <tr key={g.group}><th scope="row">{g.group}</th><td>{pct(g.includedTruth, g.tested)}</td><td>{pct(g.onlyTruth, g.tested)}</td><td>{pct(g.excludedTruth, g.tested)}</td><td>{pct(g.inconclusive + g.flagged, g.tested)}</td><td>{pct(g.notEvaluable, g.tested)}</td></tr>)}
         </tbody>
       </table>
-      {skippedGroups.length > 0 && <p className="ophy-warning">Not tested, because all their records come from one site: {skippedGroups.join(', ')}.</p>}
+      {blocks.untestedGroups.length > 0 && <p className="ophy-warning">Not tested, because all their records come from one site: {blocks.untestedGroups.join(', ')}.</p>}
+      {blocks.diagnostics.map((d) => <p key={d.code} className="ophy-warning">{d.message}</p>)}
       <h4>Removing each whole group</h4>
-      <p>{groups.falseConsistent ?? 0} of {groups.tested} records were wrongly called consistent with a remaining group. Lower is better, and this is how the panel behaves when a sample's true population is missing.</p>
+      <p>{groups.falseConsistent ?? 0} of {groups.tested} records were wrongly called consistent with a remaining group. Lower is better, and this is how the panel behaves when a sample's true population is missing.{noEvidence > 0 ? ` ${noEvidence} of them couldn't be compared with any remaining group, so they say nothing either way.` : ''}</p>
       <p className="ophy-muted">These are simple counts on a small reference panel, and they aren't calibrated probabilities.</p>
     </section>
   )

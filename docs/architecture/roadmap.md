@@ -37,8 +37,12 @@ Found by auditing the code against those tools (2026-11-04).
 | A panel is a folder of files, not a shareable dataset | Stage 2 |
 | Assigning hundreds of records by hand doesn't scale | Stage 3 |
 | Thresholds aren't calibrated, and hold-out validation only tests full-length records | Stage 4 |
+| The aligner clipped terminal bases that carried real differences, and the known-answer test didn't call the aligner | Fixed: all 202 fragments checked now match MAFFT exactly, and the test runs the aligner |
+| A gap penalty of `-6` invented false paired indels in 119 records | Fixed at `-8` |
+| Records that were mostly other sequence passed the gates | Fixed: a query coverage gate |
+| Validation counts didn't sum, dropped untested groups and hid records with no site | Fixed |
 
-Fragment tests ran better than expected. Across 543 held-out tests at each of 100 to 500 bp, the true group stayed in the result at least 98.9% of the time and was never excluded, and results narrow as length grows. This is one uncalibrated experiment on one species.
+Fragment tests ran better than expected. Across 543 held-out tests at each of 100 to 500 bp, the true group stayed in the result at least 98.9% of the time and was never excluded, and results narrow as length grows. This is one uncalibrated experiment on one species, run before the aligner fixes below, and the calibration research warns that sites, not records, are the real sample size here.
 
 ## Stage 1: Make execution trustworthy
 

@@ -162,13 +162,16 @@ export function evaluateQuery(queryAligned: string, bundle: PanelBundle, options
   }
 }
 
-export type GroupScore = { group: string; tested: number; includedTruth: number; onlyTruth: number; excludedTruth: number; notEvaluable: number; meanConsistent: number }
+/** How each test's true group came out. `includedTruth + excludedTruth + inconclusive + flagged + notEvaluable` equals `tested`. */
+export type GroupScore = { group: string; tested: number; includedTruth: number; onlyTruth: number; excludedTruth: number; inconclusive: number; flagged: number; notEvaluable: number; meanConsistent: number }
 
 export type ValidationReport = {
   scheme: 'leave-one-block-out' | 'leave-one-group-out'
   tested: number
   skipped: number
   groups: GroupScore[]
+  /** Groups with no test at all, such as a group with one site. Absent from `groups`, which says nothing about them. */
+  untestedGroups: string[]
   /** For leave-one-group-out: tests where a group was consistent even though the true group was absent. */
   falseConsistent?: number
   diagnostics: Diagnostic[]
@@ -188,7 +191,7 @@ export function leaveOneBlockOut(input: ValidationInput): ValidationReport {
   const scores = new Map<string, GroupScore>()
   const score = (g: string) => {
     let s = scores.get(g)
-    if (!s) { s = { group: g, tested: 0, includedTruth: 0, onlyTruth: 0, excludedTruth: 0, notEvaluable: 0, meanConsistent: 0 }; scores.set(g, s) }
+    if (!s) { s = { group: g, tested: 0, includedTruth: 0, onlyTruth: 0, excludedTruth: 0, inconclusive: 0, flagged: 0, notEvaluable: 0, meanConsistent: 0 }; scores.set(g, s) }
     return s
   }
   let tested = 0
@@ -207,6 +210,8 @@ export function leaveOneBlockOut(input: ValidationInput): ValidationReport {
       s.meanConsistent += consistent.length
       if (finding?.status === 'not_evaluable') s.notEvaluable++
       else if (finding?.status === 'excluded_within_panel') s.excludedTruth++
+      else if (finding?.status === 'inconclusive') s.inconclusive++
+      else if (finding?.status === 'novel_or_unsampled_flag') s.flagged++
       if (consistent.includes(m.group)) {
         s.includedTruth++
         if (consistent.length === 1) s.onlyTruth++
@@ -214,7 +219,9 @@ export function leaveOneBlockOut(input: ValidationInput): ValidationReport {
     }
   }
   const groups = [...scores.values()].map((s) => ({ ...s, meanConsistent: s.tested ? s.meanConsistent / s.tested : 0 }))
-  return { scheme: 'leave-one-block-out', tested, skipped, groups, diagnostics: [] }
+  const noSite = input.members.filter((m) => m.block === undefined).length
+  const diagnostics: Diagnostic[] = noSite ? [{ severity: 'warning', code: 'records-without-site', message: `${noSite} records have no site, so each was held out alone. They can be tested against records from their own site, which flatters these results` }] : []
+  return { scheme: 'leave-one-block-out', tested, skipped, groups, untestedGroups: input.settings.groups.map((g) => g.id).filter((g) => !scores.has(g)), diagnostics }
 }
 
 /** Removes each whole group and tests its members. Success means no remaining group claims them. */
@@ -226,7 +233,7 @@ export function leaveOneGroupOut(input: ValidationInput): ValidationReport {
     const held = input.members.filter((m) => m.group === g.id)
     const settings = { ...input.settings, groups: input.settings.groups.filter((x) => x.id !== g.id) }
     const bundle = buildPanel({ ...input, settings, members: input.members.filter((m) => m.group !== g.id) })
-    const s: GroupScore = { group: g.id, tested: 0, includedTruth: 0, onlyTruth: 0, excludedTruth: 0, notEvaluable: 0, meanConsistent: 0 }
+    const s: GroupScore = { group: g.id, tested: 0, includedTruth: 0, onlyTruth: 0, excludedTruth: 0, inconclusive: 0, flagged: 0, notEvaluable: 0, meanConsistent: 0 }
     for (const m of held) {
       const result = evaluateQuery(m.aligned, bundle, { queryId: m.record, runId: 'validation' })
       const consistent = result.findings.filter((f) => f.status === 'consistent').length
@@ -238,5 +245,7 @@ export function leaveOneGroupOut(input: ValidationInput): ValidationReport {
     }
     groups.push({ ...s, meanConsistent: s.tested ? s.meanConsistent / s.tested : 0 })
   }
-  return { scheme: 'leave-one-group-out', tested, skipped: 0, groups, falseConsistent, diagnostics: [] }
+  const noEvidence = groups.reduce((sum, g) => sum + g.notEvaluable, 0)
+  const diagnostics: Diagnostic[] = noEvidence ? [{ severity: 'info', code: 'not-evaluable-counted-separately', message: `${noEvidence} of these records could not be compared with any remaining group, so they say nothing about false claims` }] : []
+  return { scheme: 'leave-one-group-out', tested, skipped: 0, groups, untestedGroups: [], falseConsistent, diagnostics }
 }

@@ -202,7 +202,7 @@ From a review of the three repos on 2026-11-04. These are gaps to close, not fai
 | Area | OnePedigree | OneTaxonomy | OnePhylogeny |
 | --- | --- | --- | --- |
 | Mac app | Yes | **Not built** (Studio planned) | Yes |
-| Published DMG | Yes, `desktop-v0.2.0` | **None** | Build running, `desktop-v0.1.0` |
+| Published DMG | Yes, `desktop-v0.2.0` | **None** | Yes, `desktop-v0.1.0` |
 | Signed auto-updates | Yes | **None** | **Key made; secret not added**, so releases aren't signed for updating yet |
 | Settings: appearance, updates | Yes | **None** | Yes |
 | Notarization | **No** | **No** | **No** |

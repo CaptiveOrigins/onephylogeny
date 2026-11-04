@@ -51,8 +51,8 @@ describe('views', () => {
   it('renders logs, ladders and validation gaps', () => {
     expect(renderToStaticMarkup(<EventLog events={[{ at: '2026-01-01T00:00:00.000Z', level: 'error', step: 'x', message: 'bad' }]} />)).toContain('ophy-log-error')
     expect(renderToStaticMarkup(<OutgroupLadderView steps={[{ taxon: { name: 'Genus', rank: 'genus' }, records: 1, species: ['s'], sufficient: false }]} caveat="Check it" />)).toContain('looking further out')
-    const base = { scheme: 'leave-one-block-out' as const, tested: 1, skipped: 1, diagnostics: [] }
-    const score = (group: string) => ({ group, tested: 1, includedTruth: 1, onlyTruth: 1, excludedTruth: 0, notEvaluable: 0, meanConsistent: 1 })
+    const base = { scheme: 'leave-one-block-out' as const, tested: 1, skipped: 1, diagnostics: [], untestedGroups: ['b'] }
+    const score = (group: string) => ({ group, tested: 1, includedTruth: 1, onlyTruth: 1, excludedTruth: 0, inconclusive: 0, flagged: 0, notEvaluable: 0, meanConsistent: 1 })
     const html = renderToStaticMarkup(<ValidationView blocks={{ ...base, groups: [score('a')] }} groups={{ ...base, scheme: 'leave-one-group-out', groups: [score('a'), score('b')], falseConsistent: 0 }} />)
     expect(html).toContain('all their records come from one site: b')
     expect(html).toContain('calibrated')

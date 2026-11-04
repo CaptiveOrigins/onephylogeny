@@ -12,13 +12,16 @@ export type Alignment = {
   mismatches: number
   /** matches / (matches + mismatches), or 0. */
   identity: number
-  /** Query bases left outside the alignment at each end. */
+  /** Query bases left outside the alignment at each end, after placing ends that look homologous. */
   clipped: { start: number; end: number }
+  /** Bases at each end placed by following the terminal diagonal. */
+  placedEnds: { start: number; end: number }
+  queryLength: number
   seedHits: number
 }
 
 /** Identifies this aligner in run records. Bump the version when its results can change. */
-export const ALIGNER = { name: 'alignToReference', version: '1' } as const
+export const ALIGNER = { name: 'alignToReference', version: '2' } as const
 
 export type AlignOptions = { k?: number; band?: number; match?: number; mismatch?: number; gapOpen?: number; gapExtend?: number; minSeedHits?: number }
 
@@ -50,6 +53,10 @@ function bestDiagonal(query: string, index: Map<string, number[]>, k: number): {
 }
 
 const NEGATIVE = -1e9
+/** Tails this short can't pay for a mismatch under the scoring, so they get a lower bar. */
+const SHORT_TAIL = 12
+/** Tails this short can't be judged by identity: a single differing base scores 0%. Placing a wrong one adds at most this many differences. */
+const TINY_TAIL = 5
 
 /**
  * Projects a sequence onto reference coordinates, the job of `mafft --addfragments --keeplength`: local affine
@@ -57,7 +64,7 @@ const NEGATIVE = -1e9
  * how a different gene is caught. Pure and deterministic; adding other sequences can't change the result.
  */
 export function alignToReference(sequence: string, reference: string, options: AlignOptions = {}): Alignment | null {
-  const { k = 11, band = 64, match = 2, mismatch = -3, gapOpen = -6, gapExtend = -1, minSeedHits = 2 } = options
+  const { k = 11, band = 64, match = 2, mismatch = -3, gapOpen = -8, gapExtend = -1, minSeedHits = 2 } = options
   const ref = reference.toUpperCase()
   const forward = sequence.toUpperCase().replace(/[-.]/g, '')
   const index = kmerIndex(ref, k)
@@ -152,6 +159,32 @@ export function alignToReference(sequence: string, reference: string, options: A
       w++
     }
   }
+  // Local alignment drops ends where a few matches can't repay a mismatch, and those can be real differences.
+  // Follow the terminal diagonal when the whole tail looks homologous; a real flank or junk stays clipped.
+  const tailLooksHomologous = (length: number, same: number, known: number) => length <= TINY_TAIL || (known > 0 && same / known >= (length <= SHORT_TAIL ? 0.5 : 0.7))
+  const placeEnd = (pairs: [number, number][]) => {
+    let same = 0
+    let known = 0
+    for (const [q, r] of pairs) {
+      const a = CODE[query[q]!]
+      const b = CODE[ref[r]!]
+      if (a === undefined || b === undefined) continue
+      known++
+      if (a === b) same++
+    }
+    if (!tailLooksHomologous(pairs.length, same, known)) return 0
+    for (const [q, r] of pairs) out[r] = query[q]!
+    matches += same
+    mismatches += known - same
+    return pairs.length
+  }
+  const startQuery = i
+  const startRef = i + low + w
+  const endRef = bestI + low + bestK
+  const before = Math.min(startQuery, startRef)
+  const after = Math.min(n - bestI, m - endRef)
+  const placedStart = placeEnd(Array.from({ length: before }, (_, k): [number, number] => [startQuery - before + k, startRef - before + k]))
+  const placedEnd = placeEnd(Array.from({ length: after }, (_, k): [number, number] => [bestI + k, endRef + k]))
   const compared = matches + mismatches
   return {
     aligned: out.join(''),
@@ -161,7 +194,9 @@ export function alignToReference(sequence: string, reference: string, options: A
     matches,
     mismatches,
     identity: compared ? matches / compared : 0,
-    clipped: { start: i, end: n - bestI },
+    clipped: { start: startQuery - placedStart, end: n - bestI - placedEnd },
+    placedEnds: { start: placedStart, end: placedEnd },
+    queryLength: n,
     seedHits: seed.hits,
   }
 }

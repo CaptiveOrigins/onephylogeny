@@ -145,7 +145,8 @@ function gateStep(scope: RunScope, profile: Profile, anchoredArtifact: Artifact)
       const outcomes: RecordOutcome[] = []
       const aligned: { id: string; sequence: string }[] = []
       for (const a of anchored) {
-        const diagnostics = assessAlignment(a.alignment, gates)
+        // A record with no annotated gene is the whole record, so most of it is expected not to align.
+        const diagnostics = assessAlignment(a.alignment, a.extractedFrom === 'whole-record' ? { ...gates, minQueryCoverage: undefined } as GateSettings : gates)
         const fail = (code: string, message: string) => diagnostics.push({ severity: 'error', code, message })
         const reason = excluded.get(a.record) ?? excluded.get(a.record.split('.')[0]!)
         if (reason) fail('excluded-by-profile', reason)
@@ -250,7 +251,7 @@ export async function buildPanelFromRun(ctx: EngineContext, profile: Profile, cu
     }
     const bundle = buildPanel({ ...input, members })
     diagnostics.push(...validatePanel(bundle.panel))
-    const empty = { scheme: 'leave-one-block-out' as const, tested: 0, skipped: 0, groups: [], diagnostics: [] }
+    const empty = { scheme: 'leave-one-block-out' as const, tested: 0, skipped: 0, groups: [], untestedGroups: [], diagnostics: [] }
     const hasErrors = diagnostics.some((d) => d.severity === 'error')
     if (hasErrors) return { bundle, diagnostics, validation: { blocks: empty, groups: { ...empty, scheme: 'leave-one-group-out' as const } }, unassigned, published: false }
     const out = P.panel(bundle.panel.id, bundle.panel.version)

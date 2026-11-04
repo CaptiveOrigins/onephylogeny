@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import {
-  parseCuration, parseProfile, collapseHaplotypes, compareAligned, compatibility, coverage, extractLocation, findGeneFeatures, internalStops,
+  alignToReference, parseCuration, parseProfile, collapseHaplotypes, compareAligned, compatibility, coverage, extractLocation, findGeneFeatures, internalStops,
   parseFasta, parseGenBank, reverseComplement, toRecordSheet, toSequenceRecord, validateProfile, writeFasta, type Profile, type SequenceRecord,
 } from '../src/index.js'
 
@@ -21,6 +21,30 @@ describe('known-answer distances (published values)', () => {
     ['NE', 'E', 1.527], ['N', 'S', 2.698], ['NW', 'S', 2.143], ['NE', 'S', 3.214], ['E', 'S', 4.462],
   ] as const)('%s to %s is close to %f%%', (a, b, published) => {
     expect(Math.abs(mean(a, b) - published)).toBeLessThan(0.15)
+  })
+})
+
+describe('known-answer distances, through the aligner', () => {
+  // The stored strings above came from MAFFT, so they can't catch a bug in our own aligner. This test can.
+  type F = { records: { accession: string; group: string; aligned: string }[] }
+  const { records } = JSON.parse(fixture('known-answer-distances.json')) as F
+  const refRec = parseGenBank(fixture('golden/records.gb')).find((r) => r.version === 'NC_080265.1')!
+  const reference = extractLocation(refRec.sequence, findGeneFeatures(refRec, ['cytb', 'CYTB', 'cob', 'cytochrome b'])[0]!.location)
+  const aligned = new Map(records.map((r) => [r.accession, alignToReference(r.aligned.replace(/-/g, ''), reference)!.aligned]))
+  const window = { start: 0, end: 433 }
+  const haps = (g: string) => [...new Set(records.filter((r) => r.group === g).map((r) => aligned.get(r.accession)!))]
+  const mean = (a: string, b: string) => {
+    const d = haps(a).flatMap((x) => haps(b).map((y) => compareAligned(x, y, window).pDistance!))
+    return (100 * d.reduce((s, v) => s + v, 0)) / d.length
+  }
+  it.each([
+    ['N', 'NW', 1.508], ['N', 'NE', 2.103], ['NW', 'NE', 1.071], ['N', 'E', 3.155], ['NW', 'E', 2.361],
+    ['NE', 'E', 1.527], ['N', 'S', 2.698], ['NW', 'S', 2.143], ['NE', 'S', 3.214], ['E', 'S', 4.462],
+  ] as const)('%s to %s is close to %f%%', (a, b, published) => {
+    expect(Math.abs(mean(a, b) - published)).toBeLessThan(0.15)
+  })
+  it('matches the anchored strings exactly', () => {
+    for (const r of records) expect(aligned.get(r.accession)!.slice(0, 433), r.accession).toBe(r.aligned)
   })
 })
 

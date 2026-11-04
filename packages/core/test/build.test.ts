@@ -42,6 +42,22 @@ describe('alignToReference', () => {
     expect(del.deletions.reduce((s, x) => s + x.length, 0)).toBe(3)
     expect(del.mismatches).toBe(0)
   })
+  it('keeps a real difference near the end of a sequence', () => {
+    const q = ref.slice(100, 400)
+    const changed = `${q.slice(0, 298)}${q[298] === 'A' ? 'C' : 'A'}${q.slice(299)}`
+    const a = alignToReference(changed, ref)!
+    expect(a.aligned.slice(100, 400)).toBe(changed)
+    expect(a.mismatches).toBe(1)
+    expect(a.placedEnds.end).toBeGreaterThan(0)
+    const start = `${q[0] === 'A' ? 'C' : 'A'}${q.slice(1)}`
+    expect(alignToReference(start, ref)!.aligned.slice(100, 400)).toBe(start)
+  })
+  it('does not invent paired insertions and deletions for nearby differences', () => {
+    const a = alignToReference(mutate(ref.slice(0, 500), [200, 201, 203]), ref)!
+    expect(a.insertions).toEqual([])
+    expect(a.deletions).toEqual([])
+    expect(a.mismatches).toBe(3)
+  })
   it('clips junk flanks instead of forcing them in', () => {
     const a = alignToReference(randomSeq(40, 99) + ref.slice(100, 400) + randomSeq(40, 123), ref)!
     expect(a.aligned.slice(100, 400)).toBe(ref.slice(100, 400))
@@ -129,6 +145,14 @@ describe('validation harness', () => {
     const report = leaveOneBlockOut({ ...input, members })
     expect(report.groups.find((g) => g.group === 'a')).toBeUndefined()
     expect(report.skipped).toBeGreaterThan(0)
+    expect(report.untestedGroups).toContain('a')
+  })
+  it('every test is counted exactly once', () => {
+    const report = leaveOneBlockOut({ ...input, members: input.members.map((m, i) => ({ ...m, block: `s${i}` })) })
+    for (const g of report.groups) expect(g.includedTruth + g.excludedTruth + g.inconclusive + g.flagged + g.notEvaluable).toBe(g.tested)
+  })
+  it('warns when records have no site', () => {
+    expect(leaveOneBlockOut({ ...input, members: input.members }).diagnostics.map((d) => d.code)).toContain('records-without-site')
   })
   it('leave-one-group-out counts false claims', () => {
     const report = leaveOneGroupOut({ ...input, members: input.members })
@@ -136,12 +160,22 @@ describe('validation harness', () => {
     expect(report.tested).toBe(5)
     expect(report.falseConsistent).toBe(0)
   })
+  it('leave-one-group-out says when a record could not be compared at all', () => {
+    const members = [input.members[0]!, { ...input.members[4]!, aligned: blank(seqOf([5, 6, 7]), 0, 30) }]
+    const report = leaveOneGroupOut({ ...input, settings: { ...settings, groups: [{ id: 'a', label: 'A' }, { id: 'c', label: 'C' }] }, members })
+    expect(report.diagnostics.map((d) => d.code)).toContain('not-evaluable-counted-separately')
+  })
 })
 
 describe('gates', () => {
   it('rejects unrelated sequence and short matches', () => {
     expect(assessAlignment(alignToReference(randomSeq(500, 555), ref), DEFAULT_GATES).map((d) => d.code)).toContain('no-reference-match')
     expect(assessAlignment(alignToReference(ref.slice(0, 60), ref), DEFAULT_GATES).map((d) => d.code)).toContain('too-few-aligned-columns')
+  })
+  it('rejects a sequence that is mostly something else', () => {
+    const joined = alignToReference(ref.slice(0, 150) + randomSeq(500, 321), ref)
+    expect(assessAlignment(joined, DEFAULT_GATES).map((d) => d.code)).toContain('low-query-coverage')
+    expect(assessAlignment(joined, { ...DEFAULT_GATES, minQueryCoverage: undefined }).map((d) => d.code)).toContain('clipped-ends')
   })
   it('warns about a frame-shifting deletion but passes a clean record', () => {
     expect(assessAlignment(alignToReference(ref.slice(0, 300), ref), DEFAULT_GATES)).toEqual([])
