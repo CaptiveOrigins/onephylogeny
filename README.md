@@ -2,7 +2,7 @@
 
 A source-available, species-agnostic framework for acquiring sequence evidence, building reference panels and testing samples against them, with provenance and honest uncertainty. For developers, labs, researchers and keepers.
 
-> **Status: early alpha.** The core science, NCBI acquisition, engine, CLI, React views, bridges, Payload plugin and Mac app work and are tested. Nothing is on npm yet, the Mac app isn't notarized, and results aren't forensically validated. See [the phase plan](docs/architecture/phase-plan.md) and [limitations](docs/architecture/limitations.md).
+> **Status: early alpha.** The core science, NCBI acquisition, engine, CLI, React views, bridges, Payload plugin and Mac app work and are tested. Nothing is on npm yet, the Mac app isn't notarized, and results aren't forensically validated. See [the roadmap](docs/architecture/roadmap.md) and [limitations](docs/architecture/limitations.md).
 
 OnePhylogeny is one of three tools from one maker. Each runs on its own:
 
@@ -62,7 +62,7 @@ pnpm --filter onephylogeny-desktop dev       # browser preview with made-up data
 ## Documentation
 
 - [Architecture](docs/architecture/architecture.md), [data schema](docs/architecture/data-schema.md), [decisions](docs/architecture/adr/README.md)
-- [Phase plan](docs/architecture/phase-plan.md), [limitations](docs/architecture/limitations.md)
+- [Roadmap](docs/architecture/roadmap.md), [phase plan](docs/architecture/phase-plan.md), [limitations](docs/architecture/limitations.md)
 
 ## License
 

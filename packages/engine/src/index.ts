@@ -1,5 +1,5 @@
 import {
-  alignToReference, assessAlignment, buildPanel, collapseHaplotypes, DEFAULT_GATES, evaluateQuery, extractLocation, findGeneFeatures, leaveOneBlockOut, leaveOneGroupOut, parseFasta, parseGenBank,
+  ALIGNER, alignToReference, assessAlignment, buildPanel, collapseHaplotypes, DEFAULT_GATES, evaluateQuery, extractLocation, findGeneFeatures, leaveOneBlockOut, leaveOneGroupOut, parseFasta, parseGenBank,
   sha256Hex, canonicalJson, toRecordSheet, toSequenceRecord, validatePanel, validateProfile, validateResult, writeFasta,
   type Curation, type Diagnostic, type GateSettings, type GenBankRecord, type Panel, type PanelBundle, type PanelMember, type Profile, type Result, type Run, type RunEvent, type SequenceRecord, type Snapshot, type ValidationReport,
 } from '@captiveorigins/onephylogeny-core'
@@ -8,9 +8,16 @@ import { NcbiClient, selectionQuery, type NcbiOptions } from '@captiveorigins/on
 /** Where files live. A folder on disk, in the CLI and the Mac app. */
 export interface Store {
   read(path: string): Promise<string>
+  /** Must be atomic: a crash leaves the old file or the new one, never half of it. */
   write(path: string, text: string): Promise<void>
   exists(path: string): Promise<boolean>
+  /** Adds to a log without rewriting it. Optional: without it, logs are written whole. */
+  append?(path: string, text: string): Promise<void>
 }
+
+/** Bump with each engine release. Recorded in every run, panel and result. */
+export const ENGINE_VERSION = '0.1.0-alpha.0'
+const ENGINE = { name: 'onephylogeny-engine', version: ENGINE_VERSION }
 
 /** How native programs run. Only tree building needs one. */
 export interface ToolRunner {
@@ -27,6 +34,13 @@ export type EngineContext = {
 }
 
 export class RunError extends Error {}
+
+/** Panel versions are immutable: changed content needs a new version. */
+export class PanelVersionExists extends RunError {
+  constructor(id: string, version: string) {
+    super(`Panel ${id} version ${version} already exists with different content. Give this build a new version, so earlier results stay true`)
+  }
+}
 
 const paths = (profileId: string) => ({
   profile: `profiles/${profileId}/profile.json`,
@@ -50,8 +64,14 @@ class RunLog {
     const event: RunEvent = { at: this.stamp(), level, step, message, ...(data ? { data } : {}) }
     this.events.push(event)
     this.ctx.onEvent?.(event)
-    const text = `${this.events.map((e) => JSON.stringify(e)).join('\n')}\n`
-    this.pending = this.pending.then(() => this.ctx.store.write(this.file, text))
+    const { store } = this.ctx
+    if (store.append) {
+      const line = `${JSON.stringify(event)}\n`
+      this.pending = this.pending.then(() => store.append!(this.file, line))
+    } else {
+      const text = `${this.events.map((e) => JSON.stringify(e)).join('\n')}\n`
+      this.pending = this.pending.then(() => store.write(this.file, text))
+    }
   }
   flush() { return this.pending }
 }
@@ -90,7 +110,7 @@ export async function fetchAndAnchor(ctx: EngineContext, profile: Profile, optio
   const id = runId(ctx)
   const dir = P.run(id)
   const log = new RunLog(ctx, `${dir}/events.jsonl`)
-  const run: Run = { schemaVersion: 1, id, profile, tools: [], status: 'running', startedAt: (ctx.now?.() ?? new Date()).toISOString(), events: [], outputs: [], diagnostics: [] }
+  const run: Run = { schemaVersion: 1, id, profile, tools: [ENGINE, ALIGNER], status: 'running', startedAt: (ctx.now?.() ?? new Date()).toISOString(), events: [], outputs: [], diagnostics: [] }
   const client = new NcbiClient({ ...ctx.ncbi, log: (level, message, data) => log.add(level, 'ncbi', message, data) })
   const finish = async (status: Run['status']) => {
     await log.flush()
@@ -98,8 +118,10 @@ export async function fetchAndAnchor(ctx: EngineContext, profile: Profile, optio
     run.finishedAt = (ctx.now?.() ?? new Date()).toISOString()
     run.events = log.events
     await ctx.store.write(`${dir}/run.json`, json(run))
-    await ctx.store.write(P.latest, id)
+    // A failed run stays on record, but it never replaces the last good one.
+    if (status === 'succeeded') await ctx.store.write(P.latest, id)
   }
+  await ctx.store.write(`${dir}/run.json`, json(run))
   try {
     const term = selectionQuery(profile.selection)
     log.add('info', 'search', 'Searching NCBI', { term })
@@ -182,7 +204,7 @@ export async function fetchAndAnchor(ctx: EngineContext, profile: Profile, optio
       run.outputs.push({ path: name, sha256: hash(text) })
     }
     await write('snapshot.json', json(snapshot))
-    await write('records.csv', toRecordSheet(records))
+    await write('records.csv', toRecordSheet(records, { checks: outcomes.map((o) => ({ record: o.record, status: o.status, reasons: o.diagnostics.map((d) => d.message) })) }))
     await write('outcomes.json', json(outcomes))
     await write('aligned.fasta', writeFasta(aligned))
     await finish('succeeded')
@@ -230,11 +252,16 @@ export async function buildPanelFromRun(ctx: EngineContext, profile: Profile, cu
     sources: [...new Map(snapshot.records.filter((r) => members.some((m) => m.record === r.version)).flatMap((r) => r.publications).filter((p) => p.title).map((p) => [p.title!, { citation: [p.authors, p.title, p.journal].filter(Boolean).join('. ') }])).values()],
     builtBy: latest,
     referenceSequence: reference.sequence,
+    builtWith: [ENGINE, ALIGNER],
   }
   const bundle = buildPanel({ ...input, members })
+  const out = P.panel(bundle.panel.id, bundle.panel.version)
+  if (await ctx.store.exists(`${out}/panel.json`)) {
+    const existing = JSON.parse(await ctx.store.read(`${out}/panel.json`)) as Panel
+    if (existing.checksum !== bundle.panel.checksum) throw new PanelVersionExists(bundle.panel.id, bundle.panel.version)
+  }
   diagnostics.push(...validatePanel(bundle.panel))
   const validation = { blocks: leaveOneBlockOut({ ...input, members }), groups: leaveOneGroupOut({ ...input, members }) }
-  const out = P.panel(bundle.panel.id, bundle.panel.version)
   await ctx.store.write(`${out}/panel.json`, json(bundle.panel))
   await ctx.store.write(`${out}/panel.fasta`, writeFasta([{ id: '__reference__', sequence: reference.sequence }, ...Object.entries(bundle.sequences).map(([k, sequence]) => ({ id: k, sequence }))]))
   await ctx.store.write(`${out}/validation.json`, json(validation))
@@ -244,6 +271,7 @@ export async function buildPanelFromRun(ctx: EngineContext, profile: Profile, cu
 
 export async function loadPanel(store: Store, dir: string): Promise<PanelBundle> {
   const panel = JSON.parse(await store.read(`${dir}/panel.json`)) as Panel
+  if (!panel.thresholds) throw new RunError(`Panel ${panel.id} version ${panel.version} was built before panels carried their thresholds. Build it again under a new version`)
   const fasta = parseFasta(await store.read(`${dir}/panel.fasta`))
   const referenceSequence = fasta.find((f) => f.id === '__reference__')?.sequence
   return { panel, sequences: Object.fromEntries(fasta.filter((f) => f.id !== '__reference__').map((f) => [f.id, f.sequence])), ...(referenceSequence ? { referenceSequence } : {}) }
@@ -252,14 +280,14 @@ export async function loadPanel(store: Store, dir: string): Promise<PanelBundle>
 export type SampleOutcome = { result: Result; diagnostics: Diagnostic[]; aligned: string; insertions: number; deletions: number; identity: number; clipped: { start: number; end: number } } | { result: null; diagnostics: Diagnostic[] }
 
 /** Tests one local sequence against one panel. Pure TypeScript: runs in the app, the CLI or a hosted site. */
-export function testSample(sequence: string, queryId: string, bundle: PanelBundle, thresholds: NonNullable<Profile['panel']>['thresholds'], options: { runId?: string } = {}): SampleOutcome {
+export function testSample(sequence: string, queryId: string, bundle: PanelBundle, options: { runId?: string } = {}): SampleOutcome {
   if (!bundle.referenceSequence) throw new RunError('This panel has no reference sequence')
   const a = alignToReference(sequence, bundle.referenceSequence)
   const r = bundle.panel.reference
   const diagnostics = assessAlignment(a, { ...DEFAULT_GATES, ...(r.codonStart !== undefined ? { codonStart: r.codonStart } : {}), ...(r.geneticCode ? { geneticCode: r.geneticCode } : {}) })
   if (!a || diagnostics.some((d) => d.severity === 'error')) return { result: null, diagnostics }
   const result = evaluateQuery(a.aligned, bundle, {
-    thresholds, queryId, runId: options.runId ?? 'sample',
+    queryId, runId: options.runId ?? 'sample', querySha256: hash(sequence.toUpperCase()), producedBy: [ENGINE, ALIGNER],
     caveats: ['Thresholds are configured values and these statuses are not probabilities', ...diagnostics.filter((d) => d.severity === 'warning').map((d) => d.message)],
   })
   diagnostics.push(...validateResult(result, bundle.panel))

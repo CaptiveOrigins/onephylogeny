@@ -15,7 +15,7 @@ const { panel, sequences } = buildPanel({
     { record: 'c1', group: 'c', aligned: blank(mut([150, 160]), 120, 200), provenanceClass: 'wild-documented' },
   ],
 })
-const opts = { thresholds: settings.thresholds, queryId: 'q', runId: 'r' }
+const opts = { queryId: 'q', runId: 'r' }
 const query = blank(mut([5, 50, 90]), 0, 110)
 const result: Result = evaluateQuery(query, { panel, sequences }, opts)
 

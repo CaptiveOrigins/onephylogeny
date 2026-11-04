@@ -38,6 +38,7 @@ export function validatePanel(panel: Panel): Diagnostic[] {
   const error = (code: string, message: string, path?: string) => out.push({ severity: 'error', code, message, ...(path ? { path } : {}) })
   if (panel.schemaVersion !== 1) error('schema-version', `Unknown schema version ${String(panel.schemaVersion)}`)
   if (!panel.taxa.length) error('no-taxa', 'A panel needs at least one taxon', 'taxa')
+  if (!panel.thresholds) error('no-thresholds', 'A panel must state the thresholds it is read with', 'thresholds')
   if (!panel.groups.length) error('no-groups', 'A panel needs at least one group', 'groups')
   const seen = new Set<string>()
   for (const [g, group] of panel.groups.entries()) {

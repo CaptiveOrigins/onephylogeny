@@ -176,6 +176,10 @@ export type Panel = {
   validatedScope: string[]
   sources: { citation: string; url?: string }[]
   builtBy: Id
+  /** Part of the sealed panel, so editing a profile can never change what a panel version concludes. */
+  thresholds: EvaluationThresholds
+  /** What made this panel. */
+  builtWith?: { name: string; version: string }[]
 }
 
 export type Query = { id: Id; sequence: string; source: string; sha256: string; taxonClaim?: ExternalId }
@@ -198,6 +202,10 @@ export type Finding = {
 export type Result = {
   schemaVersion: 1
   query: Id
+  /** Hash of the exact sequence tested. */
+  querySha256?: string
+  /** What produced this result, in the spirit of reporting software and data versions with every call. */
+  producedBy?: { name: string; version: string }[]
   panel: { id: Id; version: string; checksum: string }
   run: Id
   overlap: number

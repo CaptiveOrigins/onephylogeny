@@ -91,7 +91,7 @@ describe('panels from members', () => {
 
 describe('evaluateQuery', () => {
   const bundle = buildPanel(input)
-  const options = { thresholds: settings.thresholds, queryId: 'q', runId: 'r' }
+  const options = { queryId: 'q', runId: 'r' }
   const status = (seq: string) => Object.fromEntries(evaluateQuery(seq, bundle, options).findings.map((f) => [f.group, f.status]))
   it('calls the right group consistent and excludes the other', () => {
     const s = status(seqOf(siteA))

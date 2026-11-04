@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { execFile } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
-import { parseFasta, type Curation, type Profile } from '@captiveorigins/onephylogeny-core'
+import { parseCuration, parseFasta, parseProfile } from '@captiveorigins/onephylogeny-core'
 import { NcbiClient, suggestOutgroups } from '@captiveorigins/onephylogeny-acquire'
 import { buildPanelFromRun, buildTree, fetchAndAnchor, loadPanel, profilePaths, testSample, type EngineContext, type Store, type ToolRunner } from '@captiveorigins/onephylogeny-engine'
 
@@ -30,7 +30,14 @@ const nodeStore = (root: string): Store => ({
   write: async (p, text) => {
     const file = join(root, p)
     mkdirSync(dirname(file), { recursive: true })
-    writeFileSync(file, text)
+    const temp = `${file}.${process.pid}.tmp`
+    writeFileSync(temp, text)
+    renameSync(temp, file)
+  },
+  append: async (p, text) => {
+    const file = join(root, p)
+    mkdirSync(dirname(file), { recursive: true })
+    appendFileSync(file, text)
   },
   exists: async (p) => existsSync(join(root, p)),
 })
@@ -65,7 +72,7 @@ async function main() {
   if (!id) throw new Error('--profile is required')
   const store = nodeStore(root)
   const P = profilePaths(id)
-  const profile = JSON.parse(await store.read(P.profile)) as Profile
+  const profile = parseProfile(await store.read(P.profile))
   const ctx: EngineContext = {
     store, tools,
     ncbi: { fetch: (url, init) => fetch(url, init), tool: 'onephylogeny', ...(process.env.NCBI_API_KEY ? { apiKey: process.env.NCBI_API_KEY } : {}) },
@@ -78,7 +85,7 @@ async function main() {
     const { run, outcomes } = await fetchAndAnchor(ctx, profile)
     console.log(JSON.stringify({ run: run.id, status: run.status, records: outcomes.length, passed: outcomes.filter((o) => o.status === 'passed').length, folder: join(root, P.run(run.id)) }, null, 2))
   } else if (command === 'panel') {
-    const curation = JSON.parse(await store.read(P.curation)) as Curation
+    const curation = parseCuration(await store.read(P.curation))
     const { bundle, diagnostics, validation, unassigned } = await buildPanelFromRun(ctx, profile, curation)
     console.log(JSON.stringify({ panel: bundle.panel.id, version: bundle.panel.version, checksum: bundle.panel.checksum, groups: bundle.panel.groups.map((g) => ({ id: g.id, records: g.evidence.length, windows: g.windows.map((w) => `${w.start}-${w.end} (${w.diagnosticSites.length} fixed)`) })), unassigned, diagnostics, validation }, null, 2))
   } else if (command === 'test') {
@@ -86,7 +93,7 @@ async function main() {
     if (!file) throw new Error('--fasta is required')
     if (!profile.panel) throw new Error('The profile has no panel settings')
     const bundle = await loadPanel(store, P.panel(profile.panel.id, profile.panel.version))
-    for (const e of parseFasta(readFileSync(file, 'utf8'))) console.log(JSON.stringify(testSample(e.sequence, e.id, bundle, profile.panel.thresholds), (k, v) => (k === 'aligned' ? undefined : v), 2))
+    for (const e of parseFasta(readFileSync(file, 'utf8'))) console.log(JSON.stringify(testSample(e.sequence, e.id, bundle), (k, v) => (k === 'aligned' ? undefined : v), 2))
   } else if (command === 'tree') {
     const start = flag('start')
     const end = flag('end')

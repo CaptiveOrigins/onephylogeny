@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Curation, Profile } from '@captiveorigins/onephylogeny-core'
-import { buildPanelFromRun, fetchAndAnchor, loadPanel, profilePaths, testSample, type EngineContext, type Store } from '../src/index.js'
+import { buildPanelFromRun, ENGINE_VERSION, fetchAndAnchor, loadPanel, profilePaths, testSample, type EngineContext, type Store } from '../src/index.js'
 
 function randomSeq(n: number, seed: number): string {
   let a = seed >>> 0
@@ -96,7 +96,7 @@ describe('panel and sample', () => {
     expect(out.unassigned).toBe(1)
     const bundle = await loadPanel(ctx.store, profilePaths('demo').panel('p', '1'))
     expect(bundle.panel.checksum).toBe(out.bundle.panel.checksum)
-    const sample = testSample(mutate([10, 200, 450], 0, 500), 'sample-1', bundle, profile.panel!.thresholds)
+    const sample = testSample(mutate([10, 200, 450], 0, 500), 'sample-1', bundle)
     expect(sample.result?.findings.find((f) => f.group === 'a')?.status).toBe('consistent')
     expect(sample.result?.findings.find((f) => f.group === 'b')?.status).toBe('excluded_within_panel')
   })
@@ -104,7 +104,7 @@ describe('panel and sample', () => {
     const ctx = makeContext()
     await fetchAndAnchor(ctx, profile)
     const { bundle } = await buildPanelFromRun(ctx, profile, curation)
-    const r = testSample(randomSeq(400, 1234), 'wrong', bundle, profile.panel!.thresholds)
+    const r = testSample(randomSeq(400, 1234), 'wrong', bundle)
     expect(r.result).toBeNull()
     expect(r.diagnostics[0]!.code).toBe('no-reference-match')
   })
@@ -113,5 +113,72 @@ describe('panel and sample', () => {
     await fetchAndAnchor(ctx, profile)
     const out = await buildPanelFromRun(ctx, profile, { schemaVersion: 1, records: { 'A1.1': { group: 'nope' } } })
     expect(out.diagnostics.map((d) => d.code)).toContain('unknown-group')
+  })
+})
+
+describe('runs and panels stay true', () => {
+  const curation: Curation = { schemaVersion: 1, records: { 'A1.1': { group: 'a', provenanceClass: 'wild-documented' }, 'B1.1': { group: 'b', provenanceClass: 'wild-documented' } } }
+  it('a failed run never replaces the last good one', async () => {
+    let fail = false
+    const ctx = makeContext(() => fail)
+    const good = await fetchAndAnchor(ctx, profile)
+    const P = profilePaths('demo')
+    expect(await ctx.store.read(P.latest)).toBe(good.run.id)
+    fail = true
+    ctx.store.files.forEach((_, k) => { if (k.startsWith('cache/')) ctx.store.files.delete(k) })
+    await expect(fetchAndAnchor(ctx, profile)).rejects.toThrow()
+    expect(await ctx.store.read(P.latest)).toBe(good.run.id)
+    await expect(buildPanelFromRun(ctx, profile, curation)).resolves.toBeTruthy()
+  })
+  it('writes a running record first, so a crash still leaves a trace', async () => {
+    const ctx = makeContext()
+    const written: string[] = []
+    const inner = ctx.store.write
+    ctx.store.write = async (p, t) => { if (p.endsWith('run.json')) written.push(JSON.parse(t).status); return inner(p, t) }
+    await fetchAndAnchor(ctx, profile)
+    expect(written).toEqual(['running', 'succeeded'])
+  })
+  it('records what produced each run, panel and result', async () => {
+    const ctx = makeContext()
+    const { run } = await fetchAndAnchor(ctx, profile)
+    expect(run.tools.map((t) => t.name)).toEqual(['onephylogeny-engine', 'alignToReference'])
+    const { bundle } = await buildPanelFromRun(ctx, profile, curation)
+    expect(bundle.panel.builtWith?.[0]?.version).toBe(ENGINE_VERSION)
+    const sample = testSample(mutate([10, 200, 450]), 's', bundle)
+    expect(sample.result?.producedBy?.length).toBeGreaterThan(1)
+    expect(sample.result?.querySha256).toMatch(/^sha256:/)
+  })
+  it('editing a profile cannot change a built panel\'s conclusions', async () => {
+    const ctx = makeContext()
+    await fetchAndAnchor(ctx, profile)
+    const { bundle } = await buildPanelFromRun(ctx, profile, curation)
+    const loaded = await loadPanel(ctx.store, profilePaths('demo').panel('p', '1'))
+    const before = testSample(mutate([10, 200, 450]), 's', loaded)
+    expect(loaded.panel.thresholds).toEqual(profile.panel!.thresholds)
+    expect(bundle.panel.checksum).toBe(loaded.panel.checksum)
+    expect(before.result?.panel.checksum).toBe(bundle.panel.checksum)
+  })
+  it('refuses to overwrite a version with different content, and allows an identical rebuild', async () => {
+    const ctx = makeContext()
+    await fetchAndAnchor(ctx, profile)
+    await buildPanelFromRun(ctx, profile, curation)
+    await expect(buildPanelFromRun(ctx, profile, curation)).resolves.toBeTruthy()
+    const changed = { ...curation, records: { ...curation.records, 'A2.1': { group: 'a', provenanceClass: 'wild-documented' as const } } }
+    await expect(buildPanelFromRun(ctx, profile, changed)).rejects.toThrow(/already exists with different content/)
+  })
+  it('uses append for logs when the store offers it', async () => {
+    const ctx = makeContext()
+    const lines: string[] = []
+    ctx.store.append = async (_p, t) => void lines.push(t)
+    await fetchAndAnchor(ctx, profile)
+    expect(lines.length).toBeGreaterThan(2)
+    expect(() => JSON.parse(lines[0]!)).not.toThrow()
+  })
+  it('puts check results in the spreadsheet', async () => {
+    const ctx = makeContext()
+    const { run } = await fetchAndAnchor(ctx, profile)
+    const sheet = ctx.store.files.get(`${profilePaths('demo').run(run.id)}/records.csv`)!
+    expect(sheet.split('\n')[0]).toContain('check_status,check_reasons')
+    expect(sheet).toContain('excluded')
   })
 })

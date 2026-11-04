@@ -10,7 +10,7 @@ const panel: Panel = {
     { id: 'a', label: 'A', windows: [{ start: 0, end: 50, diagnosticSites: [{ position: 3, bases: 'A' }] }], evidence: [{ record: 'r1', use: 'lineage-and-location', provenanceClass: 'wild-documented' }] },
     { id: 'b', label: 'B', windows: [{ start: 50, end: 100, diagnosticSites: [] }], evidence: [{ record: 'r2', use: 'lineage-only', provenanceClass: 'seized' }] },
   ],
-  notCovered: ['Region X'], validatedScope: ['species'], sources: [{ citation: 'C' }], builtBy: 'run1',
+  notCovered: ['Region X'], validatedScope: ['species'], sources: [{ citation: 'C' }], builtBy: 'run1', thresholds: { minOverlap: 50, tolerance: 1, minDiagnosticConflicts: 2 },
 }
 const codes = (p: Panel) => validatePanel(p).map((d) => d.code)
 

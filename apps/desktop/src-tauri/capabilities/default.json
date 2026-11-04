@@ -12,6 +12,7 @@
     "fs:allow-exists",
     "fs:allow-mkdir",
     "fs:allow-read-dir",
+    "fs:allow-rename",
     { "identifier": "fs:scope", "allow": [{ "path": "$HOME" }, { "path": "$HOME/**" }, { "path": "/Volumes/**" }] },
     "store:default",
     "opener:allow-reveal-item-in-dir",

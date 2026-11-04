@@ -24,8 +24,15 @@ function cell(v: string | number | undefined): string {
 }
 
 /** The record sheet as CSV. Coordinates are left out unless a caller explicitly asks for them. */
-export function toRecordSheet(records: SequenceRecord[], options: { includeCoordinates?: boolean } = {}): string {
-  const columns = options.includeCoordinates ? [...COLUMNS, { name: 'lat_lon', get: (r: SequenceRecord) => r.latLon }] : COLUMNS
+export type RecordCheck = { record: string; status: string; reasons: string[] }
+
+export function toRecordSheet(records: SequenceRecord[], options: { includeCoordinates?: boolean; checks?: RecordCheck[] } = {}): string {
+  const checks = new Map(options.checks?.map((c) => [c.record, c]))
+  const columns = [
+    ...COLUMNS,
+    ...(options.checks ? [{ name: 'check_status', get: (r: SequenceRecord) => checks.get(r.version)?.status }, { name: 'check_reasons', get: (r: SequenceRecord) => checks.get(r.version)?.reasons.join(' | ') }] : []),
+    ...(options.includeCoordinates ? [{ name: 'lat_lon', get: (r: SequenceRecord) => r.latLon }] : []),
+  ]
   const rows = [columns.map((c) => c.name).join(',')]
   for (const r of records) rows.push(columns.map((c) => cell(c.get(r))).join(','))
   return `${rows.join('\n')}\n`

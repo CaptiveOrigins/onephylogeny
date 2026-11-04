@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
-import { exists, mkdir, readDir, readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
+import { exists, mkdir, readDir, readTextFile, rename, writeTextFile } from '@tauri-apps/plugin-fs'
 import { fetch as nativeFetch } from '@tauri-apps/plugin-http'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { load } from '@tauri-apps/plugin-store'
@@ -29,7 +29,14 @@ export async function createMacPlatform(): Promise<Platform> {
       write: async (p, text) => {
         const file = full(p)
         await mkdir(file.slice(0, file.lastIndexOf('/')), { recursive: true })
-        await writeTextFile(file, text)
+        const temp = `${file}.tmp`
+        await writeTextFile(temp, text)
+        await rename(temp, file)
+      },
+      append: async (p, text) => {
+        const file = full(p)
+        await mkdir(file.slice(0, file.lastIndexOf('/')), { recursive: true })
+        await writeTextFile(file, text, { append: true })
       },
       exists: (p) => exists(full(p)),
     },

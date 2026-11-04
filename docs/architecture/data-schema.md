@@ -9,10 +9,10 @@ The TypeScript types in [`packages/core/src/model.ts`](../../packages/core/src/m
 | `Profile` | How to run a selection | `selection`, `reference`, `tree` (`model`, `bootstrap`, `shAlrt`, `seed`, `threads`) |
 | `Snapshot` | An immutable download | `sources`, `records`, `rawFiles` (path and hash), `checksum` |
 | `Run` | What actually happened | resolved `profile`, `snapshot`, `tools` (versions and hashes), `seed`, `status`, `events`, `outputs`, `diagnostics` |
-| `Panel` | An immutable reference panel | `version`, `checksum`, `status`, `taxa`, `marker`, `reference`, `groups`, `notCovered`, `validatedScope`, `sources`, `builtBy` |
+| `Panel` | An immutable reference panel | `version`, `checksum`, `status`, `taxa`, `marker`, `reference`, `groups`, `notCovered`, `validatedScope`, `sources`, `builtBy`, `thresholds`, `builtWith` |
 | `PanelGroup` | One group in a panel | `label`, `region` (a generalized name), `windows` with `diagnosticSites`, `evidence` with each record's `use` and `provenanceClass` |
 | `Query` | A sequence to test | `sequence`, `source`, `sha256`, `taxonClaim` |
-| `Result` | One query against one panel version | `panel` (id, version, checksum), `run`, `overlap`, `findings`, `caveats` |
+| `Result` | One query against one panel version | `panel` (id, version, checksum), `run`, `querySha256`, `producedBy`, `overlap`, `findings`, `caveats` |
 | `Diagnostic` | A reported problem | `severity`, `code`, `message`, `path`, `ids` |
 
 ## Semantics

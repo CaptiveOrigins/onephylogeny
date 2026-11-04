@@ -1,5 +1,5 @@
 import { NcbiClient, suggestOutgroups, type OutgroupLadder } from '@captiveorigins/onephylogeny-acquire'
-import { parseFasta, validateProfile, type Curation, type Diagnostic, type EvidenceUse, type Panel, type Profile, type ProvenanceClass, type Result, type RunEvent, type SequenceRecord, type Snapshot } from '@captiveorigins/onephylogeny-core'
+import { parseCuration, parseFasta, parseProfile, validateProfile, type Curation, type Diagnostic, type EvidenceUse, type Panel, type Profile, type ProvenanceClass, type Result, type RunEvent, type SequenceRecord, type Snapshot } from '@captiveorigins/onephylogeny-core'
 import { buildPanelFromRun, buildTree, fetchAndAnchor, loadPanel, profilePaths, testSample, type EngineContext, type RecordOutcome, type TreeOutcome } from '@captiveorigins/onephylogeny-engine'
 import { EventLog, OutgroupLadderView, PanelSummary, ResultView, TreeFigure, ValidationView } from '@captiveorigins/onephylogeny-react'
 import { treeToPhylogeny } from '@captiveorigins/onephylogeny-onetaxonomy'
@@ -85,9 +85,9 @@ export function App({ platform }: { platform: Platform }) {
   }
   const open = (id: string) => attempt('Opening', async () => {
     const paths = profilePaths(id)
-    const p = JSON.parse(await platform.store.read(paths.profile)) as Profile
+    const p = parseProfile(await platform.store.read(paths.profile))
     setProfile(p)
-    setCuration((await platform.store.exists(paths.curation)) ? JSON.parse(await platform.store.read(paths.curation)) : emptyCuration)
+    setCuration((await platform.store.exists(paths.curation)) ? parseCuration(await platform.store.read(paths.curation)) : emptyCuration)
     setSaved(true)
     setTab('setup')
     await loadRun(p)
@@ -331,7 +331,7 @@ function SampleTab({ profile, platform, hasPanel, attempt }: { profile: Profile;
     if (!entries.length) throw new Error('Paste a FASTA sequence, starting with a line such as >my-sample')
     const bundle = await loadPanel(platform.store, P.panel(profile.panel!.id, profile.panel!.version))
     const results = entries.map((e) => {
-      const r = testSample(e.sequence, e.id, bundle, profile.panel!.thresholds)
+      const r = testSample(e.sequence, e.id, bundle)
       return { id: e.id, panel: bundle.panel, result: r.result, diagnostics: r.diagnostics, ...(r.result ? { aligned: r.aligned } : {}) }
     })
     setOut(results)

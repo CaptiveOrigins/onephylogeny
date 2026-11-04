@@ -19,4 +19,6 @@ Every package keeps these rules. A rule without a passing test is pending, and i
 | P13 | **Claims are scoped** to one group and panel version. | `panel.test.ts` (results); windows pending |
 | P14 | **Failures stop a run;** retries can't duplicate records and skips can't pass silently. | Pending (acquire) |
 | P15 | **Stated confidence must be calibrated** before it is shown as a probability. | Pending (validation) |
-| P16 | **Saved results are never rewritten.** A new panel creates new results. | Pending (results) |
+| P16 | **Saved panels are never rewritten.** Changed content needs a new version, and results name the exact version. | `engine.test.ts` (runs and panels stay true) |
+| P17 | **A panel's conclusions can't change after sealing.** Thresholds are sealed into it. | `engine.test.ts`, `panel.test.ts` |
+| P18 | **A failed run never replaces the last good one.** | `engine.test.ts` |

@@ -16,6 +16,7 @@ export type BuildPanelInput = {
   builtBy: string
   members: PanelMember[]
   referenceSequence?: string
+  builtWith?: { name: string; version: string }[]
 }
 
 const LOCATION: readonly ProvenanceClass[] = ['wild-documented', 'museum-documented']
@@ -73,6 +74,8 @@ export function buildPanel(input: BuildPanelInput): PanelBundle {
     validatedScope: settings.validatedScope,
     sources: input.sources,
     builtBy: input.builtBy,
+    thresholds: settings.thresholds,
+    ...(input.builtWith ? { builtWith: input.builtWith } : {}),
   })
   return { panel, sequences: Object.fromEntries(members.map((m) => [m.record, m.aligned])), ...(input.referenceSequence ? { referenceSequence: input.referenceSequence } : {}) }
 }
@@ -93,7 +96,7 @@ function groupSpread(group: PanelGroup, sequences: Record<string, string>, minOv
   return spread
 }
 
-export type EvaluateOptions = { thresholds: EvaluationThresholds; queryId: string; runId: string; caveats?: string[] }
+export type EvaluateOptions = { queryId: string; runId: string; caveats?: string[]; querySha256?: string; producedBy?: { name: string; version: string }[] }
 
 /**
  * Tests one query against every group of a panel. Every group gets a finding with its reason. Statuses come from
@@ -101,7 +104,7 @@ export type EvaluateOptions = { thresholds: EvaluationThresholds; queryId: strin
  */
 export function evaluateQuery(queryAligned: string, bundle: PanelBundle, options: EvaluateOptions): Result {
   const { panel, sequences } = bundle
-  const { minOverlap, tolerance, minDiagnosticConflicts } = options.thresholds
+  const { minOverlap, tolerance, minDiagnosticConflicts } = panel.thresholds
   const span = coverage(queryAligned)
   const findings: Finding[] = panel.groups.map((group) => {
     let overlap = 0
@@ -149,6 +152,8 @@ export function evaluateQuery(queryAligned: string, bundle: PanelBundle, options
   return {
     schemaVersion: 1,
     query: options.queryId,
+    ...(options.querySha256 ? { querySha256: options.querySha256 } : {}),
+    ...(options.producedBy ? { producedBy: options.producedBy } : {}),
     panel: { id: panel.id, version: panel.version, checksum: panel.checksum! },
     run: options.runId,
     overlap: span?.bases ?? 0,
@@ -173,7 +178,6 @@ export type ValidationInput = Omit<BuildPanelInput, 'members'> & { members: (Pan
 
 /** Tests each block of records against a panel rebuilt without it, so a record never meets its own site. */
 export function leaveOneBlockOut(input: ValidationInput): ValidationReport {
-  const thresholds = input.settings.thresholds
   const blocks = new Map<string, ValidationInput['members']>()
   for (const m of input.members) {
     const key = m.block ?? `record:${m.record}`
@@ -194,7 +198,7 @@ export function leaveOneBlockOut(input: ValidationInput): ValidationReport {
     const bundle = buildPanel({ ...input, members: rest })
     for (const m of held) {
       if (!rest.some((r) => r.group === m.group)) { skipped++; continue }
-      const result = evaluateQuery(m.aligned, bundle, { thresholds, queryId: m.record, runId: 'validation' })
+      const result = evaluateQuery(m.aligned, bundle, { queryId: m.record, runId: 'validation' })
       const s = score(m.group)
       tested++
       s.tested++
@@ -215,7 +219,6 @@ export function leaveOneBlockOut(input: ValidationInput): ValidationReport {
 
 /** Removes each whole group and tests its members. Success means no remaining group claims them. */
 export function leaveOneGroupOut(input: ValidationInput): ValidationReport {
-  const thresholds = input.settings.thresholds
   let tested = 0
   let falseConsistent = 0
   const groups: GroupScore[] = []
@@ -225,7 +228,7 @@ export function leaveOneGroupOut(input: ValidationInput): ValidationReport {
     const bundle = buildPanel({ ...input, settings, members: input.members.filter((m) => m.group !== g.id) })
     const s: GroupScore = { group: g.id, tested: 0, includedTruth: 0, onlyTruth: 0, excludedTruth: 0, notEvaluable: 0, meanConsistent: 0 }
     for (const m of held) {
-      const result = evaluateQuery(m.aligned, bundle, { thresholds, queryId: m.record, runId: 'validation' })
+      const result = evaluateQuery(m.aligned, bundle, { queryId: m.record, runId: 'validation' })
       const consistent = result.findings.filter((f) => f.status === 'consistent').length
       tested++
       s.tested++

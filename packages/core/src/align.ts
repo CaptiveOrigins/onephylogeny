@@ -17,6 +17,9 @@ export type Alignment = {
   seedHits: number
 }
 
+/** Identifies this aligner in run records. Bump the version when its results can change. */
+export const ALIGNER = { name: 'alignToReference', version: '1' } as const
+
 export type AlignOptions = { k?: number; band?: number; match?: number; mismatch?: number; gapOpen?: number; gapExtend?: number; minSeedHits?: number }
 
 const CODE: Record<string, number> = { A: 0, C: 1, G: 2, T: 3, U: 3 }

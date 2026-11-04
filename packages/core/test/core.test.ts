@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import {
-  collapseHaplotypes, compareAligned, compatibility, coverage, extractLocation, findGeneFeatures, internalStops,
+  parseCuration, parseProfile, collapseHaplotypes, compareAligned, compatibility, coverage, extractLocation, findGeneFeatures, internalStops,
   parseFasta, parseGenBank, reverseComplement, toRecordSheet, toSequenceRecord, validateProfile, writeFasta, type Profile, type SequenceRecord,
 } from '../src/index.js'
 
@@ -160,5 +160,15 @@ describe('species agnostic', () => {
     const dir = new URL('../src/', import.meta.url)
     const text = readdirSync(dir).map((f) => readFileSync(new URL(f, dir), 'utf8')).join('\n')
     expect(text).not.toMatch(/chelonoidis|carbonari|denticulat|testudin|tortoise|redfoot|colombia|cytb|cytochrome/i)
+  })
+})
+
+describe('loading saved files', () => {
+  it('explains a damaged or newer file instead of failing later', () => {
+    expect(() => parseProfile('{oops')).toThrow(/not valid JSON/)
+    expect(() => parseProfile(JSON.stringify({ schemaVersion: 2 }))).toThrow(/Update OnePhylogeny/)
+    expect(() => parseProfile(JSON.stringify({ schemaVersion: 1, id: 'x' }))).toThrow(/missing required/)
+    expect(() => parseCuration('[]')).toThrow(/damaged/)
+    expect(parseCuration(JSON.stringify({ schemaVersion: 1, records: {} })).records).toEqual({})
   })
 })
