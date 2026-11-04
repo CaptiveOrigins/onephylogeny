@@ -1,7 +1,7 @@
 {
   "name": "onephylogeny-desktop",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "OnePhylogeny for Mac: fetch sequence records by species, curate them, build reference panels and test samples.",
   "license": "PolyForm-Noncommercial-1.0.0",
