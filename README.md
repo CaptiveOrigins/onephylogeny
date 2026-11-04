@@ -1,6 +1,6 @@
 # OnePhylogeny
 
-An open-source, species-agnostic framework for acquiring sequence evidence, building reference panels and testing samples against them, with provenance and honest uncertainty. For developers, labs, researchers and keepers.
+A source-available, species-agnostic framework for acquiring sequence evidence, building reference panels and testing samples against them, with provenance and honest uncertainty. For developers, labs, researchers and keepers.
 
 > **Status: early (Phase 1, milestone 1).** Only `@captiveorigins/onephylogeny-core` exists so far. Everything else below is planned; see [the phase plan](docs/architecture/phase-plan.md).
 
@@ -48,4 +48,4 @@ pnpm build && pnpm typecheck && pnpm test
 
 ## License
 
-Apache-2.0 for the software, which requires keeping the copyright, license and [NOTICE](NOTICE) in redistributions. Data you import keeps its own license. This software is research tooling and is not forensically validated.
+[PolyForm Noncommercial 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0) for the software: free for noncommercial use, with attribution; commercial use needs a separate license from Captive Origins. Data you import keeps its own license. This software is research tooling and is not forensically validated.

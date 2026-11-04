@@ -5,7 +5,7 @@
   "keywords": ["phylogenetics", "haplotype", "genbank", "fasta", "mitochondrial-dna"],
   "homepage": "https://github.com/mgilardi/onephylogeny#readme",
   "bugs": { "url": "https://github.com/mgilardi/onephylogeny/issues" },
-  "license": "Apache-2.0",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "repository": { "type": "git", "url": "git+https://github.com/mgilardi/onephylogeny.git", "directory": "packages/core" },
   "type": "module",
   "sideEffects": false,
