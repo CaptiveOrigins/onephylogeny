@@ -47,7 +47,7 @@ export type Selection = {
   title: string
   /** Ingroup taxa as source-qualified ids, for example from NCBI Taxonomy or OneTaxonomy. */
   taxa: ExternalId[]
-  marker: { kind: 'gene' | 'mitogenome' | 'snp'; gene?: string; synonyms?: string[] }
+  marker: { kind: 'gene' | 'mitogenome' | 'snp'; gene?: string; synonyms?: string[]; products?: string[]; organelle?: 'mitochondrion' | 'plastid' }
   outgroups: { accession?: string; taxon?: ExternalId; rationale?: string }[]
   exclude: { accession: string; reason: string }[]
   filters: { minLength?: number; maxLength?: number; maxAmbiguous?: number; provenanceClasses?: ProvenanceClass[] }
@@ -61,6 +61,42 @@ export type Profile = {
   selection: Selection
   reference?: { accession: string; codonStart?: number; geneticCode?: GeneticCode }
   tree?: { model: string; bootstrap: number; shAlrt: number; seed: number; threads: number }
+  panel?: PanelSettings
+}
+
+/** How to build and read a panel. Groups and thresholds are always configuration, never code. */
+export type PanelSettings = {
+  id: Id
+  version: string
+  groups: { id: Id; label: string; region?: string }[]
+  notCovered: string[]
+  validatedScope: string[]
+  thresholds: EvaluationThresholds
+}
+
+export type EvaluationThresholds = {
+  /** Fewer shared sites than this means not evaluable. */
+  minOverlap: number
+  /** Differences allowed beyond a group's own spread. */
+  tolerance: number
+  /** Conflicts at a group's fixed sites needed before excluding it. */
+  minDiagnosticConflicts: number
+}
+
+/** Human decisions about records, kept apart from what sources say. Every decision can carry a note. */
+export type Curation = {
+  schemaVersion: 1
+  records: Record<string, RecordDecision>
+}
+
+export type RecordDecision = {
+  group?: Id
+  provenanceClass?: ProvenanceClass
+  use?: EvidenceUse
+  /** Sampling site or block, used so validation never tests a record against its own site. */
+  site?: string
+  exclude?: boolean
+  note?: string
 }
 
 export type GeneticCode = 1 | 2
@@ -153,6 +189,8 @@ export type Finding = {
   /** Sites this group could be compared on. */
   overlap: number
   differences?: number
+  /** Differences per shared site with the nearest record. Compare this, not raw counts, across groups with different coverage. */
+  distance?: number
   evidence: Id[]
 }
 

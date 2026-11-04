@@ -1,0 +1,48 @@
+{
+  "name": "@captiveorigins/onephylogeny-engine",
+  "version": "0.1.0-alpha.0",
+  "description": "OnePhylogeny engine: runs profiles end to end with immutable run records and structured logs: fetch, anchor, gate, build panels, validate, test samples and build trees through replaceable ports.",
+  "keywords": [
+    "phylogenetics",
+    "reference-panel",
+    "genbank"
+  ],
+  "homepage": "https://github.com/mgilardi/onephylogeny#readme",
+  "bugs": {
+    "url": "https://github.com/mgilardi/onephylogeny/issues"
+  },
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mgilardi/onephylogeny.git",
+    "directory": "packages/engine"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean --target es2022",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "prepack": "pnpm run build"
+  },
+  "dependencies": {
+    "@captiveorigins/onephylogeny-core": "workspace:^",
+    "@captiveorigins/onephylogeny-acquire": "workspace:^"
+  }
+}

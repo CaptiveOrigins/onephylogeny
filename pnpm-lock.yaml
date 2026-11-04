@@ -21,7 +21,38 @@ importers:
         specifier: ^3.2.0
         version: 3.2.7(@types/node@24.19.2)
 
+  packages/acquire:
+    dependencies:
+      '@captiveorigins/onephylogeny-core':
+        specifier: workspace:^
+        version: link:../core
+
+  packages/cli:
+    dependencies:
+      '@captiveorigins/onephylogeny-acquire':
+        specifier: workspace:^
+        version: link:../acquire
+      '@captiveorigins/onephylogeny-core':
+        specifier: workspace:^
+        version: link:../core
+      '@captiveorigins/onephylogeny-engine':
+        specifier: workspace:^
+        version: link:../engine
+    devDependencies:
+      '@types/node':
+        specifier: ^24.19.2
+        version: 24.19.2
+
   packages/core: {}
+
+  packages/engine:
+    dependencies:
+      '@captiveorigins/onephylogeny-acquire':
+        specifier: workspace:^
+        version: link:../acquire
+      '@captiveorigins/onephylogeny-core':
+        specifier: workspace:^
+        version: link:../core
 
 packages:
 

@@ -27,7 +27,7 @@ Every run writes an immutable record: resolved profile, accessions and hashes, t
 
 ## Running native tools
 
-Aligners and tree builders run as separate programs behind a `ToolRunner` port, with implementations for the CLI (Node) and the Mac app (Tauri sidecars). Whether WebAssembly can replace any of them is still being researched. Hosted environments such as Vercel can't run these tools, so hosted sites show results computed elsewhere, and may do pure-TypeScript lookups in process.
+Anchoring is pure TypeScript (`alignToReference`), so fetching, gates, panels and sample tests need no native programs and can run in the Mac app, the CLI or a hosted site. On 202 real records it differed from `mafft --addfragments --keeplength` in 23 of about 150,000 columns. Only tree building needs a native program (IQ-TREE), behind a `ToolRunner` port.
 
 ## The three tools together
 

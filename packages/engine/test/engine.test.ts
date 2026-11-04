@@ -1,0 +1,117 @@
+import { describe, expect, it } from 'vitest'
+import type { Curation, Profile } from '@captiveorigins/onephylogeny-core'
+import { buildPanelFromRun, fetchAndAnchor, loadPanel, profilePaths, testSample, type EngineContext, type Store } from '../src/index.js'
+
+function randomSeq(n: number, seed: number): string {
+  let a = seed >>> 0
+  let out = ''
+  for (let i = 0; i < n; i++) {
+    a = (a + 0x6d2b79f5) >>> 0
+    let t = a
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    out += 'ACGT'[((t ^ (t >>> 14)) >>> 0) % 4]
+  }
+  return out
+}
+const REF = randomSeq(600, 1)
+const mutate = (at: number[], from = 0, to = 600) => [...REF].map((c, i) => (at.includes(i) ? (c === 'A' ? 'C' : 'A') : c)).join('').slice(from, to)
+const gb = (acc: string, seq: string, def = 'gene x') => `LOCUS       ${acc}  ${seq.length} bp DNA\nDEFINITION  ${def}\nACCESSION   ${acc}\nVERSION     ${acc}.1\nFEATURES             Location/Qualifiers\n     source          1..${seq.length}\n                     /organism="Example taxon"\n                     /db_xref="taxon:1"\nORIGIN\n        1 ${seq.toLowerCase()}\n//\n`
+const DB: Record<string, string> = {
+  'R1.1': gb('R1', REF), 'A1.1': gb('A1', mutate([10, 200, 450])), 'A2.1': gb('A2', mutate([10, 200, 450, 300])),
+  'B1.1': gb('B1', mutate([20, 210, 460])), 'B2.1': gb('B2', mutate([20, 210, 460, 310])),
+  'W1.1': gb('W1', randomSeq(500, 99)), 'U1.1': gb('U1', mutate([50]), 'UNVERIFIED: gene x'),
+}
+
+function memory(): Store & { files: Map<string, string> } {
+  const files = new Map<string, string>()
+  return { files, read: async (p) => { const v = files.get(p); if (v === undefined) throw new Error(`no file ${p}`); return v }, write: async (p, t) => void files.set(p, t), exists: async (p) => files.has(p) }
+}
+const profile: Profile = {
+  schemaVersion: 1, id: 'demo', title: 'Demo',
+  selection: { id: 's', title: 'S', taxa: [{ source: 'ncbi-taxonomy', id: '1' }], marker: { kind: 'gene', gene: 'x' }, outgroups: [], exclude: [{ accession: 'B2.1', reason: 'Chimera in the source paper' }], filters: { minLength: 100 } },
+  reference: { accession: 'R1.1' },
+  panel: { id: 'p', version: '1', groups: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], notCovered: ['Elsewhere'], validatedScope: [], thresholds: { minOverlap: 50, tolerance: 1, minDiagnosticConflicts: 2 } },
+}
+
+function makeContext(failFetch: () => boolean = () => false): EngineContext & { store: ReturnType<typeof memory>; requested: string[] } {
+  const store = memory()
+  const requested: string[] = []
+  let tick = 0
+  return {
+    store, requested, now: () => new Date(Date.UTC(2026, 0, 1, 0, 0, tick++)),
+    ncbi: {
+      sleep: async () => {}, delayMs: 0, retries: 0,
+      fetch: async (url, init) => {
+        const p = new URLSearchParams(init!.body)
+        if (url.includes('esearch')) return { ok: true, status: 200, text: async () => JSON.stringify({ esearchresult: { count: '6', idlist: Object.keys(DB).filter((k) => k !== 'R1.1') } }) }
+        if (failFetch()) return { ok: false, status: 500, text: async () => '' }
+        const ids = p.get('id')!.split(',')
+        requested.push(...ids)
+        return { ok: true, status: 200, text: async () => ids.map((i) => DB[i]!).join('') }
+      },
+    },
+  }
+}
+
+describe('fetchAndAnchor', () => {
+  it('keeps a complete record of what happened', async () => {
+    const ctx = makeContext()
+    const { run, outcomes } = await fetchAndAnchor(ctx, profile)
+    expect(run.status).toBe('succeeded')
+    const by = Object.fromEntries(outcomes.map((o) => [o.record, o]))
+    expect(by['A1.1']!.status).toBe('passed')
+    expect(by['W1.1']!.diagnostics.map((d) => d.code)).toContain('no-reference-match')
+    expect(by['U1.1']!.diagnostics.map((d) => d.code)).toContain('unverified')
+    expect(by['B2.1']!.diagnostics.find((d) => d.code === 'excluded-by-profile')!.message).toMatch(/Chimera/)
+    const dir = profilePaths('demo').run(run.id)
+    for (const f of ['run.json', 'snapshot.json', 'records.csv', 'outcomes.json', 'aligned.fasta', 'events.jsonl']) expect(ctx.store.files.has(`${dir}/${f}`), f).toBe(true)
+    expect(ctx.store.files.get(`${dir}/records.csv`)!.split('\n')[0]).toContain('accession')
+  })
+  it('stops and records a failure, then resumes from its cache without re-downloading', async () => {
+    let calls = 0
+    const ctx = makeContext(() => ++calls === 2)
+    await expect(fetchAndAnchor(ctx, profile, { batchSize: 3 })).rejects.toThrow(/efetch/)
+    const failed = [...ctx.store.files.keys()].find((k) => k.endsWith('run.json'))!
+    expect(JSON.parse(ctx.store.files.get(failed)!).status).toBe('failed')
+    const before = ctx.requested.length
+    const { run, records } = await fetchAndAnchor(ctx, profile, { batchSize: 3 })
+    expect(run.status).toBe('succeeded')
+    expect(records).toHaveLength(7)
+    expect(new Set(ctx.requested).size).toBe(ctx.requested.length)
+    expect(ctx.requested.length).toBeGreaterThan(before)
+  })
+})
+
+describe('panel and sample', () => {
+  const curation: Curation = { schemaVersion: 1, records: {
+    'A1.1': { group: 'a', provenanceClass: 'wild-documented', site: 's1' }, 'A2.1': { group: 'a', provenanceClass: 'wild-documented', site: 's2' },
+    'B1.1': { group: 'b', provenanceClass: 'seized', site: 's3' },
+  } }
+  it('runs end to end, from fetch to a sample result', async () => {
+    const ctx = makeContext()
+    await fetchAndAnchor(ctx, profile)
+    const out = await buildPanelFromRun(ctx, profile, curation)
+    expect(out.diagnostics.filter((d) => d.severity === 'error')).toEqual([])
+    expect(out.unassigned).toBe(1)
+    const bundle = await loadPanel(ctx.store, profilePaths('demo').panel('p', '1'))
+    expect(bundle.panel.checksum).toBe(out.bundle.panel.checksum)
+    const sample = testSample(mutate([10, 200, 450], 0, 500), 'sample-1', bundle, profile.panel!.thresholds)
+    expect(sample.result?.findings.find((f) => f.group === 'a')?.status).toBe('consistent')
+    expect(sample.result?.findings.find((f) => f.group === 'b')?.status).toBe('excluded_within_panel')
+  })
+  it('refuses a sample of a different gene with a reason', async () => {
+    const ctx = makeContext()
+    await fetchAndAnchor(ctx, profile)
+    const { bundle } = await buildPanelFromRun(ctx, profile, curation)
+    const r = testSample(randomSeq(400, 1234), 'wrong', bundle, profile.panel!.thresholds)
+    expect(r.result).toBeNull()
+    expect(r.diagnostics[0]!.code).toBe('no-reference-match')
+  })
+  it('reports a group the curation names but the panel lacks', async () => {
+    const ctx = makeContext()
+    await fetchAndAnchor(ctx, profile)
+    const out = await buildPanelFromRun(ctx, profile, { schemaVersion: 1, records: { 'A1.1': { group: 'nope' } } })
+    expect(out.diagnostics.map((d) => d.code)).toContain('unknown-group')
+  })
+})

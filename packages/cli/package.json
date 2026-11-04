@@ -1,0 +1,51 @@
+{
+  "name": "@captiveorigins/onephylogeny-cli",
+  "version": "0.1.0-alpha.0",
+  "description": "OnePhylogeny command line: run profiles, build panels, test samples and suggest outgroups.",
+  "keywords": [
+    "phylogenetics",
+    "reference-panel",
+    "genbank"
+  ],
+  "homepage": "https://github.com/mgilardi/onephylogeny#readme",
+  "bugs": {
+    "url": "https://github.com/mgilardi/onephylogeny/issues"
+  },
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mgilardi/onephylogeny.git",
+    "directory": "packages/cli"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --clean --target es2022",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "prepack": "pnpm run build"
+  },
+  "dependencies": {
+    "@captiveorigins/onephylogeny-core": "workspace:^",
+    "@captiveorigins/onephylogeny-acquire": "workspace:^",
+    "@captiveorigins/onephylogeny-engine": "workspace:^"
+  },
+  "bin": {
+    "onephylogeny": "./dist/index.js"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2"
+  }
+}
