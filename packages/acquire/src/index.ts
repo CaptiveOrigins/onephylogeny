@@ -93,6 +93,15 @@ export class NcbiClient {
     return ids.map((id) => r.result?.[id]).filter(Boolean).map((s: any) => ({ accession: s.accessionversion, organism: s.organism, length: Number(s.slen), title: s.title, taxid: s.taxid ? String(s.taxid) : undefined }))
   }
 
+  /** Finds a taxon by scientific name. More than one result is returned for a person to choose from. */
+  async findTaxon(name: string): Promise<{ id: string; scientificName: string }[]> {
+    const r = await this.json('esearch.fcgi', { db: 'taxonomy', term: `${quote(name)}[Scientific Name]`, retmax: '5' })
+    const ids: string[] = r.esearchresult?.idlist ?? []
+    const out: { id: string; scientificName: string }[] = []
+    for (const id of ids) out.push({ id, scientificName: (await this.lineage(id)).scientificName })
+    return out
+  }
+
   /** A taxon's ancestors, nearest first. */
   async lineage(taxid: string): Promise<{ scientificName: string; ancestors: TaxonStep[] }> {
     const xml = await this.request('efetch.fcgi', { db: 'taxonomy', id: taxid, retmode: 'xml' })

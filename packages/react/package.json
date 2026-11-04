@@ -1,0 +1,26 @@
+{
+  "name": "@captiveorigins/onephylogeny-react",
+  "version": "0.1.0-alpha.0",
+  "description": "OnePhylogeny for React: server-renderable views of sample results, panel coverage, validation, run logs, outgroup suggestions and a compact lineage card.",
+  "keywords": ["phylogenetics", "react", "reference-panel"],
+  "homepage": "https://github.com/mgilardi/onephylogeny#readme",
+  "bugs": { "url": "https://github.com/mgilardi/onephylogeny/issues" },
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "repository": { "type": "git", "url": "git+https://github.com/mgilardi/onephylogeny.git", "directory": "packages/react" },
+  "type": "module",
+  "sideEffects": ["*.css"],
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }, "./styles.css": "./src/styles.css" },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist", "src/styles.css", "README.md", "LICENSE"],
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build": "tsup src/index.tsx --format esm --dts --clean --target es2022 --external react",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prepack": "pnpm run build"
+  },
+  "dependencies": { "@captiveorigins/onephylogeny-core": "workspace:^" },
+  "peerDependencies": { "react": "^19" },
+  "devDependencies": { "@types/react": "^19", "@types/react-dom": "^19", "react": "^19", "react-dom": "^19" }
+}

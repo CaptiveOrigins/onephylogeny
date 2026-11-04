@@ -1,0 +1,33 @@
+.ophy-muted { color: var(--ophy-muted, #5b6577); font-size: 0.92em; }
+.ophy-warning { color: var(--ophy-warning, #8a5a14); }
+.ophy-table { border-collapse: collapse; width: 100%; font-size: 13px; margin: 8px 0; }
+.ophy-table th, .ophy-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--ophy-border, #eaddd6); vertical-align: top; font-weight: 400; }
+.ophy-table thead th { font-weight: 600; color: var(--ophy-muted, #5b6577); }
+.ophy-table tbody th { font-weight: 600; }
+.ophy-status { display: inline-block; white-space: nowrap; padding: 1px 8px; border-radius: 999px; border: 1px solid currentColor; font-size: 12px; }
+.ophy-status-consistent { color: var(--ophy-good, #1d6b47); }
+.ophy-status-excluded_within_panel { color: var(--ophy-muted, #5b6577); }
+.ophy-status-not_evaluable { color: var(--ophy-muted, #5b6577); border-style: dashed; }
+.ophy-status-inconclusive { color: var(--ophy-warning, #8a5a14); }
+.ophy-status-novel_or_unsampled_flag { color: var(--ophy-flag, #a23a3d); }
+.ophy-coverage { width: 100%; max-width: 760px; display: block; margin: 8px 0; }
+.ophy-coverage-label { font-size: 12px; fill: currentColor; }
+.ophy-coverage-axis { font-size: 10px; fill: var(--ophy-muted, #5b6577); }
+.ophy-coverage-track { fill: var(--ophy-border, #eaddd6); opacity: 0.5; }
+.ophy-coverage-group { fill: var(--ophy-ink, #91645d); }
+.ophy-coverage-query { fill: var(--ophy-accent, #cf8137); }
+.ophy-caveats { margin: 4px 0; padding-inline-start: 18px; font-size: 13px; }
+.ophy-card { border: 1px solid var(--ophy-border, #eaddd6); border-radius: 10px; padding: 12px 14px; max-width: 440px; }
+.ophy-card-title { font-size: 12px; color: var(--ophy-muted, #5b6577); }
+.ophy-card-value { font-size: 17px; font-weight: 600; margin: 2px 0 6px; }
+.ophy-log { list-style: none; margin: 0; padding: 8px; font: 12px/1.5 ui-monospace, Menlo, monospace; max-height: 260px; overflow: auto; border: 1px solid var(--ophy-border, #eaddd6); border-radius: 8px; }
+.ophy-log time, .ophy-log-step { color: var(--ophy-muted, #5b6577); }
+.ophy-log-warning { color: var(--ophy-warning, #8a5a14); }
+.ophy-log-error { color: var(--ophy-flag, #a23a3d); font-weight: 600; }
+.ophy-tree { width: 100%; display: block; color: inherit; }
+.ophy-tree-edge { fill: none; stroke: var(--ophy-ink, #91645d); stroke-width: 1.2; }
+.ophy-tree-tip { font-size: 11px; fill: currentColor; }
+.ophy-tree-support { font-size: 8.5px; fill: var(--ophy-muted, #5b6577); }
+.ophy-tree-supported { fill: var(--ophy-good, #1d6b47); font-weight: 700; }
+.ophy-ladder { padding-inline-start: 20px; margin: 6px 0; }
+.ophy-ladder-suggested { font-weight: 600; }

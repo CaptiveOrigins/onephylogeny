@@ -1,0 +1,69 @@
+/* OnePhylogeny for Mac: follows the system's light or dark setting. Shares the family's backbone (brand/README.md). */
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff; --panel: #fbf7f4; --text: #1d2330; --muted: #5b6577; --border: #eaddd6; --field: #ffffff; --accent: #cf8137;
+  --ophy-muted: #5b6577; --ophy-border: #eaddd6; --ophy-ink: #91645d; --ophy-accent: #cf8137; --ophy-good: #1d6b47; --ophy-warning: #8a5a14; --ophy-flag: #a23a3d;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12151b; --panel: #181c24; --text: #e8ecf2; --muted: #a3acbb; --border: #2c3340; --field: #12151b; --accent: #e7a066;
+    --ophy-muted: #a3acbb; --ophy-border: #2c3340; --ophy-ink: #c79a92; --ophy-accent: #e7a066; --ophy-good: #62c196; --ophy-warning: #dfb269; --ophy-flag: #eda9ac;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+button, select, input, textarea { font: inherit; color: var(--text); background: var(--field); border: 1px solid var(--border); border-radius: 8px; padding: 5px 10px; min-height: 32px; }
+textarea { width: 100%; font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+input, select { width: 100%; }
+button { cursor: pointer; width: auto; }
+button:disabled { opacity: 0.5; cursor: default; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+button.link { border: 0; background: none; padding: 0; min-height: 0; text-align: left; text-decoration: underline; text-underline-offset: 2px; font-weight: 600; }
+.app { display: grid; grid-template-columns: 240px 1fr; height: 100vh; }
+.side { background: var(--panel); border-inline-end: 1px solid var(--border); padding: 14px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+.side h1 { font-size: 17px; margin: 0; }
+.side nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.side nav button { text-align: left; background: none; border-color: transparent; overflow: hidden; text-overflow: ellipsis; }
+.side nav button.selected { border-color: var(--accent); }
+.side-foot { display: flex; flex-direction: column; gap: 6px; margin-top: auto; }
+.side-foot small { overflow-wrap: anywhere; color: var(--muted); }
+main { overflow-y: auto; min-width: 0; }
+.empty { padding: 48px; }
+.top { position: sticky; top: 0; z-index: 2; background: var(--bg); border-bottom: 1px solid var(--border); padding: 12px 20px 0; }
+.top h2 { margin: 0 0 8px; font-size: 18px; }
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.tabs button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; }
+.tabs button.selected { border-bottom-color: var(--accent); font-weight: 600; }
+.busy { position: absolute; right: 20px; top: 14px; color: var(--muted); }
+.pane { padding: 16px 20px 48px; max-width: 1100px; }
+.pane h3 { margin: 22px 0 6px; font-size: 15px; }
+.muted { color: var(--muted); font-size: 13px; }
+.error { color: var(--ophy-flag); padding: 8px 20px; margin: 0; }
+.pane .error { padding: 0; }
+.field { display: flex; flex-direction: column; gap: 3px; font-size: 13px; flex: 1; min-width: 150px; }
+.field > span { font-weight: 600; }
+.field small { color: var(--muted); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+.row { display: flex; gap: 8px; align-items: flex-end; max-width: 620px; }
+.actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
+.actions .field { flex: 0 0 220px; }
+.chips { list-style: none; padding: 0; display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+.chips li { border: 1px solid var(--border); border-radius: 999px; padding: 2px 4px 2px 10px; font-size: 13px; display: flex; align-items: center; gap: 4px; }
+.chips button { border: 0; background: none; min-height: 0; padding: 0 6px; }
+.plain { list-style: none; padding: 0; margin: 6px 0; display: flex; flex-direction: column; gap: 4px; }
+.diagnostics { padding-inline-start: 18px; font-size: 13px; }
+.diag-error { color: var(--ophy-flag); }
+.diag-warning { color: var(--ophy-warning); }
+.scroll { overflow-x: auto; }
+.pane:has(.records) { max-width: none; }
+.records select { min-width: 165px; }
+.records input { min-width: 110px; }
+.records select, .records input { min-height: 28px; padding: 2px 6px; }
+.records td { white-space: nowrap; }
+.records td.use { white-space: normal; min-width: 190px; }
+.records td.use .muted { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.leave { display: flex; gap: 4px; align-items: center; }
+.new-profile .actions { margin: 6px 0 0; }
+.dim { opacity: 0.55; }
+.sample { border-top: 1px solid var(--border); margin-top: 18px; }
