@@ -1,0 +1,52 @@
+{
+  "name": "@captiveorigins/onephylogeny-onepedigree",
+  "version": "0.1.0-alpha.0",
+  "description": "Optional bridge from OnePhylogeny to OnePedigree: checks sequence results against recorded maternal lines and reports conflicts for review, without correcting either side.",
+  "keywords": [
+    "phylogenetics",
+    "reference-panel"
+  ],
+  "homepage": "https://github.com/mgilardi/onephylogeny#readme",
+  "bugs": {
+    "url": "https://github.com/mgilardi/onephylogeny/issues"
+  },
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mgilardi/onephylogeny.git",
+    "directory": "packages/onepedigree"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean --target es2022",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prepack": "pnpm run build"
+  },
+  "dependencies": {
+    "@captiveorigins/onephylogeny-core": "workspace:^"
+  },
+  "peerDependencies": {
+    "@captiveorigins/onepedigree-core": "^0.1.0-alpha.11"
+  },
+  "devDependencies": {
+    "@captiveorigins/onepedigree-core": "^0.1.0-alpha.11"
+  }
+}

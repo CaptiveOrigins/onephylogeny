@@ -2,7 +2,7 @@
 
 A source-available, species-agnostic framework for acquiring sequence evidence, building reference panels and testing samples against them, with provenance and honest uncertainty. For developers, labs, researchers and keepers.
 
-> **Status: early (Phase 1, milestone 1).** Only `@captiveorigins/onephylogeny-core` exists so far. Everything else below is planned; see [the phase plan](docs/architecture/phase-plan.md).
+> **Status: early alpha.** The core science, NCBI acquisition, engine, CLI, React views, bridges, Payload plugin and Mac app work and are tested. Nothing is on npm yet, the Mac app isn't notarized, and results aren't forensically validated. See [the phase plan](docs/architecture/phase-plan.md) and [limitations](docs/architecture/limitations.md).
 
 OnePhylogeny is one of three tools from one maker. Each runs on its own:
 
@@ -24,21 +24,39 @@ The full rules are in [scientific invariants](docs/architecture/scientific-invar
 
 ## Packages
 
-| Package | What it does | Status |
-| --- | --- | --- |
-| [`@captiveorigins/onephylogeny-core`](packages/core) | Records, GenBank and FASTA parsing, reference coordinates, coverage-aware comparison, haplotypes, frame checks, profiles, record sheets. No dependencies | Started |
-| `@captiveorigins/onephylogeny-acquire` | Source adapters, snapshots, provenance enrichment, outgroup suggestions | Planned |
-| `@captiveorigins/onephylogeny-engine` | Runs from profiles, step runner, tool adapters, logging | Planned |
-| `@captiveorigins/onephylogeny-react` | Comparison, panel and map views | Planned |
-| `@captiveorigins/onephylogeny-onetaxonomy`, `-onepedigree` | Optional bridges to the sister tools | Planned |
-| `@captiveorigins/payload-plugin-onephylogeny` | Payload plugin | Planned |
-| `apps/desktop` | Mac app (Tauri 2) | Planned |
+| Package | What it does |
+| --- | --- |
+| [`onephylogeny-core`](packages/core) | Records, GenBank and FASTA parsing, pure TypeScript reference anchoring, gates, haplotypes, panels, sample evaluation, hold-out validation. No dependencies |
+| [`onephylogeny-acquire`](packages/acquire) | NCBI searches and downloads with safe retries; outgroup suggestions outward through the taxonomy |
+| [`onephylogeny-engine`](packages/engine) | Runs from profiles: fetch, anchor, gate, build panels, test samples, build trees, with immutable records and logs |
+| [`onephylogeny-cli`](packages/cli) | The `onephylogeny` command |
+| [`onephylogeny-react`](packages/react) | Sample results and reasons, coverage, validation, logs, trees and a compact lineage card |
+| [`onephylogeny-onetaxonomy`](packages/onetaxonomy) | Optional: exports trees as OneTaxonomy phylogenies |
+| [`onephylogeny-onepedigree`](packages/onepedigree) | Optional: checks results against OnePedigree maternal lines |
+| [`payload-plugin-onephylogeny`](packages/payload) | Payload: immutable panels and reviewed, released results |
+| [`apps/desktop`](apps/desktop) | OnePhylogeny for Mac (Tauri 2) |
+
+All published under `@captiveorigins/`.
+
+## How it runs
+
+```bash
+onephylogeny outgroups --workspace DIR --profile ID   # suggest outgroups outward from the ingroup
+onephylogeny fetch     --workspace DIR --profile ID   # download, anchor, gate; write the sheet and log
+onephylogeny panel     --workspace DIR --profile ID   # build and validate a panel
+onephylogeny test      --workspace DIR --profile ID --fasta sample.fasta
+onephylogeny tree      --workspace DIR --profile ID   # needs IQ-TREE
+```
+
+A profile is plain JSON and holds every choice: taxa, marker, reference, filters, outgroups, groups and thresholds.
 
 ## Develop
 
 ```bash
 pnpm install
 pnpm build && pnpm typecheck && pnpm test
+pnpm --filter onephylogeny-desktop app:dev   # the Mac app
+pnpm --filter onephylogeny-desktop dev       # browser preview with made-up data
 ```
 
 ## Documentation

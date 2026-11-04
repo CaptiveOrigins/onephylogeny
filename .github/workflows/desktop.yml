@@ -1,0 +1,39 @@
+# OnePhylogeny for Mac: on a desktop-v* tag, build a universal app and publish a GitHub release.
+# Apple notarization (APPLE_* secrets) and signed updates can be added later; until then macOS asks
+# people to confirm the first launch (right-click > Open). IQ-TREE is optional and not bundled.
+name: Desktop app
+
+on:
+  push:
+    tags: ['desktop-v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r --filter '!onephylogeny-desktop' build
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: apps/desktop
+          tagName: ${{ github.ref_name }}
+          releaseName: 'OnePhylogeny for Mac ${{ github.ref_name }}'
+          releaseBody: 'Download the .dmg below. macOS asks you to confirm the first launch: right-click the app, then choose Open.'
+          releaseDraft: false
+          prerelease: true
+          args: --target universal-apple-darwin
