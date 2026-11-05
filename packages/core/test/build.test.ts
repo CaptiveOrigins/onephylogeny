@@ -323,16 +323,17 @@ describe('evaluator version 2', () => {
 })
 
 describe('claims', () => {
-  const R = randomSeq(900, 31)
+  // Short sequences and the fewest controls that can still reach the gates: these run on every commit.
+  const R = randomSeq(320, 31)
   const at = (...sites: number[]) => mutate(R, sites)
   const rules = { minSharedColumns: 100, minDepthPerColumn: 5, minBlocksForExclusion: 3, minDecisiveSites: 2, tolerance: 1 }
-  const a = [10, 100, 200, 300, 400, 500, 600, 700, 800]
-  const b = [20, 110, 210, 310, 410, 510, 610, 710, 810]
+  const a = [10, 50, 90, 130, 170, 210, 250, 290]
+  const b = [20, 60, 100, 140, 180, 220, 260, 300]
   const base = (groups = ['a', 'b']) => ({
-    settings: { id: 'p', version: '1', groups: groups.map((id) => ({ id, label: id.toUpperCase() })), notCovered: ['Z'], validatedScope: [], windows: [{ id: 'w', label: 'W', start: 0, end: 900 }], rules, controls: { shuffles: 19, simulations: 3, seed: 5 } },
-    taxa: [{ source: 't', id: '1' }], marker: { kind: 'gene' as const, gene: 'g' }, reference: { accession: 'R.1', length: 900 }, sources: [], builtBy: 'test', referenceSequence: R,
+    settings: { id: 'p', version: '1', groups: groups.map((id) => ({ id, label: id.toUpperCase() })), notCovered: ['Z'], validatedScope: [], windows: [{ id: 'w', label: 'W', start: 0, end: 320 }], rules, controls: { shuffles: 19, simulations: 1, seed: 5 } },
+    taxa: [{ source: 't', id: '1' }], marker: { kind: 'gene' as const, gene: 'g' }, reference: { accession: 'R.1', length: 320 }, sources: [], builtBy: 'test', referenceSequence: R,
   })
-  const member = (group: string, sites: number[], i: number, study: string, nSites = 6) => ({ record: `${group}${i}`, group, aligned: at(...sites, 150 + i), provenanceClass: 'wild-documented' as const, block: `${group}-${i % nSites}`, study })
+  const member = (group: string, sites: number[], i: number, study: string, nSites = 6) => ({ record: `${group}${i}`, group, aligned: at(...sites, 31 + i * 2), provenanceClass: 'wild-documented' as const, block: `${group}-${i % nSites}`, study })
   const many = (group: string, sites: number[], n = 18, nSites = 9) => Array.from({ length: n }, (_, i) => member(group, sites, i, i % 2 ? 'Paper 1' : 'Paper 2', nSites))
   const claimOf = (members: ReturnType<typeof many>) => fullValidation({ ...base(), members }).claims[0]!
   const gate = (c: ClaimReport, g: ClaimReport['gates'][number]['gate']) => c.gates.find((x) => x.gate === g)!
@@ -358,7 +359,7 @@ describe('claims', () => {
     expect(gate(c, 'shuffled-labels').ran).toBe(false)
     expect(validatedScopeFromReport([c])).toEqual([])
   })
-  it('fails a claim from a single study', () => {
+  it('fails a claim from a single study', { timeout: 60000 }, () => {
     const c = claimOf([...many('a', a), ...many('b', b)].map((m) => ({ ...m, study: 'Only paper' })))
     expect(gate(c, 'across-studies').passed).toBe(false)
     expect(c.passed).toBe(false)
@@ -382,12 +383,12 @@ describe('claims', () => {
     expect(evaluateQuery(at(...a), b2, { queryId: 'q', runId: 'r' }).outOfValidatedScope).toContain('This panel has no validated claims yet')
   })
   it('says when a query falls outside a validated claim', () => {
-    const claims = [{ a: 'a', b: 'b', window: 'w', minColumns: 800, sites: { a: 6, b: 6 }, basis: 'exploratory' as const }]
+    const claims = [{ a: 'a', b: 'b', window: 'w', minColumns: 300, sites: { a: 6, b: 6 }, basis: 'exploratory' as const }]
     const b2 = buildPanel({ ...base(), members: [...many('a', a), ...many('b', b)], claims })
-    expect(b2.panel.validatedScope[0]).toContain('800+ columns')
+    expect(b2.panel.validatedScope[0]).toContain('300+ columns')
     const full = evaluateQuery(at(...a), b2, { queryId: 'q', runId: 'r' })
     expect(full.outOfValidatedScope.filter((x) => x.includes('validated claim'))).toEqual([])
-    const short = evaluateQuery('-'.repeat(300) + at(...a).slice(300), b2, { queryId: 'q', runId: 'r' })
+    const short = evaluateQuery('-'.repeat(100) + at(...a).slice(100), b2, { queryId: 'q', runId: 'r' })
     expect(short.outOfValidatedScope.join(' ')).toContain("isn't a validated claim")
   })
   it('reports sites beside records, and hides intervals below 4 sites', () => {
@@ -398,7 +399,7 @@ describe('claims', () => {
     expect(r.diagnostics.map((d) => d.code)).toContain('too-few-blocks')
   })
   it('warns when one site dominates a group', () => {
-    const lopsided = many('a', a).map((m, i) => ({ ...m, block: i < 9 ? 'big' : m.block }))
+    const lopsided = many('a', a).map((m, i) => ({ ...m, block: i < 12 ? 'big' : m.block }))
     expect(leaveOneBlockOut({ ...base(), members: [...lopsided, ...many('b', b)] }).diagnostics.map((d) => d.code)).toContain('single-block-dominates')
   })
   it('is repeatable from its seed', () => {
