@@ -85,6 +85,8 @@ export type PanelSettings = {
   /** Named stretches of the reference, usually where amplicons fall. Without them the whole marker is one window. */
   windows?: PanelWindow[]
   rules: EvaluationRules
+  /** How hard to test claims. Fewer shuffles or simulations can't reach the gates' p-value. */
+  controls?: { shuffles?: number; simulations?: number; seed?: number }
 }
 
 /** How to read a panel. Uncalibrated, stated values: none of this is a probability. */
@@ -217,6 +219,9 @@ export type PanelGroup = {
   evidence: { record: Id; use: EvidenceUse; provenanceClass: ProvenanceClass; originSource?: string; block?: string; study?: string }[]
 }
 
+/** A pair of groups in one window that passed every gate. `exploratory` until a test meeting the protocol's section 2 runs. */
+export type ValidatedClaim = { a: Id; b: Id; window: Id; minColumns: number; sites: { a: number; b: number }; basis: 'exploratory' | 'confirmatory' }
+
 export type PanelStatus = 'candidate' | 'active' | 'superseded' | 'withdrawn'
 
 /** An immutable reference panel, exported as this JSON with sequences in FASTA beside it. */
@@ -235,8 +240,10 @@ export type Panel = {
   pairs: PanelPair[]
   /** Regions, populations or windows this panel can't speak to. Reports must carry them. */
   notCovered: string[]
-  /** The claims this panel has been validated for. Empty means none yet. */
+  /** The claims this panel has been validated for, in words. Empty means none yet. */
   validatedScope: string[]
+  /** The same claims in a form results can check. Only the validation report fills these. */
+  claims: ValidatedClaim[]
   sources: { citation: string; url?: string }[]
   builtBy: Id
   /** Part of the sealed panel, so editing a profile can never change what a panel version concludes. */

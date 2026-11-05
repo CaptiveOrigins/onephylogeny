@@ -1,6 +1,6 @@
 import {
-  ALIGNER, alignToReference, assessAlignment, buildPanel, canonicalJson, collapseHaplotypes, DEFAULT_GATES, extractLocation, findGeneFeatures, gatesForRecord, leaveOneBlockOut, leaveOneGroupOut, parseFasta, parseGenBank,
-  evaluateQuery, toRecordSheet, toSequenceRecord, validatePanel, verifyBundle, validateProfile, validateResult, writeFasta,
+  ALIGNER, alignToReference, assessAlignment, buildPanel, canonicalJson, collapseHaplotypes, DEFAULT_GATES, extractLocation, findGeneFeatures, fullValidation, gatesForRecord, parseFasta, parseGenBank,
+  evaluateQuery, toRecordSheet, toSequenceRecord, validatePanel, verifyBundle, validatedScopeFromReport, validateProfile, validateResult, writeFasta,
   type Alignment, type Curation, type Diagnostic, type GateSettings, type GenBankRecord, type Panel, type PanelBundle, type PanelMember, type Profile, type Result, type Run, type SequenceRecord, type Snapshot, type ValidationInput,
 } from '@captiveorigins/onephylogeny-core'
 import { NcbiClient, selectionQuery } from '@captiveorigins/onephylogeny-acquire'
@@ -213,7 +213,7 @@ export async function fetchAndAnchor(ctx: EngineContext, profile: Profile, optio
 
 export type PanelBuildOutcome = { bundle: PanelBundle; diagnostics: Diagnostic[]; validation: ValidationReports; unassigned: number; run: Run; published: boolean }
 
-const defaultValidate = async (input: ValidationInput): Promise<ValidationReports> => ({ blocks: leaveOneBlockOut(input), groups: leaveOneGroupOut(input) })
+const defaultValidate = async (input: ValidationInput): Promise<ValidationReports> => fullValidation(input)
 
 /** Builds and validates a candidate panel from a finished fetch run and the curation file. */
 export async function buildPanelFromRun(ctx: EngineContext, profile: Profile, curation: Curation, id?: string): Promise<PanelBuildOutcome> {
@@ -256,32 +256,36 @@ export async function buildPanelFromRun(ctx: EngineContext, profile: Profile, cu
       // The checks that actually ran on these records, even if the profile has changed since.
       gates: (gated.manifest.parameters as { gates: GateSettings }).gates,
     }
-    const bundle = buildPanel({ ...input, members })
-    diagnostics.push(...validatePanel(bundle.panel))
+    if (settings.validatedScope.length) diagnostics.push({ severity: 'warning', code: 'hand-entered-scope-ignored', message: 'The scope written in the panel settings is ignored. A panel\'s scope now comes only from claims that pass validation', path: 'panel.validatedScope' })
+    const draft = buildPanel({ ...input, members })
+    diagnostics.push(...validatePanel(draft.panel).filter((d) => d.code !== 'not-validated'))
     const empty = { scheme: 'leave-one-block-out' as const, tested: 0, skipped: 0, groups: [], untestedGroups: [], diagnostics: [] }
     const hasErrors = diagnostics.some((d) => d.severity === 'error')
-    if (hasErrors) return { bundle, diagnostics, validation: { blocks: empty, groups: { ...empty, scheme: 'leave-one-group-out' as const } }, unassigned, published: false }
-    const out = P.panel(bundle.panel.id, bundle.panel.version)
-    if (await ctx.store.exists(`${out}/panel.json`)) {
-      const existing = JSON.parse(await ctx.store.read(`${out}/panel.json`)) as Panel
-      if (existing.checksum !== bundle.panel.checksum) throw new EngineError('panel-version-exists', `Panel ${bundle.panel.id} version ${bundle.panel.version} already exists with different content`, 'Give this build a new version, so earlier results stay true')
-    }
-    const panelArtifact = await scope.step({
-      type: 'panel', step: { name: 'panel', version: 1 }, inputs: [ref(gated)], parameters: { checksum: bundle.panel.checksum }, tools: [ENGINE, ALIGNER],
-      run: async (put) => {
-        await put('panel.json', json(bundle.panel))
-        await put('panel.fasta', writeFasta([{ id: '__reference__', sequence: reference.sequence }, ...Object.entries(bundle.sequences).map(([k, sequence]) => ({ id: k, sequence }))]))
-      },
-    })
-    const blocks = Object.fromEntries(members.map((m) => [m.record, m.block ?? '']))
+    if (hasErrors) return { bundle: draft, diagnostics, validation: { blocks: empty, groups: { ...empty, scheme: 'leave-one-group-out' as const }, ladder: [], claims: [], controls: { shuffles: 0, simulations: 0, seed: 0 } }, unassigned, published: false }
+    // Validation comes first, because a panel's scope is whatever passes it. The folds ignore scope, so nothing is circular.
+    const fingerprint = hashText(canonicalJson({ settings: { ...settings, version: '', id: '' }, members: members.map(({ aligned, ...m }) => ({ ...m, aligned: hashText(aligned) })) }))
     const validationArtifact = await scope.step({
-      type: 'validation', step: { name: 'validate', version: 1 }, inputs: [ref(panelArtifact)], parameters: { blocks: hashText(canonicalJson(blocks)) },
+      type: 'validation', step: { name: 'validate', version: 2 }, inputs: [ref(gated)], parameters: { fingerprint },
       run: async (put) => {
         const reports = await (ctx.compute?.validate ?? defaultValidate)({ ...input, members })
         await put('validation.json', json(reports))
       },
     })
     const validation = JSON.parse(await validationArtifact.read('validation.json')) as ValidationReports
+    const bundle = buildPanel({ ...input, members, claims: validatedScopeFromReport(validation.claims) })
+    if (!bundle.panel.claims.length) diagnostics.push({ severity: 'warning', code: 'not-validated', message: 'No claim passed validation, so this panel has no validated scope', path: 'validatedScope' })
+    const out = P.panel(bundle.panel.id, bundle.panel.version)
+    if (await ctx.store.exists(`${out}/panel.json`)) {
+      const existing = JSON.parse(await ctx.store.read(`${out}/panel.json`)) as Panel
+      if (existing.checksum !== bundle.panel.checksum) throw new EngineError('panel-version-exists', `Panel ${bundle.panel.id} version ${bundle.panel.version} already exists with different content`, 'Give this build a new version, so earlier results stay true')
+    }
+    const panelArtifact = await scope.step({
+      type: 'panel', step: { name: 'panel', version: 2 }, inputs: [ref(gated), ref(validationArtifact)], parameters: { checksum: bundle.panel.checksum }, tools: [ENGINE, ALIGNER],
+      run: async (put) => {
+        await put('panel.json', json(bundle.panel))
+        await put('panel.fasta', writeFasta([{ id: '__reference__', sequence: reference.sequence }, ...Object.entries(bundle.sequences).map(([k, sequence]) => ({ id: k, sequence }))]))
+      },
+    })
     await ctx.store.write(`${out}/panel.json`, await panelArtifact.read('panel.json'))
     await ctx.store.write(`${out}/panel.fasta`, await panelArtifact.read('panel.fasta'))
     await ctx.store.write(`${out}/validation.json`, json(validation))

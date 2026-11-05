@@ -63,6 +63,8 @@ export function validatePanel(panel: Panel): Diagnostic[] {
   if (!panel.rules) error('no-rules', 'A panel must state the rules it is read with', 'rules')
   if (!panel.gates) error('no-gates', 'A panel must state the record checks its members passed', 'gates')
   if (!panel.groups.length) error('no-groups', 'A panel needs at least one group', 'groups')
+  for (const [i, c] of (panel.claims ?? []).entries())
+    if (!panel.groups.some((g) => g.id === c.a) || !panel.groups.some((g) => g.id === c.b) || !panel.windows?.some((w) => w.id === c.window)) error('unknown-claim', `A validated claim names ${c.a}, ${c.b} or ${c.window}, which isn't in this panel`, `claims.${i}`)
   if (!panel.windows?.length) error('no-windows', 'A panel needs at least one window', 'windows')
   for (const [w, window] of (panel.windows ?? []).entries())
     if (window.start < 0 || window.end <= window.start || window.end > panel.reference.length)

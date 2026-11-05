@@ -1,3 +1,4 @@
+import type { FullValidation } from '@captiveorigins/onephylogeny-core'
 import type { RunEvent, ValidationInput, ValidationReport } from '@captiveorigins/onephylogeny-core'
 import type { NcbiOptions } from '@captiveorigins/onephylogeny-acquire'
 
@@ -17,7 +18,7 @@ export interface ToolRunner {
   run(tool: string, args: string[], options: { cwd: string }): Promise<{ code: number; stdout: string; stderr: string }>
 }
 
-export type ValidationReports = { blocks: ValidationReport; groups: ValidationReport }
+export type ValidationReports = FullValidation
 
 /** Heavy pure calculations, which an app can run off its interface thread. */
 export type Compute = { validate?: (input: ValidationInput) => Promise<ValidationReports> }

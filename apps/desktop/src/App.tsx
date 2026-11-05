@@ -365,7 +365,7 @@ function PanelTab({ profile, edit, save, state, hasRun, busy, platform, onBuild 
         {state.unassigned > 0 && <p className="muted">{state.unassigned} records passed checks but aren't in a group, so they aren't in this panel.</p>}
         <PanelSummary panel={state.panel} />
         <h3>Validation</h3>
-        <ValidationView blocks={state.validation.blocks} groups={state.validation.groups} />
+        <ValidationView blocks={state.validation.blocks} groups={state.validation.groups} ladder={state.validation.ladder} claims={state.validation.claims} panel={state.panel} />
       </>}
     </section>
   )

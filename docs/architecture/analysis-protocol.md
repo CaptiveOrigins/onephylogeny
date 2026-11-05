@@ -116,8 +116,8 @@ A claim here is narrow: "this panel separates groups A and B in window W, for qu
 
 1. **Sites.** Each group has at least 4 sites holding records in the window.
 2. **No wrong answers.** Holding out each site, no test resolves the pair toward the wrong group.
-3. **Interval.** The lower 95% bound on correct sites, across both groups, is at least 0.8.
-4. **Across studies.** The records come from at least 2 studies, and a panel built without a study never resolves that study's records toward the wrong group.
+3. **Interval.** The lower 95% bound on correct sites, across both groups, is at least 0.8. In practice that needs at least 17 sites, all correct.
+4. **Across studies.** The records come from at least 2 studies, at least one study's records can be tested against a panel built without it, and that panel never resolves them toward the wrong group.
 5. **Shuffled labels.** Moving whole sites between the two groups, the real score beats the shuffled ones at p <= 0.05, using 99 shuffles and (b+1)/(B+1).
 6. **No structure.** On simulated data from one population, keeping each record's coverage, site and group, at most 5% of tests resolve the pair at all, over 20 simulations. The simulation is a seeded coalescent, with its mutation rate set from the mean pairwise differences of the real pooled records.
 

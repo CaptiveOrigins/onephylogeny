@@ -41,6 +41,7 @@ const panelBeforeChange: CollectionBeforeChangeHook = ({ data, originalDoc, oper
   const from = String(originalDoc.status)
   const to = String(data.status ?? from)
   if (to !== from && !PANEL_TRANSITIONS[from]?.includes(to)) fail(`A panel can't go from ${from} to ${to}.`)
+  if (from === 'candidate' && to === 'active' && !((data.validatedScope ?? originalDoc.validatedScope) as unknown[] | undefined)?.length) fail('A panel with no validated claims can\'t become active.')
   if (from !== 'candidate') {
     for (const f of LOCKED_PANEL_FIELDS) {
       if (!(f in data)) continue
