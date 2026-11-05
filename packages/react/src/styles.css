@@ -31,3 +31,23 @@
 .ophy-tree-supported { fill: var(--ophy-good, #1d6b47); font-weight: 700; }
 .ophy-ladder { padding-inline-start: 20px; margin: 6px 0; }
 .ophy-ladder-suggested { font-weight: 600; }
+/* Tree canvas and floating toolbar, as in OnePedigree and OneTaxonomy. */
+.ophy-icon { flex: none; }
+.ophy-canvas { position: relative; overflow: hidden; touch-action: none; cursor: grab; border: 1px solid var(--ophy-border, #eaddd6); border-radius: 10px; }
+.ophy-canvas:active { cursor: grabbing; }
+.ophy-canvas:focus-visible { outline: 2px solid var(--ophy-accent, #cf8137); outline-offset: 1px; }
+.ophy-canvas-content { transform-origin: 0 0; will-change: transform; }
+.ophy-floating { position: absolute; top: 8px; right: 8px; z-index: 1; display: flex; gap: 4px; }
+.ophy-floating button { width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; cursor: pointer; }
+.ophy-floating [data-tip] { position: relative; }
+.ophy-floating [data-tip]:is(:hover, :focus-visible)::after {
+  content: attr(data-tip); position: absolute; top: calc(100% + 6px); right: 0; z-index: 2; white-space: nowrap; pointer-events: none;
+  padding: 4px 8px; border-radius: 6px; background: var(--ophy-ink, #91645d); color: #fff; font-size: 12px; line-height: 1.3;
+}
+@media print {
+  html[data-ophy-printing] body * { visibility: hidden; }
+  html[data-ophy-printing] .ophy-canvas, html[data-ophy-printing] .ophy-canvas * { visibility: visible; }
+  html[data-ophy-printing] .ophy-canvas { position: absolute; inset: 0; height: auto !important; overflow: visible; border: 0; }
+  html[data-ophy-printing] .ophy-canvas-content { transform: none !important; }
+  .ophy-floating { display: none; }
+}

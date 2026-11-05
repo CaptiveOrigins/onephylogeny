@@ -57,6 +57,7 @@ A profile is plain JSON and holds every choice: taxa, marker, reference, filters
 pnpm install
 pnpm build && pnpm typecheck && pnpm test
 pnpm --filter onephylogeny-desktop app:dev   # the Mac app
+pnpm --filter @captiveorigins/onephylogeny-playground build   # every view on invented data: open apps/playground/dist/index.html
 pnpm --filter onephylogeny-desktop dev       # browser preview with made-up data
 ```
 
@@ -65,6 +66,8 @@ pnpm --filter onephylogeny-desktop dev       # browser preview with made-up data
 - [Architecture](docs/architecture/architecture.md), [data schema](docs/architecture/data-schema.md), [decisions](docs/architecture/adr/README.md)
 - [The OneOrigin suite](docs/oneorigin/README.md) and its [guidelines](docs/oneorigin/guidelines.md) (draft)
 - [Roadmap](docs/architecture/roadmap.md), [phase plan](docs/architecture/phase-plan.md), [limitations](docs/architecture/limitations.md)
+
+Changes are listed in the [changelog](CHANGELOG.md).
 
 ## License
 

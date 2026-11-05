@@ -197,33 +197,33 @@ Each decision with alternatives gets an ADR. Limitations are kept current, and n
 
 ## 9. Parity today
 
-From a review of the three repos on 2026-11-04. These are gaps to close, not failures.
+From a review of the three repos on 2026-11-04, updated after that day's suite pass. Bold marks what remains. "On PR" means the change waits on that PR's merge.
 
 | Area | OnePedigree | OneTaxonomy | OnePhylogeny |
 | --- | --- | --- | --- |
-| Mac app | Yes | **Not built** (Studio planned) | Yes |
-| Published DMG | Yes, `desktop-v0.2.0` | **None** | Yes, `desktop-v0.1.0` |
-| Signed auto-updates | Yes | **None** | **Key made; secret not added**, so releases aren't signed for updating yet |
-| Settings: appearance, updates | Yes | **None** | Yes |
+| Mac app | Yes | First version, on PR #3 | Yes |
+| Published DMG | Yes, `desktop-v0.2.0` | **None yet** | Yes, `desktop-v0.1.1` |
+| Signed auto-updates | Yes | **Key made; secret not added** | **Key made; secret not added**, so releases aren't signed for updating yet |
+| Settings: appearance, updates | Yes | Yes, on PR #3 | Yes |
 | Notarization | **No** | **No** | **No** |
-| Playground | Yes | Yes | **None** (browser preview only) |
-| Shared `icons.tsx` | Yes | Yes | **Missing** |
-| Floating canvas toolbar with pan and zoom | Yes | Yes | **Missing** |
-| Accent in app shell | **Green `#2f7d5c`**, not the family orange | n/a | Orange |
+| Playground | Yes | Yes | Yes |
+| Shared `icons.tsx` | Yes | Yes | Yes |
+| Floating canvas toolbar with pan and zoom | Yes | Yes | Yes |
+| Accent in app shell | Orange, on PR #2 | Orange, on PR #3 | Orange |
 | `brand/` complete | Yes | Yes | Yes |
-| Architecture docs and ADRs | **None** | Yes | Yes |
-| Changelog | **None** | Yes | **None** |
-| Scientific invariants with tests | **Not as a document** | Yes | Yes |
-| Atomic file writes | Not checked | n/a | Yes |
-| Errors with next actions | Not checked | Not checked | Yes |
+| Architecture docs and ADRs | Architecture on PR #2; **no ADRs** | Yes | Yes |
+| Changelog | On PR #2 | Yes | Yes |
+| Scientific invariants with tests | Document on PR #2; **not yet mapped to tests** | Yes | Yes |
+| Atomic file writes | On PR #2, not yet exercised in the compiled app | On PR #3, same | Yes |
+| Errors with next actions | On PR #2 | On PR #3 | Yes |
 | Cancel for long work | Not checked | n/a | Yes |
-| npm release workflow | Yes | Yes | **None** (nothing published yet) |
+| npm release workflow | Yes | Yes | Workflow added; **nothing published yet** |
 | Payload plugin | Yes | **Planned** | Yes, unpublished |
 | Installed in Captive Origins | Yes | **No** | **No** |
 | License | PolyForm Noncommercial | PolyForm Noncommercial | PolyForm Noncommercial |
-| `core` compiles without Node types | **No** (`types: ["node"]`) | Yes | Yes |
+| `core` compiles without Node types | On PR #2 | Yes | Yes |
 
-"Not checked" means I didn't read that code closely enough to say.
+"Not checked" means the code wasn't read closely enough to say. OnePedigree and OneTaxonomy's long tasks haven't been reviewed for Cancel.
 
 ## 10. Keeping this true
 

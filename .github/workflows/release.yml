@@ -1,0 +1,50 @@
+# Release: pushing a version tag (vX.Y.Z) builds, tests and *stages* every package on npm.
+# Nothing goes public until the captiveorigins npm account approves each with 2FA
+# (npmjs.com → your avatar → Staged Packages → Approve, or `npm stage approve <id>`).
+# No token is stored: npm trusted publishing (OIDC) lets only this workflow stage.
+name: Release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  stage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: npm install -g npm@^11.15.0
+      - run: pnpm install --frozen-lockfile
+      - name: GitHub description matches package.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$(gh api repos/${{ github.repository }} -q .description)" = "$(node -p "require('./package.json').description")" \
+            || { echo "::error::GitHub's description differs from package.json: sync it (npm run packages:sync in captive-origins) and re-tag."; exit 1; }
+      - name: Tag matches every package
+        run: for p in core acquire engine cli react onetaxonomy onepedigree payload; do test "${GITHUB_REF_NAME#v}" = "$(node -p "require('./packages/$p/package.json').version")"; done
+      - run: pnpm build && pnpm typecheck && pnpm test
+      - name: Stage on npm
+        run: |
+          VERSION=$(node -p "require('./packages/core/package.json').version")
+          for p in core acquire engine cli react onetaxonomy onepedigree payload; do
+            NAME=$(node -p "require('./packages/$p/package.json').name")
+            # A prerelease goes to "alpha" once the package has a stable version; until then it is
+            # also "latest", so a plain install gets the newest build (not an old alpha).
+            TAG=latest
+            case "$VERSION" in *-*)
+              if npm view "$NAME" versions --json 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.exit([].concat(s?JSON.parse(s):[]).some(v=>typeof v==="string"&&!v.includes("-"))?0:1))'; then TAG=alpha; fi ;;
+            esac
+            # pnpm pack turns workspace:^ into real versions.
+            (cd "packages/$p" && pnpm pack --pack-destination ../../dist-packages)
+            TGZ="dist-packages/$(echo "${NAME#@}" | tr / -)-$VERSION.tgz"
+            # "./" matters: without it npm reads "dist-packages/x.tgz" as a GitHub repository shorthand.
+            npm stage publish "./$TGZ" --access public --provenance --tag "$TAG"
+          done

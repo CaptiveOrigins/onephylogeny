@@ -58,5 +58,6 @@ export async function createMacPlatform(): Promise<Platform> {
       return { name: picked.split('/').pop() ?? picked, text: await readTextFile(picked) }
     },
     reveal: (p) => revealItemInDir(full(p)),
+    print: () => invoke('print_window'),
   }
 }

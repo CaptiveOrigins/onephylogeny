@@ -1,7 +1,8 @@
 import { NcbiClient, suggestOutgroups, type OutgroupLadder } from '@captiveorigins/onephylogeny-acquire'
 import { parseCuration, parseFasta, parseProfile, validateProfile, type Curation, type Diagnostic, type EvidenceUse, type Panel, type Profile, type ProvenanceClass, type Result, type RunEvent, type SequenceRecord, type Snapshot } from '@captiveorigins/onephylogeny-core'
 import { buildPanelFromRun, buildTree, EngineError, fetchAndAnchor, isCancelled, loadPanel, profilePaths, runSample, type EngineContext, type RecordOutcome, type TreeOutcome } from '@captiveorigins/onephylogeny-engine'
-import { EventLog, OutgroupLadderView, PanelSummary, ResultView, TreeFigure, ValidationView } from '@captiveorigins/onephylogeny-react'
+import { EventLog, OutgroupLadderView, PanelSummary, ResultView, ValidationView } from '@captiveorigins/onephylogeny-react'
+import { TreeCanvas } from '@captiveorigins/onephylogeny-react/canvas'
 import { treeToPhylogeny } from '@captiveorigins/onephylogeny-onetaxonomy'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Platform, Settings } from './platform'
@@ -412,7 +413,11 @@ function TreeTab({ profile, edit, platform, records, attempt, run, hasRun }: { p
         <Field label="To reference column"><input type="number" value={end} onChange={(e) => setEnd(e.target.value)} /></Field>
       </div>
       <div className="actions"><button className="primary" disabled={!version || !hasRun} onClick={() => attempt('Building tree', async () => setTree(await run(start && end ? { start: Number(start), end: Number(end) } : undefined)))}>Build tree</button></div>
-      {tree && <><p className="muted">{tree.tips.length} haplotypes. Support is SH-aLRT / UFBoot, and values passing 80 and 95 are bold green. Compare branches only between sequences that share sites.</p><TreeFigure newick={tree.newick} labelFor={labelFor} thresholds={[80, 95]} /><div className="actions"><button onClick={() => attempt('Exporting', async () => {
+      {tree && <><p className="muted">{tree.tips.length} haplotypes. Support is SH-aLRT / UFBoot, and values passing 80 and 95 are bold green. Compare branches only between sequences that share sites.</p><TreeCanvas newick={tree.newick} labelFor={labelFor} thresholds={[80, 95]} onSaveSvg={(svg) => attempt('Saving the tree', async () => {
+        const path = `profiles/${profile.id}/exports/tree.svg`
+        await platform.store.write(path, svg)
+        await platform.reveal(path)
+      })} {...(platform.print ? { onPrint: () => attempt('Printing', platform.print!) } : {})} /><div className="actions"><button onClick={() => attempt('Exporting', async () => {
         const rooted = profile.selection.outgroups.length > 0
         const phylogeny = treeToPhylogeny(tree.newick, { id: `${profile.id}-tree`, title: profile.title, version: new Date().toISOString().slice(0, 10), sources: [], rooted, lengthUnit: 'substitutions-per-site', sampling: 'partial', supportMethods: ['SH-aLRT', 'UFBoot'] })
         const path = `profiles/${profile.id}/exports/onetaxonomy-phylogeny.json`
