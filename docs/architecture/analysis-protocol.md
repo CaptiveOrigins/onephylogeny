@@ -123,6 +123,10 @@ A claim here is narrow: "this panel separates groups A and B in window W, for qu
 
 **Length.** A claim's minimum length is the shortest of 100, 150, 200, 300, 400 or 500 columns where no fragment resolves wrongly and at least 95% resolve. Fragments use 5 seeded random positions per record, on held-out sites. If none qualifies, the claim doesn't pass.
 
+**Nested length.** Choosing the shortest length and scoring it on the same sites flatters it. So a claim that has passed everything else goes through one more gate: for each site, a length is chosen using only the other sites, from panels that also leave that site out, and the site is scored at that length with 5 seeded random positions per record. It passes if every site left a qualifying length, no fragment resolves wrongly and at least 95% resolve. A claim's minimum length becomes the longest length any site chose. The site's own fragments and panel exclude it throughout, and shuffled-label and no-structure controls don't repeat this step. This was committed before the step first ran on real data.
+
+**Expected before running** (first species, West/East in 3', using the records of panel `0.6.1`): the gate passes, and the minimum length stays at 150 or rises to 200, since at 150 the fixed-position results showed none wrong. A rise wouldn't be a failure. It would mean 150 was somewhat flattered. Frozen panel `0.6.1` keeps its stated 150 either way, because its checksum is what the preregistered test names.
+
 Values 4, 0.8 and 5% are our proposals and aren't calibrated. **They aren't to be changed because a claim failed.**
 
 **Every claim stays labeled exploratory** until a test meeting section 2 runs. Passing these gates means a claim survived its controls on data that shaped the method, not that it's confirmed.

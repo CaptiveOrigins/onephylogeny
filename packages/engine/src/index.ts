@@ -352,7 +352,7 @@ export async function buildPanelFromRun(ctx: EngineContext, profile: Profile, cu
     // Validation comes first, because a panel's scope is whatever passes it. The folds ignore scope, so nothing is circular.
     const fingerprint = hashText(canonicalJson({ settings: { ...settings, version: '', id: '' }, members: members.map(({ aligned, ...m }) => ({ ...m, aligned: hashText(aligned) })) }))
     const validationArtifact = await scope.step({
-      type: 'validation', step: { name: 'validate', version: 2 }, inputs: [ref(gated)], parameters: { fingerprint },
+      type: 'validation', step: { name: 'validate', version: 3 }, inputs: [ref(gated)], parameters: { fingerprint },
       run: async (put) => {
         const reports = await (ctx.compute?.validate ?? defaultValidate)({ ...input, members }, ctx.signal)
         await put('validation.json', json(reports))

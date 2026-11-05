@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { alignToReference, assessAlignment, DEFAULT_GATES, buildPanel, evaluateQuery, gatesForRecord, leaveOneBlockOut, leaveOneGroupOut, clopperPearson, fullValidation, reverseComplement, sealPanel, validatedScopeFromReport, validatePanel, validateResult, verifyBundle, type BuildPanelInput, type ClaimReport, type PanelSettings } from '../src/index.js'
 
 function randomSeq(n: number, seed = 7): string {
@@ -323,6 +323,8 @@ describe('evaluator version 2', () => {
 })
 
 describe('claims', () => {
+  // These tests hold the thread for many seconds. A pause lets the test runner hear back from its own worker, or it times out.
+  afterEach(() => new Promise((r) => setTimeout(r, 50)))
   // Short sequences and the fewest controls that can still reach the gates: these run on every commit.
   const R = randomSeq(320, 31)
   const at = (...sites: number[]) => mutate(R, sites)
@@ -351,6 +353,13 @@ describe('claims', () => {
     expect(c.gates.filter((g) => !g.passed).map((g) => g.detail)).toEqual([])
     expect(c.passed).toBe(true)
     expect(c.minColumns).toBeDefined()
+    // Each site is scored at a length chosen without it, and the claim takes the longest any site chose.
+    const nested = c.nestedLength!
+    expect(nested.foldsWithNoLength).toBe(0)
+    expect(Object.keys(nested.chosen)).toHaveLength(18)
+    expect(c.minColumns).toBe(Math.max(...Object.values(nested.chosen)))
+    expect(nested.tally.wrong).toBe(0)
+    expect(gate(c, 'nested-length').ran).toBe(true)
     expect(validatedScopeFromReport([c])[0]).toMatchObject({ a: 'a', b: 'b', window: 'w', basis: 'exploratory' })
   })
   it('stops at the sites gate and says the rest did not run', () => {
@@ -363,6 +372,9 @@ describe('claims', () => {
     const c = claimOf([...many('a', a), ...many('b', b)].map((m) => ({ ...m, study: 'Only paper' })))
     expect(gate(c, 'across-studies').passed).toBe(false)
     expect(c.passed).toBe(false)
+    // Slow, so it's skipped for a claim that has already failed, and it says so.
+    expect(gate(c, 'nested-length')).toMatchObject({ ran: false, passed: false })
+    expect(c.nestedLength).toBeUndefined()
   })
   it('fails when groups are really one population, on the shuffled control', { timeout: 60000 }, () => {
     // Labels mean nothing here: every record is drawn from the same few haplotypes, whatever its group.
