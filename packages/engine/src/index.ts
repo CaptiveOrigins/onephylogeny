@@ -1,9 +1,9 @@
 import {
   ALIGNER, alignToReference, assessAlignment, buildPanel, canonicalJson, collapseHaplotypes, DEFAULT_GATES, extractLocation, findGeneFeatures, fullValidation, gatesForRecord, parseFasta, parseGenBank,
   evaluateQuery, toRecordSheet, toSequenceRecord, validatePanel, verifyBundle, validatedScopeFromReport, validateProfile, validateResult, writeFasta,
-  type Alignment, type Curation, type Diagnostic, type GateSettings, type GenBankRecord, type Panel, type PanelBundle, type PanelMember, type Profile, type Result, type Run, type SequenceRecord, type Snapshot, type ValidationInput,
+  type Alignment, type Curation, type Diagnostic, type GateSettings, type GenBankRecord, type LinkedRecord, type Panel, type PanelBundle, type PanelMember, type Profile, type Result, type Run, type SequenceRecord, type Snapshot, type ValidationInput,
 } from '@captiveorigins/onephylogeny-core'
-import { genomesHoldingMarkerQuery, NcbiClient, selectionQuery } from '@captiveorigins/onephylogeny-acquire'
+import { classifyAccessions, genomesHoldingMarkerQuery, linkedAccessions, NcbiClient, selectionQuery, studiesFromRecords, type FoundPaper } from '@captiveorigins/onephylogeny-acquire'
 import { hashText, loadArtifact, type Artifact, type ArtifactRef } from './artifacts.js'
 import type { EngineContext, Store, ValidationReports } from './context.js'
 import { EngineError, isCancelled } from './errors.js'
@@ -41,11 +41,12 @@ function geneSequence(rec: GenBankRecord, profile: Profile): { sequence: string;
 
 /** Step: the list of what to fetch. Always asks the source; reuse downstream depends on the answer being the same. */
 async function searchStep(scope: RunScope, profile: Profile, client: NcbiClient, options: { allowEmpty?: boolean }) {
-  const term = selectionQuery(profile.selection)
-  scope.log('info', 'search', 'Searching NCBI', { term })
-  const found = await client.searchAccessions(term)
+  const include = profile.selection.include
+  const term = include?.length ? `chosen accessions, ${include.length} records, ${hashText([...include].sort().join('\n'))}` : selectionQuery(profile.selection)
+  scope.log('info', 'search', include?.length ? 'Using the accessions chosen in a Study' : 'Searching NCBI', { term })
+  const found = include?.length ? include : await client.searchAccessions(term)
   if (!found.length && !options.allowEmpty) throw new EngineError('empty-search', 'NCBI found no records for this taxon and marker', 'Check the taxon, gene names and organelle in Setup')
-  const genomes = genomesHoldingMarkerQuery(profile.selection)
+  const genomes = include?.length ? null : genomesHoldingMarkerQuery(profile.selection)
   if (genomes) {
     // Only a report. These can't join a run yet, since each would need its marker cut out, and a failed lookup shouldn't stop a fetch.
     try {
@@ -220,6 +221,81 @@ export async function fetchAndAnchor(ctx: EngineContext, profile: Profile, optio
   // A failed run stays on record, but it never replaces the last good one.
   await ctx.store.write(P.latest, run.id)
   return { run, records: value.records, outcomes: value.outcomes }
+}
+
+/** Reference columns a record covers, half open, or nothing if it doesn't align. Uses coordinates only and shows no group results. */
+function spanOf(alignment: Alignment | null): [number, number] | undefined {
+  if (!alignment) return undefined
+  const start = alignment.aligned.search(/[^-]/)
+  if (start < 0) return undefined
+  return [start, alignment.aligned.length - (alignment.aligned.match(/-*$/)?.[0].length ?? 0)]
+}
+
+/** Reads records from the download cache, and fetches the rest without adding to it, since a run's raw files must stay as that run saw them. */
+async function studyRecords(ctx: EngineContext, client: NcbiClient, accessions: string[], onProgress?: (done: number, total: number) => void): Promise<GenBankRecord[]> {
+  const stop = () => { if (ctx.signal?.aborted) throw new EngineError('cancelled', 'Cancelled') }
+  const out: GenBankRecord[] = []
+  const missing: string[] = []
+  for (const a of accessions) {
+    stop()
+    if (await ctx.store.exists(cachePath(a))) { const r = parseGenBank(await ctx.store.read(cachePath(a)))[0]; if (r) { out.push(r); continue } }
+    missing.push(a)
+  }
+  for (let i = 0; i < missing.length; i += 100) {
+    stop()
+    out.push(...(await client.fetchGenBankText(missing.slice(i, i + 100))).records)
+    onProgress?.(out.length, accessions.length)
+  }
+  return out
+}
+
+/** The reference's marker sequence, which is what records are placed against. */
+async function studyReference(ctx: EngineContext, client: NcbiClient, profile: Profile): Promise<string> {
+  const accession = profile.reference?.accession
+  if (!accession) throw new EngineError('invalid-profile', 'A Study places records on the reference, and this profile has none', 'Add a reference accession in Setup')
+  const [rec] = await studyRecords(ctx, client, [accession])
+  if (!rec) throw new EngineError('reference-missing', `The reference ${accession} wasn't retrieved`, 'Check the reference accession in Setup')
+  return geneSequence(rec, profile).sequence
+}
+
+const countryOf = (rec: GenBankRecord): string | undefined => toSequenceRecord(rec).geoLocName?.split(':')[0]?.trim() || undefined
+
+async function placeRecords(ctx: EngineContext, profile: Profile, records: GenBankRecord[], reference: string, classified: { inTarget: Set<string>; hasMarker: Set<string> }) {
+  const placed = new Map<string, LinkedRecord>()
+  for (const rec of records) {
+    if (ctx.signal?.aborted) throw new EngineError('cancelled', 'Cancelled')
+    // Aligning is synchronous, so this keeps the window responsive through a few hundred records.
+    await new Promise((r) => setTimeout(r, 0))
+    const hasMarker = classified.hasMarker.has(rec.version)
+    const span = hasMarker ? spanOf(alignToReference(geneSequence(rec, profile).sequence, reference)) : undefined
+    const country = countryOf(rec)
+    placed.set(rec.version, { accession: rec.version, organism: rec.organism, length: rec.sequence.length, title: rec.definition, inTarget: classified.inTarget.has(rec.version), hasMarker, ...(country ? { country } : {}), ...(span ? { span } : {}) })
+  }
+  return placed
+}
+
+/** Studies built from GenBank records of a profile's species and marker, placed on the reference. */
+export async function findRecordStudies(ctx: EngineContext, profile: Profile, onProgress?: (done: number, total: number) => void): Promise<{ papers: FoundPaper[]; columns: number; query: string }> {
+  const client = new NcbiClient(ctx.ncbi)
+  const query = selectionQuery(profile.selection)
+  const genomes = genomesHoldingMarkerQuery(profile.selection)
+  const accessions = [...new Set([...await client.searchAccessions(query), ...(genomes ? await client.searchAccessions(genomes) : [])])]
+  const reference = await studyReference(ctx, client, profile)
+  const records = await studyRecords(ctx, client, accessions, onProgress)
+  const all = new Set(records.map((r) => r.version))
+  const placed = await placeRecords(ctx, profile, records, reference, { inTarget: all, hasMarker: all })
+  return { papers: studiesFromRecords(records, (r) => placed.get(r.version)!), columns: reference.length, query }
+}
+
+/** Looks up what PubMed links to one paper, then sorts those records by species and gene and places them. */
+export async function findPaperRecords(ctx: EngineContext, profile: Profile, pmid: string): Promise<{ linked: LinkedRecord[]; columns: number }> {
+  const client = new NcbiClient(ctx.ncbi)
+  const accessions = await linkedAccessions(client, pmid)
+  const reference = await studyReference(ctx, client, profile)
+  if (!accessions.length) return { linked: [], columns: reference.length }
+  const classified = await classifyAccessions(client, accessions, profile.selection)
+  const records = await studyRecords(ctx, client, accessions)
+  return { linked: [...(await placeRecords(ctx, profile, records, reference, classified)).values()], columns: reference.length }
 }
 
 export type PanelBuildOutcome = { bundle: PanelBundle; diagnostics: Diagnostic[]; validation: ValidationReports; unassigned: number; run: Run; published: boolean }

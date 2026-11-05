@@ -59,6 +59,8 @@ export type Selection = {
   marker: { kind: 'gene' | 'mitogenome' | 'snp'; gene?: string; synonyms?: string[]; products?: string[]; organelle?: 'mitochondrion' | 'plastid' }
   outgroups: { accession?: string; taxon?: ExternalId; rationale?: string }[]
   exclude: { accession: string; reason: string }[]
+  /** Fetch exactly these accessions instead of searching, as chosen in a Study. Every record still goes through the same checks. */
+  include?: string[]
   filters: { minLength?: number; maxLength?: number; maxAmbiguous?: number; provenanceClasses?: ProvenanceClass[] }
 }
 

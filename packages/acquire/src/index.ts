@@ -197,3 +197,5 @@ export async function suggestOutgroups(client: NcbiClient, selection: Selection,
   }
   return { ingroup: scientificName, steps, suggested, caveat: 'Taxonomic rank is not evidence of ancestry. Check that the ingroup is monophyletic and these outgroups fall outside it in the finished tree.' }
 }
+
+export * from './papers.js'

@@ -19,7 +19,7 @@ const ID = 'example'
 const groups = [{ id: 'north', label: 'North' }, { id: 'south', label: 'South' }]
 const profile = {
   schemaVersion: 1, id: ID, title: 'Example taxon, gene x',
-  selection: { id: ID, title: 'Example', taxa: [{ source: 'ncbi-taxonomy', id: '1' }], marker: { kind: 'gene', gene: 'x', synonyms: [], products: [] }, outgroups: [], exclude: [], filters: { minLength: 300, maxAmbiguous: 10 } },
+  selection: { id: ID, title: 'Example', taxa: [{ source: 'ncbi-taxonomy', id: '1' }], marker: { kind: 'gene', gene: 'x', synonyms: [], products: [] }, outgroups: [{ accession: 'OUT91.1', rationale: 'Already chosen' }], exclude: [], filters: { minLength: 300, maxAmbiguous: 10 } },
   reference: { accession: 'REF1.1' },
   tree: { model: 'MFP', bootstrap: 1000, shAlrt: 1000, seed: 1, threads: 1 },
   panel: { id: 'example-panel', version: '0.1.0', groups, notCovered: [], validatedScope: [], rules: DEFAULT_RULES },
@@ -131,5 +131,119 @@ describe('the Mac app, clicked through', () => {
     hold.gate = null
     fireEvent.click(screen.getByRole('button', { name: 'Build and validate panel' }))
     await screen.findByRole('heading', { name: 'example-panel version 0.1.0' }, { timeout: 20_000 })
+  })
+
+  describe('Study', () => {
+    const openStudy = async () => {
+      await openProfile()
+      tab('Study')
+      fireEvent.click(screen.getByRole('button', { name: 'Search' }))
+      return screen.findByText(/papers\. PubMed/, undefined, { timeout: 20_000 })
+    }
+    const column = (name: string) => within(screen.getByRole('region', { name }))
+    const addNorth = async () => {
+      await openStudy()
+      fireEvent.click(screen.getByRole('button', { name: 'Add A study of the north' }))
+      await screen.findByText('Save this Study?')
+    }
+
+    it('merges sources, names the record counts and keeps the search across tabs', async () => {
+      await openProfile()
+      tab('Study')
+      fireEvent.change(screen.getByLabelText('Search papers'), { target: { value: 'north' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Search' }))
+      const note = await screen.findByText(/papers\. PubMed/, undefined, { timeout: 20_000 })
+      expect(note.textContent).toContain('Europe PMC 1')
+      expect(column('Search results').getByText('12 records')).toBeTruthy()
+      tab('Log')
+      tab('Study')
+      expect(column('Search results').getByText('12 records')).toBeTruthy()
+    })
+
+    it('offers to save with autosave on, then writes history that can be restored', async () => {
+      await addNorth()
+      expect((screen.getByRole('checkbox', { name: 'Autosave as you work' }) as HTMLInputElement).checked).toBe(true)
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+      await screen.findByText('Autosaving')
+      const dir = (await platform.list(`profiles/${ID}/studies`))[0]!
+      expect(await platform.store.exists(`profiles/${ID}/studies/${dir}/study.json`)).toBe(true)
+      fireEvent.click(screen.getByRole('button', { name: 'Add records' }))
+      await column('Ingroup').findByText('N0.1')
+      await waitFor(async () => expect((await platform.list(`profiles/${ID}/studies/${dir}/history`)).length).toBe(2))
+      fireEvent.click(screen.getByRole('button', { name: 'History' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'Restore 000001' }))
+      await waitFor(() => expect(column('Ingroup').queryByText('N0.1')).toBeNull())
+    })
+
+    it('marks a Study not saved when the offer is declined', async () => {
+      await addNorth()
+      fireEvent.click(within(screen.getByText('Save this Study?').closest('form')!).getByRole('button', { name: 'Not now' }))
+      expect(screen.getByText('Not saved')).toBeTruthy()
+      expect(screen.queryByText('Save this Study?')).toBeNull()
+    })
+
+    it('moves with + and −, asks for a reason, and shows the omission faded', async () => {
+      await addNorth()
+      fireEvent.click(screen.getByRole('button', { name: 'Add records' }))
+      await column('Ingroup').findByText('N0.1')
+      fireEvent.click(screen.getByRole('button', { name: 'Move N1.1 right' }))
+      expect(column('Outgroup').getByText('N1.1')).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: 'Move N1.1 left' }))
+      expect(column('Ingroup').getByText('N1.1')).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: 'Move N0.1 left' }))
+      expect(screen.getByRole('button', { name: 'Omit' }).hasAttribute('disabled')).toBe(true)
+      fireEvent.change(screen.getByLabelText('Reason'), { target: { value: 'Chimera noted in the paper' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Omit' }))
+      expect(column('Ingroup').getByText(/Omitted before any result: Chimera/).closest('li')?.className).toContain('omitted')
+    })
+
+    it('uses the same rules when a record is dragged', async () => {
+      await addNorth()
+      fireEvent.click(screen.getByRole('button', { name: 'Add records' }))
+      const row = (await column('Ingroup').findByText('N0.1')).closest('li')!
+      const data = new Map<string, string>()
+      const dataTransfer = { setData: (k: string, v: string) => data.set(k, v), getData: (k: string) => data.get(k) ?? '', effectAllowed: '' }
+      fireEvent.dragStart(row, { dataTransfer })
+      fireEvent.drop(screen.getByRole('region', { name: 'Outgroup' }), { dataTransfer })
+      expect(column('Outgroup').getByText('N0.1')).toBeTruthy()
+    })
+
+    it('hides and shows papers in the gene region, and links a paper to its records', async () => {
+      await addNorth()
+      fireEvent.click(screen.getByRole('button', { name: 'Add records' }))
+      await column('Ingroup').findByText('N0.1')
+      const region = screen.getByRole('region', { name: 'Gene region' })
+      expect(within(region).getByRole('img').getAttribute('aria-label')).toContain('by 1 papers')
+      fireEvent.click(within(region).getByRole('button', { name: 'Hide all' }))
+      expect(within(region).getByRole('img').getAttribute('aria-label')).toContain('by 0 papers')
+      const paper = column('Papers').getAllByRole('button').find((b) => b.className === 'link')!
+      fireEvent.click(paper)
+      expect(column('Ingroup').getByText('N0.1').closest('li')?.className).toContain('lit')
+    })
+
+    it('feeds a run through the normal fetch, keeps outgroups, and labels later omissions post hoc', async () => {
+      await addNorth()
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+      await screen.findByText('Autosaving')
+      fireEvent.click(screen.getByRole('button', { name: 'Add records' }))
+      await column('Ingroup').findByText('N0.1')
+      fireEvent.click(screen.getByRole('button', { name: 'Use this Study for the next fetch' }))
+      await screen.findByText(/Set\. Open Records/)
+      const saved = JSON.parse(await platform.store.read(`profiles/${ID}/profile.json`))
+      expect(saved.selection.include).toHaveLength(12)
+      expect(saved.selection.outgroups.map((o: { accession: string }) => o.accession)).toEqual(['OUT91.1'])
+      const cur = parseCuration(await platform.store.read(`profiles/${ID}/curation.json`))
+      expect(cur.records['N0.1']).toMatchObject({ group: 'north', study: expect.any(String) })
+      tab('Records')
+      fireEvent.click(screen.getByRole('button', { name: 'Fetch records' }))
+      await screen.findByText(/13 records|12 records|records, \d+ passed/, undefined, { timeout: 20_000 })
+      expect(screen.queryByRole('alert')).toBeNull()
+      tab('Study')
+      fireEvent.click(screen.getByRole('button', { name: 'Move N0.1 left' }))
+      expect(screen.getByText(/will be labeled post hoc/)).toBeTruthy()
+      fireEvent.change(screen.getByLabelText('Reason'), { target: { value: 'Second thoughts' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Omit' }))
+      expect(screen.getByText(/after a result \(post hoc\): Second thoughts/)).toBeTruthy()
+    })
   })
 })

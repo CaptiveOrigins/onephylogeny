@@ -1,6 +1,17 @@
 # Study workspace
 
-Design for finding papers, gathering their records and running comparable analyses. Nothing here is built yet. It lives in OnePhylogeny.
+Design for finding papers, gathering their records and running comparable analyses. It lives in OnePhylogeny.
+
+**Built:** search across PubMed, Europe PMC and GenBank record studies, the five columns, `+`, `−` and dragging through one set of rules, linked highlighting, inline save and add prompts, autosave with restorable history, omissions with reasons and post hoc labels, the gene region view, the search log, a methods export, and using a Study for the next fetch.
+
+**Not built yet:**
+
+- **Run comparison:** duplicating a Study and comparing runs side by side. This includes showing results with and without post hoc omissions. They're labeled post hoc now, but that comparison has to be run by hand.
+- **Filters:** raw reads available, and wild, seized or captive status.
+- **Also planned:** everything in that list below except the methods export and search log.
+- **Sources:** PopSet and BioProject aren't searched.
+
+**Not tested in the real app:** the click-through tests use a simulated browser. Dragging in particular needs checking in the Mac app, which now sets `dragDropEnabled: false`.
 
 ## The idea
 
@@ -64,7 +75,7 @@ A track across reference columns, with one band per Study paper in its color.
 
 ## Finding papers
 
-The search merges two lists, because most records have no PubMed link: 3 of 294 in our first species' cache.
+The search merges two lists, because most records have no PubMed link: 3 of 294 in our first species' cache. Whole mitochondrial genomes are included even when they don't annotate the marker, and records with no publication are listed as such rather than dropped. A source that fails or cuts its list short says so.
 
 1. Papers from PubMed and Europe PMC, by species or free text.
 2. Studies built from the titles and authors on GenBank records.
