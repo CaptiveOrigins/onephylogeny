@@ -63,7 +63,30 @@ Each panel version keeps a list of every claim tested against it, including thos
 - Sampling is uneven. Absence from a panel says little about absence from a place.
 - What "known origin" means in the source tables remains unconfirmed.
 
-## 7. Deviation log
+## 7. NUMT screen
+
+A NUMT is an old copy of mitochondrial DNA in the nuclear genome, and it can pass for the real gene. This screen runs outside the app, once per species, using `scripts/numt-screen.mjs`. These rules were committed before the script first ran on real data. Any later change goes in the deviation log.
+
+**Search.** Against the nuclear sequences of a related assembly, with any sequence the assembly report names as the organelle removed:
+
+- `blastn -task blastn` with the species' whole mitogenome, its marker and every record.
+- `tblastn` with the translated marker, using genetic code 2. The paper below used TFASTX with an MD40 matrix. `tblastn` with `PAM70` is a substitute chosen for what BLAST+ offers, and it's untested against theirs.
+- A hit counts at E below 0.001 and at least 30 nucleotides or 10 amino acids. Loci meeting the stricter E below 1e-10 (1e-6 for protein) are counted too. These values follow [Triant & Pearson 2022](https://pmc.ncbi.nlm.nih.gov/articles/PMC9723244/), and none is calibrated for tortoises. Mitogenome hits count only where they overlap the marker.
+
+**Organelle-like scaffolds.** The paper gives no rule for these, so this one is ours: a scaffold of at most 20 kb with at least half its length in mitogenome hits is reported apart as possible organelle sequence. It stays out of the library.
+
+**Flag rule.** Overlapping hits merge into loci, and each locus is placed on reference columns. A record is tested against a locus when they share at least 100 columns. It's `flagged-for-review` if it's strictly closer to the copy than to the species' reference on those same columns. Otherwise it's `no-signal`, or `not-assessed` if no locus shares enough columns. Records under 313 bases are also marked short, the length below which [Schultz & Hebert 2022](https://www.ebi.ac.uk/europepmc/webservices/rest/search?format=json&resultType=core&query=TITLE:%22Do%20pseudogenes%20pose%20a%20problem%20for%20metabarcoding%20marine%20animal%20communities%22) found most risk in COI.
+
+**What each result means.**
+
+- A flag sends a record to review. It doesn't exclude the record, and it doesn't prove a NUMT.
+- `no-signal` doesn't clear a record. A copy that entered the genome after the two species split can't be in this assembly, and only one individual's genome is searched. Reports must never say a record passed this screen as if it were cleared.
+- The distance from the found copies to the reference is reported, because copies far from every record leave this rule little power: a record has to come very close before the rule can fire.
+- Results on panels through `0.4.0` are exploratory, since the records aren't new.
+
+`scripts/numt-fixture.py` builds a synthetic genome with planted copies, to check the script before use.
+
+## 8. Deviation log
 
 Each entry records the date, what changed, why, and which results it touches.
 

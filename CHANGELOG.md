@@ -9,6 +9,7 @@
 - Unannotated records now get the coverage check unless they're many times the reference's length.
 - New error `terminal-discordance` for foreign tails. Frame-shifting indels and in-frame stops now exclude records from panels, and still warn on samples.
 - Analysis protocol: all results so far are exploratory, and rules are fixed before tests.
+- NUMT screen (`scripts/numt-screen.mjs`): searches a related genome for nuclear copies of a marker and flags records closer to a copy than to the reference. It runs outside the app and needs BLAST+.
 - React: `TreeCanvas`, with pan, zoom, Fit, Download SVG and Print, plus the suite's shared `icons`. `TreeFigure` stays server-renderable.
 - Mac app: the tree uses the canvas. Download saves `tree.svg` to the profile's exports, and Print opens the system dialog.
 - Playground: every view on invented data (`apps/playground`).
