@@ -1,5 +1,5 @@
 import { NcbiClient, suggestOutgroups, type OutgroupLadder } from '@captiveorigins/onephylogeny-acquire'
-import { parseCuration, parseFasta, parseProfile, validateProfile, type Curation, type Diagnostic, type EvidenceUse, type Panel, type Profile, type ProvenanceClass, type Result, type RunEvent, type SequenceRecord, type Snapshot } from '@captiveorigins/onephylogeny-core'
+import { LOCATION_EVIDENCE, parseCuration, parseFasta, parseProfile, validateProfile, type Curation, type Diagnostic, type EvidenceUse, type Panel, type Profile, type ProvenanceClass, type Result, type RunEvent, type SequenceRecord, type Snapshot } from '@captiveorigins/onephylogeny-core'
 import { buildPanelFromRun, buildTree, EngineError, fetchAndAnchor, isCancelled, loadPanel, profilePaths, runSample, type EngineContext, type RecordOutcome, type TreeOutcome } from '@captiveorigins/onephylogeny-engine'
 import { EventLog, OutgroupLadderView, PanelSummary, ResultView, ValidationView } from '@captiveorigins/onephylogeny-react'
 import { TreeCanvas } from '@captiveorigins/onephylogeny-react/canvas'
@@ -11,9 +11,9 @@ import { validateInWorker } from './validate'
 
 const PROVENANCE: { value: ProvenanceClass; label: string }[] = [
   { value: 'unknown', label: 'Unknown' }, { value: 'wild-documented', label: 'Wild, documented' }, { value: 'museum-documented', label: 'Museum, documented' },
+  { value: 'origin-reported', label: 'Origin reported by a source' },
   { value: 'seized', label: 'Seized' }, { value: 'ex-situ', label: 'Ex-situ' }, { value: 'zoo', label: 'Zoo' },
 ]
-const LOCATION: ProvenanceClass[] = ['wild-documented', 'museum-documented']
 type Tab = 'setup' | 'records' | 'panel' | 'sample' | 'tree' | 'log'
 const TABS: { id: Tab; label: string }[] = [{ id: 'setup', label: 'Setup' }, { id: 'records', label: 'Records' }, { id: 'panel', label: 'Panel' }, { id: 'sample', label: 'Test a sample' }, { id: 'tree', label: 'Tree' }, { id: 'log', label: 'Log' }]
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'untitled'
@@ -292,7 +292,7 @@ function Records({ profile, curation, decide, records, outcomes, runId, platform
         <p className="muted">Give records a site so validation can hold out whole sites. Without one, a record can be tested against others from its own site, which flatters the result.</p>
         <p className="muted">Sources rarely say whether an animal was wild or seized, so check the paper, then set the whole study at once. Only wild or museum records with documented origins count as evidence of location.</p>
         <table className="ophy-table"><thead><tr><th>Study</th><th>Records</th><th>Set provenance for all</th></tr></thead><tbody>
-          {studies.map(([title, rs]) => <tr key={title}><th scope="row"><button className="link" onClick={() => setStudy(study === title ? null : title)}>{title}</button></th><td>{rs.length}</td><td><select aria-label={`Provenance for ${title}`} value="" onChange={(e) => e.target.value && set(rs.map((r) => r.version), { provenanceClass: e.target.value as ProvenanceClass })}><option value="">Choose…</option>{PROVENANCE.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</select></td></tr>)}
+          {studies.map(([title, rs]) => <tr key={title}><th scope="row"><button className="link" onClick={() => setStudy(study === title ? null : title)}>{title}</button></th><td>{rs.length}</td><td><select aria-label={`Provenance for ${title}`} value="" onChange={(e) => e.target.value && set(rs.map((r) => r.version), { provenanceClass: e.target.value as ProvenanceClass, ...(e.target.value === 'origin-reported' ? { originSource: title } : {}) })}><option value="">Choose…</option>{PROVENANCE.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</select></td></tr>)}
         </tbody></table>
         <h3>Records{study ? `: ${study}` : ''}</h3>
         <div className="actions"><Field label="Show"><select value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)}><option value="all">All</option><option value="undecided">Passed, not in a group</option><option value="passed">Passed checks</option><option value="excluded">Excluded</option></select></Field>{study && <button onClick={() => setStudy(null)}>Show all studies</button>}<span className="muted">{shown.length} shown</span></div>
@@ -304,11 +304,11 @@ function Records({ profile, curation, decide, records, outcomes, runId, platform
             return <tr key={r.version} className={o?.status === 'excluded' || d.exclude ? 'dim' : ''}>
               <th scope="row">{r.version}</th><td>{r.organism}</td><td>{r.geoLocName ?? '–'}</td>
               <td>{o?.status === 'excluded' ? <span title={o.diagnostics.map((x) => x.message).join('\n')}>Excluded: {o.diagnostics.find((x) => x.severity === 'error')?.code}</span> : o?.diagnostics.length ? <span title={o.diagnostics.map((x) => x.message).join('\n')}>Passed, {o.diagnostics.length} note</span> : 'Passed'}</td>
-              <td><select aria-label={`Provenance of ${r.version}`} value={prov} onChange={(e) => set([r.version], { provenanceClass: e.target.value as ProvenanceClass })}>{PROVENANCE.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</select></td>
+              <td><select aria-label={`Provenance of ${r.version}`} value={prov} onChange={(e) => set([r.version], { provenanceClass: e.target.value as ProvenanceClass })}>{PROVENANCE.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</select>{prov === 'origin-reported' && <input aria-label={`Source of the origin of ${r.version}`} defaultValue={d.originSource ?? ''} onBlur={(e) => e.target.value !== (d.originSource ?? '') && set([r.version], { originSource: e.target.value })} placeholder="Source of this origin" />}</td>
               <td><select aria-label={`Group of ${r.version}`} disabled={o?.status === 'excluded'} value={d.group ?? ''} onChange={(e) => { const { group: _g, ...rest } = d; void decide({ ...curation, records: { ...curation.records, [r.version]: e.target.value ? { ...rest, group: e.target.value } : rest } }) }}><option value="">None</option>{groups.map((g) => <option key={g.id} value={g.id}>{g.label}</option>)}</select></td>
               <td><input aria-label={`Site of ${r.version}`} defaultValue={d.site ?? ''} onBlur={(e) => e.target.value !== (d.site ?? '') && set([r.version], { site: e.target.value })} placeholder="Site" /></td>
               <td className="use">
-                <div className="muted">{LOCATION.includes(prov) ? 'Lineage and location' : 'Lineage only'}</div>
+                <div className="muted">{LOCATION_EVIDENCE.includes(prov) ? 'Lineage and location' : 'Lineage only'}</div>
                 {d.exclude
                   ? <><div className="muted" title={d.note}>Left out: {d.note}</div><button onClick={() => { const { exclude: _e, note: _n, ...rest } = d; void decide({ ...curation, records: { ...curation.records, [r.version]: rest } }) }}>Include</button></>
                   : leaving?.id === r.version

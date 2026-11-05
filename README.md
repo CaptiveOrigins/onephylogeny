@@ -65,6 +65,7 @@ pnpm --filter onephylogeny-desktop dev       # browser preview with made-up data
 
 - [Architecture](docs/architecture/architecture.md), [data schema](docs/architecture/data-schema.md), [decisions](docs/architecture/adr/README.md)
 - [The OneOrigin suite](docs/oneorigin/README.md) and its [guidelines](docs/oneorigin/guidelines.md) (draft)
+- [Analysis protocol](docs/architecture/analysis-protocol.md): what results can claim, and the rules fixed before testing
 - [Roadmap](docs/architecture/roadmap.md), [phase plan](docs/architecture/phase-plan.md), [limitations](docs/architecture/limitations.md)
 
 Changes are listed in the [changelog](CHANGELOG.md).

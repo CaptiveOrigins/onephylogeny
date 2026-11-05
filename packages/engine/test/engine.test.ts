@@ -86,7 +86,7 @@ describe('fetchAndAnchor', () => {
 describe('panel and sample', () => {
   const curation: Curation = { schemaVersion: 1, records: {
     'A1.1': { group: 'a', provenanceClass: 'wild-documented', site: 's1' }, 'A2.1': { group: 'a', provenanceClass: 'wild-documented', site: 's2' },
-    'B1.1': { group: 'b', provenanceClass: 'seized', site: 's3' },
+    'B1.1': { group: 'b', provenanceClass: 'wild-documented', site: 's3' },
   } }
   it('runs end to end, from fetch to a sample result', async () => {
     const ctx = makeContext()
@@ -99,6 +99,32 @@ describe('panel and sample', () => {
     const sample = testSample(mutate([10, 200, 450], 0, 500), 'sample-1', bundle)
     expect(sample.result?.findings.find((f) => f.group === 'a')?.status).toBe('consistent')
     expect(sample.result?.findings.find((f) => f.group === 'b')?.status).toBe('excluded_within_panel')
+  })
+  it('refuses a panel whose files changed after sealing', async () => {
+    const ctx = makeContext()
+    await fetchAndAnchor(ctx, profile)
+    await buildPanelFromRun(ctx, profile, curation)
+    const dir = profilePaths('demo').panel('p', '1')
+    const fasta = ctx.store.files.get(`${dir}/panel.fasta`)!
+    const body = fasta.split('\n')
+    const line = body.findIndex((l, i) => i > 2 && /^[ACGT-]+$/.test(l) && /[ACGT]/.test(l))
+    body[line] = body[line]!.replace(/[ACGT]/, (c) => (c === 'A' ? 'C' : 'A'))
+    ctx.store.files.set(`${dir}/panel.fasta`, body.join('\n'))
+    await expect(loadPanel(ctx.store, dir)).rejects.toMatchObject({ code: 'panel-changed' })
+    ctx.store.files.set(`${dir}/panel.fasta`, fasta)
+    const panel = JSON.parse(ctx.store.files.get(`${dir}/panel.json`)!) as { notCovered: string[] }
+    ctx.store.files.set(`${dir}/panel.json`, JSON.stringify({ ...panel, notCovered: [] }))
+    await expect(loadPanel(ctx.store, dir)).rejects.toMatchObject({ code: 'panel-changed' })
+  })
+  it('seals the checks that ran, and reads samples with them', async () => {
+    const ctx = makeContext()
+    await fetchAndAnchor(ctx, profile)
+    const { bundle } = await buildPanelFromRun(ctx, profile, curation)
+    expect(bundle.panel.gates.frameErrors).toBe(true)
+    const strict = { ...bundle, panel: { ...bundle.panel, gates: { ...bundle.panel.gates, minIdentity: 0.9999 } } }
+    const sequence = mutate([10, 200, 450], 0, 500)
+    expect(testSample(sequence, 's', bundle).result).not.toBeNull()
+    expect(testSample(sequence, 's', strict).diagnostics.map((d) => d.code)).toContain('low-identity')
   })
   it('refuses a sample of a different gene with a reason', async () => {
     const ctx = makeContext()

@@ -1,3 +1,5 @@
+import type { GateSettings } from './gates.js'
+
 /** Records are plain JSON: ISO date strings, no classes. See docs/architecture/data-schema.md. */
 export type Id = string
 
@@ -14,7 +16,14 @@ export type Diagnostic = {
 }
 
 /** What is known about how an animal or specimen came to be sampled. `unknown` is a real value. */
-export type ProvenanceClass = 'wild-documented' | 'museum-documented' | 'seized' | 'ex-situ' | 'zoo' | 'unknown'
+export type ProvenanceClass =
+  /** Independently documented as collected in the wild at this place. */
+  | 'wild-documented'
+  /** A museum specimen with documented collection data. */
+  | 'museum-documented'
+  /** A source reports where this animal came from, and nobody here has confirmed it. Needs `originSource`. */
+  | 'origin-reported'
+  | 'seized' | 'ex-situ' | 'zoo' | 'unknown'
 
 /** Where a field's value came from, so every claim can be traced. */
 export type FieldSource = { kind: 'genbank' | 'publication' | 'supplement' | 'curator' | 'user'; citation?: string; retrievedAt?: string }
@@ -59,6 +68,8 @@ export type Profile = {
   id: Id
   title: string
   selection: Selection
+  /** Overrides for the record checks. Whatever applied is sealed into any panel built from them. */
+  gates?: Partial<GateSettings>
   reference?: { accession: string; codonStart?: number; geneticCode?: GeneticCode }
   tree?: { model: string; bootstrap: number; shAlrt: number; seed: number; threads: number }
   panel?: PanelSettings
@@ -95,6 +106,8 @@ export type RecordDecision = {
   use?: EvidenceUse
   /** Sampling site or block, used so validation never tests a record against its own site. */
   site?: string
+  /** The source of a reported origin, such as a paper's table. Required for `origin-reported`. */
+  originSource?: string
   exclude?: boolean
   note?: string
 }
@@ -157,7 +170,7 @@ export type PanelGroup = {
   /** A generalized named region. Panels never hold coordinates. */
   region?: string
   windows: PanelWindow[]
-  evidence: { record: Id; use: EvidenceUse; provenanceClass: ProvenanceClass }[]
+  evidence: { record: Id; use: EvidenceUse; provenanceClass: ProvenanceClass; originSource?: string }[]
 }
 
 export type PanelStatus = 'candidate' | 'active' | 'superseded' | 'withdrawn'
@@ -181,6 +194,10 @@ export type Panel = {
   builtBy: Id
   /** Part of the sealed panel, so editing a profile can never change what a panel version concludes. */
   thresholds: EvaluationThresholds
+  /** The record checks its members passed, sealed so a sample is held to the same checks. */
+  gates: GateSettings
+  /** Hash of the aligned sequences and reference that travel beside this JSON, so the seal covers them too. */
+  sequencesChecksum: string
   /** What made this panel. */
   builtWith?: { name: string; version: string }[]
 }

@@ -13,7 +13,7 @@ const { panel, sequences } = buildPanel({
   settings, taxa: [{ source: 't', id: '1' }], marker: { kind: 'gene', gene: 'g' }, reference: { accession: 'R.1', length: 200 }, sources: [], builtBy: 'r',
   members: [
     { record: 'a1', group: 'a', aligned: mut([5, 50, 90]), provenanceClass: 'wild-documented' },
-    { record: 'b1', group: 'b', aligned: mut([6, 51, 91]), provenanceClass: 'seized' },
+    { record: 'b1', group: 'b', aligned: mut([6, 51, 91]), provenanceClass: 'wild-documented' },
     { record: 'c1', group: 'c', aligned: blank(mut([150, 160]), 120, 200), provenanceClass: 'wild-documented' },
   ],
 })

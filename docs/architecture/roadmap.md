@@ -60,6 +60,17 @@ Everything later depends on this. It replaces fixed procedures with one model, n
 
 **Check:** kill a real run at any point and resume it without re-downloading or wrong output. Changing only a threshold reruns only the panel steps. Any result traces back to raw files, through artifacts alone.
 
+## Revised order (2026-11-04)
+
+The techniques research changes what comes next, and the [analysis protocol](analysis-protocol.md) now governs every stage. The order is integrity, provenance, evaluation, validation, then reporting. Stage 2's format waits for schema version 2, because freezing today's one-group-versus-rest format would lock in the question the evaluator should stop asking. Parts of Stage 4 therefore run alongside it.
+
+1. **Integrity.** Close the record-check gaps, seal checks and sequences into panels, and verify on load. *Code done. The genome NUMT screen has run once for the first species and flagged nothing, which clears no record. Shipping its library inside panels is still to do.*
+2. **Provenance.** Reported origins are labelled as reports, and records assigned by sequence no longer shape a panel. *Done.*
+3. **Evaluation.** Named windows, sites per pair of groups, depth rules, and a `not_resolved` state.
+4. **Validation.** Hold-out ladder, fragments, controls and intervals on sites. Validated scope comes from a report, not by hand.
+5. **Stage 2's dataset format,** on schema version 2.
+6. **Reporting.** Reference-class counts instead of probabilities, then expert review.
+
 ## Stage 2: Make panels real datasets
 
 1. **Dataset format.** A folder or zip: manifest, reference, aligned sequences, QC rules, group definitions, generalized regions, validation report, example sequences with expected results, README, changelog, citations and a compatible software range.
@@ -74,7 +85,7 @@ Everything later depends on this. It replaces fixed procedures with one model, n
 
 This is where a real user currently gets stuck.
 
-1. **Suggested groups.** Cluster haplotypes from the data, and show how they compare with your proposed groups. Suggestions stay suggestions until someone accepts them.
+1. **Group audit.** Cluster haplotypes per window, on full-window records, as an audit of proposed groups. Clusters don't define groups, because on fragmented data they may just recover amplicons.
 2. **Bulk tools.** Assign by study, clade or selection. Import and export the curation sheet as CSV.
 3. **Paper lookup.** Find each study through Europe PMC and Crossref, and link supplements. Every extracted field records its source and needs approval.
 4. **Decision history.** Who changed what, when and why.
@@ -91,7 +102,7 @@ Informed by the techniques research.
 2. **Better authenticity checks.** A NUMT screen against a genome, plus chimera and mislabel detection.
 3. **Stronger validation.** Fragment simulation, leave-one-study-out, per-window reports and intervals for small groups.
 4. **Conflict reporting.** Report when evidence supports several groups or windows disagree.
-5. **Calibration.** Only show confidence once it's shown to match observed accuracy; otherwise keep statuses and reasons.
+5. **Calibration.** Expect to refuse: at these site counts, report counts by evidence class, not probabilities.
 6. **Replication.** Reproduce the published assignments that have sources (Arias-Sosa 2025).
 7. **Expert review.** A wildlife geneticist reviews the method and wording.
 

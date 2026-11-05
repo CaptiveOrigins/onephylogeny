@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { alignToReference, assessAlignment, DEFAULT_GATES, buildPanel, evaluateQuery, leaveOneBlockOut, leaveOneGroupOut, reverseComplement, validatePanel, validateResult, type BuildPanelInput, type PanelSettings } from '../src/index.js'
+import { alignToReference, assessAlignment, DEFAULT_GATES, buildPanel, evaluateQuery, gatesForRecord, leaveOneBlockOut, leaveOneGroupOut, reverseComplement, validatePanel, validateResult, verifyBundle, type BuildPanelInput, type PanelSettings } from '../src/index.js'
 
 function randomSeq(n: number, seed = 7): string {
   // mulberry32: a short linear generator repeats itself, which makes "unrelated" sequences share long runs.
@@ -139,6 +139,59 @@ describe('evaluateQuery', () => {
   })
 })
 
+describe('records assigned by their own sequence', () => {
+  const R = randomSeq(200, 11)
+  const at = (...sites: number[]) => mutate(R, sites)
+  const settings = { id: 'p', version: '1', groups: [{ id: 'x', label: 'X' }, { id: 'y', label: 'Y' }], notCovered: ['Z'], validatedScope: [], thresholds: { minOverlap: 20, tolerance: 0, minDiagnosticConflicts: 2 } }
+  const base = { settings, taxa: [{ source: 't', id: '1' }], marker: { kind: 'gene' as const, gene: 'g' }, reference: { accession: 'R.1', length: 200 }, sources: [], builtBy: 'test' }
+  const wild = [
+    { record: 'x1', group: 'x', aligned: at(10, 20, 30, 40), provenanceClass: 'origin-reported' as const, originSource: 's' },
+    { record: 'x2', group: 'x', aligned: at(10, 20, 30, 40, 50), provenanceClass: 'origin-reported' as const, originSource: 's' },
+    { record: 'y1', group: 'y', aligned: at(60, 70, 80, 90), provenanceClass: 'origin-reported' as const, originSource: 's' },
+  ]
+  // Carries Y's states, but was labelled X by its sequence: it mustn't erase what separates the two.
+  const seized = { record: 's1', group: 'x', aligned: at(60, 70, 80, 90, 95), provenanceClass: 'seized' as const }
+  const query = at(60, 70, 80, 90)
+  const options = { queryId: 'q', runId: 'r' }
+
+  it("can't erase a fixed site or turn an exclusion into consistent", () => {
+    const clean = buildPanel({ ...base, members: wild })
+    const withSeized = buildPanel({ ...base, members: [...wild, seized] })
+    const sites = (b: typeof clean) => b.panel.groups.map((g) => g.windows.flatMap((w) => w.diagnosticSites))
+    expect(sites(withSeized)).toEqual(sites(clean))
+    const status = (b: typeof clean) => evaluateQuery(query, b, options).findings.find((f) => f.group === 'x')!
+    expect(status(clean).status).toBe('excluded_within_panel')
+    expect(status(withSeized).status).toBe('excluded_within_panel')
+    expect(status(withSeized).evidence).not.toContain('s1')
+  })
+  it('stays listed, marked, and sealed', () => {
+    const b = buildPanel({ ...base, members: [...wild, seized] })
+    expect(b.panel.groups[0]!.evidence.find((e) => e.record === 's1')).toMatchObject({ use: 'lineage-only', provenanceClass: 'seized' })
+    expect(b.sequences.s1).toBeDefined()
+    expect(verifyBundle(b)).toEqual([])
+  })
+  it('leaves a group with nothing else not evaluable, with a reason', () => {
+    const b = buildPanel({ ...base, members: [wild[2]!, seized] })
+    const x = evaluateQuery(query, b, options).findings.find((f) => f.group === 'x')!
+    expect(x.status).toBe('not_evaluable')
+    expect(x.reason).toMatch(/no record that can show/)
+    expect(validatePanel(b.panel).map((d) => d.code)).toContain('no-windows')
+  })
+  it('is never scored as test truth', () => {
+    const report = leaveOneBlockOut({ ...base, members: [...wild, { ...seized, block: 'site-s' }].map((m, i) => ({ block: `site-${i}`, ...m })) })
+    // x1 and x2 are tested. y1 is skipped, because holding it out leaves Y with nothing. s1 is neither.
+    expect(report.tested).toBe(2)
+    expect(report.skipped).toBe(1)
+    expect(report.diagnostics.map((d) => d.code)).toContain('lineage-only-not-tested')
+  })
+  it('seals the sequences, so editing one breaks the seal', () => {
+    const b = buildPanel({ ...base, members: wild, referenceSequence: R })
+    expect(verifyBundle({ ...b, sequences: { ...b.sequences, x1: at(10) } }).map((d) => d.code)).toEqual(['sequences-changed'])
+    expect(verifyBundle({ ...b, referenceSequence: at(1) }).map((d) => d.code)).toEqual(['sequences-changed'])
+    expect(verifyBundle({ ...b, panel: { ...b.panel, notCovered: [] } }).map((d) => d.code)).toEqual(['checksum-mismatch'])
+  })
+})
+
 describe('validation harness', () => {
   it('leave-one-block-out never tests a record against its own block', () => {
     const members = input.members.map((m) => ({ ...m, block: m.group === 'a' ? 'same-site' : `s-${m.record}` }))
@@ -157,8 +210,10 @@ describe('validation harness', () => {
   it('leave-one-group-out counts false claims', () => {
     const report = leaveOneGroupOut({ ...input, members: input.members })
     expect(report.scheme).toBe('leave-one-group-out')
-    expect(report.tested).toBe(5)
+    // Five members, one of them seized: its label came from its own sequence, so it can't be test truth.
+    expect(report.tested).toBe(4)
     expect(report.falseConsistent).toBe(0)
+    expect(report.diagnostics.map((d) => d.code)).toContain('lineage-only-not-tested')
   })
   it('leave-one-group-out says when a record could not be compared at all', () => {
     const members = [input.members[0]!, { ...input.members[4]!, aligned: blank(seqOf([5, 6, 7]), 0, 30) }]
@@ -175,7 +230,32 @@ describe('gates', () => {
   it('rejects a sequence that is mostly something else', () => {
     const joined = alignToReference(ref.slice(0, 150) + randomSeq(500, 321), ref)
     expect(assessAlignment(joined, DEFAULT_GATES).map((d) => d.code)).toContain('low-query-coverage')
-    expect(assessAlignment(joined, { ...DEFAULT_GATES, minQueryCoverage: undefined }).map((d) => d.code)).toContain('clipped-ends')
+    expect(assessAlignment(joined, { ...DEFAULT_GATES, minQueryCoverage: undefined }).map((d) => d.code)).toContain('terminal-discordance')
+  })
+  it('rejects a foreign tail too short to fail coverage', () => {
+    const joined = alignToReference(ref.slice(0, 365) + randomSeq(65, 99), ref)
+    expect(assessAlignment(joined, DEFAULT_GATES).filter((d) => d.severity === 'error').map((d) => d.code)).toEqual(['terminal-discordance'])
+  })
+  it('allows a real flank beyond the end of the reference', () => {
+    const flanked = alignToReference(ref.slice(300) + randomSeq(65, 99), ref)
+    const found = assessAlignment(flanked, DEFAULT_GATES)
+    expect(found.filter((d) => d.severity === 'error')).toEqual([])
+    expect(found.map((d) => d.code)).toContain('clipped-ends')
+  })
+  it('holds an unannotated record to the coverage check unless it is many times the reference', () => {
+    const record = (length: number) => gatesForRecord(DEFAULT_GATES, { wholeRecord: true, length, referenceLength: 600 })
+    const mostlyOther = alignToReference(ref.slice(0, 300) + randomSeq(700, 5), ref)
+    expect(assessAlignment(mostlyOther, record(1000)).map((d) => d.code)).toContain('low-query-coverage')
+    expect(record(1000).minQueryCoverage).toBe(DEFAULT_GATES.minQueryCoverage)
+    expect(record(16000).minQueryCoverage).toBeUndefined()
+    expect(record(16000).maxTerminalDiscordance).toBeUndefined()
+    expect(gatesForRecord(DEFAULT_GATES, { wholeRecord: false, length: 16000, referenceLength: 600 })).toBe(DEFAULT_GATES)
+  })
+  it('makes frame problems errors only when asked', () => {
+    const shifted = alignToReference(ref.slice(0, 200) + ref.slice(201, 400), ref)
+    const severity = (frameErrors: boolean) => assessAlignment(shifted, { ...DEFAULT_GATES, frameErrors }).find((d) => d.code === 'frame-shifting-indel')?.severity
+    expect(severity(false)).toBe('warning')
+    expect(severity(true)).toBe('error')
   })
   it('warns about a frame-shifting deletion but passes a clean record', () => {
     expect(assessAlignment(alignToReference(ref.slice(0, 300), ref), DEFAULT_GATES)).toEqual([])

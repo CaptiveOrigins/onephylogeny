@@ -1,11 +1,12 @@
 import { compareAligned, coverage, isMissing } from './sequence.js'
-import { sealPanel } from './panel.js'
+import { DEFAULT_GATES, type GateSettings } from './gates.js'
+import { LOCATION_EVIDENCE, sealPanel, sequencesChecksum } from './panel.js'
 import type { Diagnostic, EvaluationThresholds, Finding, Panel, PanelGroup, PanelSettings, ProvenanceClass, Result, EvidenceUse } from './model.js'
 
 /** A panel and the aligned sequences its evidence names. Panels stay JSON; sequences travel in FASTA beside them. */
 export type PanelBundle = { panel: Panel; sequences: Record<string, string>; referenceSequence?: string }
 
-export type PanelMember = { record: string; group: string; aligned: string; provenanceClass: ProvenanceClass; use?: EvidenceUse }
+export type PanelMember = { record: string; group: string; aligned: string; provenanceClass: ProvenanceClass; use?: EvidenceUse; originSource?: string }
 
 export type BuildPanelInput = {
   settings: PanelSettings
@@ -17,9 +18,12 @@ export type BuildPanelInput = {
   members: PanelMember[]
   referenceSequence?: string
   builtWith?: { name: string; version: string }[]
+  /** The record checks these members passed. */
+  gates?: GateSettings
 }
 
-const LOCATION: readonly ProvenanceClass[] = ['wild-documented', 'museum-documented']
+const useOf = (m: Pick<PanelMember, 'use' | 'provenanceClass'>): EvidenceUse => m.use ?? (LOCATION_EVIDENCE.includes(m.provenanceClass) ? 'lineage-and-location' : 'lineage-only')
+const locates = (m: Pick<PanelMember, 'use' | 'provenanceClass'>) => useOf(m) === 'lineage-and-location'
 
 function basesAt(members: PanelMember[], position: number): Set<string> {
   const out = new Set<string>()
@@ -30,9 +34,14 @@ function basesAt(members: PanelMember[], position: number): Set<string> {
   return out
 }
 
-/** Builds a sealed panel: evaluable windows from real coverage, and sites fixed against every other group. */
+/**
+ * Builds a sealed panel: evaluable windows from real coverage, and sites fixed against every other group.
+ * Only records that can show where a group occurs shape windows, fixed sites and spread. A record assigned to a group by
+ * its own sequence stays listed, but counting it would make the group's definition depend on the answer being tested.
+ */
 export function buildPanel(input: BuildPanelInput): PanelBundle {
-  const { settings, members } = input
+  const { settings } = input
+  const members = input.members.filter(locates)
   const length = input.reference.length
   const groups: PanelGroup[] = settings.groups.map((g) => {
     const own = members.filter((m) => m.group === g.id)
@@ -58,9 +67,10 @@ export function buildPanel(input: BuildPanelInput): PanelBundle {
       label: g.label,
       ...(g.region ? { region: g.region } : {}),
       windows,
-      evidence: own.map((m) => ({ record: m.record, use: m.use ?? (LOCATION.includes(m.provenanceClass) ? 'lineage-and-location' : 'lineage-only'), provenanceClass: m.provenanceClass })),
+      evidence: input.members.filter((m) => m.group === g.id).map((m) => ({ record: m.record, use: useOf(m), provenanceClass: m.provenanceClass, ...(m.originSource ? { originSource: m.originSource } : {}) })),
     }
   })
+  const sequences = Object.fromEntries(input.members.map((m) => [m.record, m.aligned]))
   const panel = sealPanel({
     schemaVersion: 1,
     id: settings.id,
@@ -75,14 +85,16 @@ export function buildPanel(input: BuildPanelInput): PanelBundle {
     sources: input.sources,
     builtBy: input.builtBy,
     thresholds: settings.thresholds,
+    gates: input.gates ?? DEFAULT_GATES,
+    sequencesChecksum: sequencesChecksum(sequences, input.referenceSequence),
     ...(input.builtWith ? { builtWith: input.builtWith } : {}),
   })
-  return { panel, sequences: Object.fromEntries(members.map((m) => [m.record, m.aligned])), ...(input.referenceSequence ? { referenceSequence: input.referenceSequence } : {}) }
+  return { panel, sequences, ...(input.referenceSequence ? { referenceSequence: input.referenceSequence } : {}) }
 }
 
 /** How far members of a group sit from their nearest groupmate, over a shared minimum overlap. */
 function groupSpread(group: PanelGroup, sequences: Record<string, string>, minOverlap: number): number {
-  const seqs = [...new Set(group.evidence.map((e) => sequences[e.record]).filter((s): s is string => Boolean(s)))]
+  const seqs = [...new Set(group.evidence.filter(locates).map((e) => sequences[e.record]).filter((s): s is string => Boolean(s)))]
   let spread = 0
   for (const a of seqs) {
     let nearest = Infinity
@@ -111,7 +123,9 @@ export function evaluateQuery(queryAligned: string, bundle: PanelBundle, options
     let nearest = Infinity
     let nearestRate = Infinity
     let nearestRecords: string[] = []
-    for (const e of group.evidence) {
+    const usable = group.evidence.filter(locates)
+    if (!usable.length) return { group: group.id, status: 'not_evaluable', reason: 'This group has no record that can show where it occurs', overlap: 0, evidence: [] }
+    for (const e of usable) {
       const seq = sequences[e.record]
       if (!seq) continue
       const c = compareAligned(queryAligned, seq)
@@ -199,8 +213,8 @@ export function leaveOneBlockOut(input: ValidationInput): ValidationReport {
   for (const [, held] of blocks) {
     const rest = input.members.filter((m) => !held.includes(m))
     const bundle = buildPanel({ ...input, members: rest })
-    for (const m of held) {
-      if (!rest.some((r) => r.group === m.group)) { skipped++; continue }
+    for (const m of held.filter(locates)) {
+      if (!rest.some((r) => r.group === m.group && locates(r))) { skipped++; continue }
       const result = evaluateQuery(m.aligned, bundle, { queryId: m.record, runId: 'validation' })
       const s = score(m.group)
       tested++
@@ -219,9 +233,16 @@ export function leaveOneBlockOut(input: ValidationInput): ValidationReport {
     }
   }
   const groups = [...scores.values()].map((s) => ({ ...s, meanConsistent: s.tested ? s.meanConsistent / s.tested : 0 }))
-  const noSite = input.members.filter((m) => m.block === undefined).length
+  const noSite = input.members.filter((m) => locates(m) && m.block === undefined).length
   const diagnostics: Diagnostic[] = noSite ? [{ severity: 'warning', code: 'records-without-site', message: `${noSite} records have no site, so each was held out alone. They can be tested against records from their own site, which flatters these results` }] : []
+  diagnostics.push(...lineageOnlyNote(input))
   return { scheme: 'leave-one-block-out', tested, skipped, groups, untestedGroups: input.settings.groups.map((g) => g.id).filter((g) => !scores.has(g)), diagnostics }
+}
+
+/** A label given from a record's own sequence can't be test truth: scoring it would be circular. */
+function lineageOnlyNote(input: ValidationInput): Diagnostic[] {
+  const n = input.members.filter((m) => !locates(m)).length
+  return n ? [{ severity: 'info', code: 'lineage-only-not-tested', message: `${n} records can't show where a group occurs, so they were neither tested nor used as evidence` }] : []
 }
 
 /** Removes each whole group and tests its members. Success means no remaining group claims them. */
@@ -234,7 +255,7 @@ export function leaveOneGroupOut(input: ValidationInput): ValidationReport {
     const settings = { ...input.settings, groups: input.settings.groups.filter((x) => x.id !== g.id) }
     const bundle = buildPanel({ ...input, settings, members: input.members.filter((m) => m.group !== g.id) })
     const s: GroupScore = { group: g.id, tested: 0, includedTruth: 0, onlyTruth: 0, excludedTruth: 0, inconclusive: 0, flagged: 0, notEvaluable: 0, meanConsistent: 0 }
-    for (const m of held) {
+    for (const m of held.filter(locates)) {
       const result = evaluateQuery(m.aligned, bundle, { queryId: m.record, runId: 'validation' })
       const consistent = result.findings.filter((f) => f.status === 'consistent').length
       tested++
@@ -247,5 +268,6 @@ export function leaveOneGroupOut(input: ValidationInput): ValidationReport {
   }
   const noEvidence = groups.reduce((sum, g) => sum + g.notEvaluable, 0)
   const diagnostics: Diagnostic[] = noEvidence ? [{ severity: 'info', code: 'not-evaluable-counted-separately', message: `${noEvidence} of these records could not be compared with any remaining group, so they say nothing about false claims` }] : []
+  diagnostics.push(...lineageOnlyNote(input))
   return { scheme: 'leave-one-group-out', tested, skipped: 0, groups, untestedGroups: [], falseConsistent, diagnostics }
 }

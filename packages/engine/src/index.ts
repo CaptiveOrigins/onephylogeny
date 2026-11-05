@@ -1,6 +1,6 @@
 import {
-  ALIGNER, alignToReference, assessAlignment, buildPanel, canonicalJson, collapseHaplotypes, DEFAULT_GATES, extractLocation, findGeneFeatures, leaveOneBlockOut, leaveOneGroupOut, parseFasta, parseGenBank,
-  evaluateQuery, toRecordSheet, toSequenceRecord, validatePanel, validateProfile, validateResult, writeFasta,
+  ALIGNER, alignToReference, assessAlignment, buildPanel, canonicalJson, collapseHaplotypes, DEFAULT_GATES, extractLocation, findGeneFeatures, gatesForRecord, leaveOneBlockOut, leaveOneGroupOut, parseFasta, parseGenBank,
+  evaluateQuery, toRecordSheet, toSequenceRecord, validatePanel, verifyBundle, validateProfile, validateResult, writeFasta,
   type Alignment, type Curation, type Diagnostic, type GateSettings, type GenBankRecord, type Panel, type PanelBundle, type PanelMember, type Profile, type Result, type Run, type SequenceRecord, type Snapshot, type ValidationInput,
 } from '@captiveorigins/onephylogeny-core'
 import { NcbiClient, selectionQuery } from '@captiveorigins/onephylogeny-acquire'
@@ -132,12 +132,15 @@ function anchorStep(scope: RunScope, profile: Profile, raw: Artifact) {
   })
 }
 
+/** The checks for records that may enter a panel, where a frame problem excludes rather than warns. */
+const panelGates = (profile: Profile): GateSettings => ({ ...DEFAULT_GATES, ...profile.gates, frameErrors: true, ...(profile.reference?.codonStart !== undefined ? { codonStart: profile.reference.codonStart } : {}), ...(profile.reference?.geneticCode ? { geneticCode: profile.reference.geneticCode } : {}) })
+
 /** Step: which records pass, and why the others don't. Every record gets an outcome. */
 function gateStep(scope: RunScope, profile: Profile, anchoredArtifact: Artifact) {
   const { filters, exclude } = profile.selection
-  const gates: GateSettings = { ...DEFAULT_GATES, ...(profile.reference?.codonStart !== undefined ? { codonStart: profile.reference.codonStart } : {}), ...(profile.reference?.geneticCode ? { geneticCode: profile.reference.geneticCode } : {}) }
+  const gates = panelGates(profile)
   return scope.step({
-    type: 'gated-records', step: { name: 'gate', version: 1 }, inputs: [ref(anchoredArtifact)], parameters: { filters, exclude, gates },
+    type: 'gated-records', step: { name: 'gate', version: 2 }, inputs: [ref(anchoredArtifact)], parameters: { filters, exclude, gates },
     run: async (put) => {
       const excluded = new Map(exclude.map((e) => [e.accession, e.reason]))
       const anchored = JSON.parse(await anchoredArtifact.read('anchored.json')) as Anchored[]
@@ -145,8 +148,7 @@ function gateStep(scope: RunScope, profile: Profile, anchoredArtifact: Artifact)
       const outcomes: RecordOutcome[] = []
       const aligned: { id: string; sequence: string }[] = []
       for (const a of anchored) {
-        // A record with no annotated gene is the whole record, so most of it is expected not to align.
-        const diagnostics = assessAlignment(a.alignment, a.extractedFrom === 'whole-record' ? { ...gates, minQueryCoverage: undefined } as GateSettings : gates)
+        const diagnostics = assessAlignment(a.alignment, gatesForRecord(gates, { wholeRecord: a.extractedFrom === 'whole-record', length: a.length, referenceLength: a.alignment?.aligned.length ?? 0 }))
         const fail = (code: string, message: string) => diagnostics.push({ severity: 'error', code, message })
         const reason = excluded.get(a.record) ?? excluded.get(a.record.split('.')[0]!)
         if (reason) fail('excluded-by-profile', reason)
@@ -237,7 +239,7 @@ export async function buildPanelFromRun(ctx: EngineContext, profile: Profile, cu
       if (decision?.exclude) continue
       if (!decision?.group) { unassigned++; continue }
       if (!groupIds.has(decision.group)) { diagnostics.push({ severity: 'error', code: 'unknown-group', message: `${e.id} names group ${decision.group}, which isn't in the panel settings`, ids: [e.id] }); continue }
-      members.push({ record: e.id, group: decision.group, aligned: e.sequence, provenanceClass: decision.provenanceClass ?? 'unknown', ...(decision.use ? { use: decision.use } : {}), ...(decision.site ? { block: decision.site } : {}) })
+      members.push({ record: e.id, group: decision.group, aligned: e.sequence, provenanceClass: decision.provenanceClass ?? 'unknown', ...(decision.use ? { use: decision.use } : {}), ...(decision.site ? { block: decision.site } : {}), ...(decision.originSource ? { originSource: decision.originSource } : {}) })
     }
     if (!members.length && !diagnostics.some((d) => d.severity === 'error')) throw new EngineError('empty-panel', 'No records are assigned to a group, so there is nothing to build', 'Assign records to groups in the Records tab')
     const records = JSON.parse(await (await loadArtifact(ctx.store, gated.manifest.inputs[0]!)).read('records.json')) as SequenceRecord[]
@@ -248,6 +250,8 @@ export async function buildPanelFromRun(ctx: EngineContext, profile: Profile, cu
       settings, taxa: profile.selection.taxa, marker: profile.selection.marker,
       reference: { accession: reference.id, length: reference.sequence.length, ...(profile.reference?.codonStart !== undefined ? { codonStart: profile.reference.codonStart } : {}), ...(profile.reference?.geneticCode ? { geneticCode: profile.reference.geneticCode } : {}) },
       sources: [...citations.values()], builtBy: gated.manifest.key, referenceSequence: reference.sequence, builtWith: [ENGINE, ALIGNER],
+      // The checks that actually ran on these records, even if the profile has changed since.
+      gates: (gated.manifest.parameters as { gates: GateSettings }).gates,
     }
     const bundle = buildPanel({ ...input, members })
     diagnostics.push(...validatePanel(bundle.panel))
@@ -288,10 +292,13 @@ export async function buildPanelFromRun(ctx: EngineContext, profile: Profile, cu
 export async function loadPanel(store: Store, dir: string): Promise<PanelBundle> {
   if (!(await store.exists(`${dir}/panel.json`))) throw new EngineError('panel-missing', 'This panel hasn\'t been built yet', 'Build it in the Panel tab')
   const panel = JSON.parse(await store.read(`${dir}/panel.json`)) as Panel
-  if (!panel.thresholds) throw new EngineError('panel-outdated', `Panel ${panel.id} version ${panel.version} was built before panels carried their thresholds`, 'Build it again under a new version')
+  if (!panel.thresholds || !panel.gates || !panel.sequencesChecksum) throw new EngineError('panel-outdated', `Panel ${panel.id} version ${panel.version} was built before panels sealed their thresholds, checks and sequences`, 'Build it again under a new version')
   const fasta = parseFasta(await store.read(`${dir}/panel.fasta`))
   const referenceSequence = fasta.find((f) => f.id === '__reference__')?.sequence
-  return { panel, sequences: Object.fromEntries(fasta.filter((f) => f.id !== '__reference__').map((f) => [f.id, f.sequence])), ...(referenceSequence ? { referenceSequence } : {}) }
+  const bundle: PanelBundle = { panel, sequences: Object.fromEntries(fasta.filter((f) => f.id !== '__reference__').map((f) => [f.id, f.sequence])), ...(referenceSequence ? { referenceSequence } : {}) }
+  const problems = verifyBundle(bundle)
+  if (problems.length) throw new EngineError('panel-changed', `Panel ${panel.id} version ${panel.version} doesn't match its seal: ${problems.map((p) => p.message).join('; ')}`, 'Restore it from its source, or build it again under a new version')
+  return bundle
 }
 
 export type SampleOutcome = { result: Result; diagnostics: Diagnostic[]; aligned: string; insertions: number; deletions: number; identity: number; clipped: { start: number; end: number } } | { result: null; diagnostics: Diagnostic[] }
@@ -300,8 +307,8 @@ export type SampleOutcome = { result: Result; diagnostics: Diagnostic[]; aligned
 export function testSample(sequence: string, queryId: string, bundle: PanelBundle, options: { runId?: string } = {}): SampleOutcome {
   if (!bundle.referenceSequence) throw new EngineError('panel-outdated', 'This panel has no reference sequence', 'Build it again')
   const a = alignToReference(sequence, bundle.referenceSequence)
-  const r = bundle.panel.reference
-  const diagnostics = assessAlignment(a, { ...DEFAULT_GATES, ...(r.codonStart !== undefined ? { codonStart: r.codonStart } : {}), ...(r.geneticCode ? { geneticCode: r.geneticCode } : {}) })
+  // The panel's own checks. A frame problem in a sample warns rather than refuses: it's shown with the result, for a person to weigh.
+  const diagnostics = assessAlignment(a, { ...bundle.panel.gates, frameErrors: false })
   if (!a || diagnostics.some((d) => d.severity === 'error')) return { result: null, diagnostics }
   const result = evaluateQuery(a.aligned, bundle, {
     queryId, runId: options.runId ?? 'sample', querySha256: hashText(sequence.toUpperCase()), producedBy: [ENGINE, ALIGNER],
@@ -321,6 +328,8 @@ export async function runSample(ctx: EngineContext, profile: Profile, sequence: 
   const { value, run } = await withRun(ctx, profile, 'sample', async (scope) => {
     scope.run.tools.push(ALIGNER)
     const panelArtifact = await loadArtifact(ctx.store, panelRef)
+    // The artifact is what the provenance trace names, so the copy being evaluated must be that same panel.
+    if ((JSON.parse(await panelArtifact.read('panel.json')) as Panel).checksum !== bundle.panel.checksum) throw new EngineError('panel-changed', `The saved copy of panel ${bundle.panel.id} isn't the one its record traces back to`, 'Build it again under a new version')
     const artifact = await scope.step({
       type: 'sample-result', step: { name: 'sample', version: 1 }, inputs: [ref(panelArtifact)], parameters: { queryId, sequence: hashText(sequence.toUpperCase()) }, tools: [ENGINE, ALIGNER],
       run: async (put) => { await put('outcome.json', json(testSample(sequence, queryId, bundle, { runId: scope.run.id }))) },

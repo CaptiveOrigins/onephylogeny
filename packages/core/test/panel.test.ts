@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canonicalJson, panelChecksum, sealPanel, validatePanel, validateResult, verifyPanel, type Panel, type Result } from '../src/index.js'
+import { canonicalJson, DEFAULT_GATES, panelChecksum, sealPanel, sequencesChecksum, validatePanel, validateResult, verifyPanel, type Panel, type Result } from '../src/index.js'
 
 const panel: Panel = {
   schemaVersion: 1, id: 'p', version: '1', status: 'candidate',
@@ -11,6 +11,7 @@ const panel: Panel = {
     { id: 'b', label: 'B', windows: [{ start: 50, end: 100, diagnosticSites: [] }], evidence: [{ record: 'r2', use: 'lineage-only', provenanceClass: 'seized' }] },
   ],
   notCovered: ['Region X'], validatedScope: ['species'], sources: [{ citation: 'C' }], builtBy: 'run1', thresholds: { minOverlap: 50, tolerance: 1, minDiagnosticConflicts: 2 },
+  gates: DEFAULT_GATES, sequencesChecksum: sequencesChecksum({}),
 }
 const codes = (p: Panel) => validatePanel(p).map((d) => d.code)
 
@@ -20,6 +21,14 @@ describe('panels', () => {
     const p = structuredClone(panel)
     p.groups[1]!.evidence[0]!.use = 'lineage-and-location'
     expect(codes(p)).toContain('invalid-location-evidence')
+  })
+  it('accepts a reported origin only when it names its source', () => {
+    const p = structuredClone(panel)
+    p.groups[0]!.evidence[0]!.provenanceClass = 'origin-reported'
+    expect(codes(p)).toContain('origin-source-missing')
+    p.groups[0]!.evidence[0]!.originSource = 'A paper, table 1'
+    expect(codes(p)).not.toContain('origin-source-missing')
+    expect(codes(p)).not.toContain('invalid-location-evidence')
   })
   it('refuses coordinates anywhere in a panel', () => {
     const p = structuredClone(panel) as Panel & { groups: (Panel['groups'][number] & { lat?: number })[] }
