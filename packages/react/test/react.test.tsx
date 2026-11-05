@@ -1,4 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server'
+import { standaloneSvg, TreeCanvas } from '../src/canvas'
+import { Icon } from '../src/icons'
 import { describe, expect, it } from 'vitest'
 import { buildPanel, evaluateQuery, type Result } from '@captiveorigins/onephylogeny-core'
 import { CoverageBars, EventLog, LineageCard, OutgroupLadderView, parseNewickForDisplay, ResultView, StatusBadge, summarizeResult, TreeFigure, ValidationView } from '../src/index.js'
@@ -56,5 +58,24 @@ describe('views', () => {
     const html = renderToStaticMarkup(<ValidationView blocks={{ ...base, groups: [score('a')] }} groups={{ ...base, scheme: 'leave-one-group-out', groups: [score('a'), score('b')], falseConsistent: 0 }} />)
     expect(html).toContain('all their records come from one site: b')
     expect(html).toContain('calibrated')
+  })
+
+  it('draws a tree on a canvas with every control named', () => {
+    const html = renderToStaticMarkup(<TreeCanvas newick="((a:1,b:1)95/96:1,c:1);" thresholds={[80, 95]} />)
+    for (const label of ['Zoom in', 'Zoom out', 'Fit', 'Download SVG', 'Print']) {
+      expect(html).toContain(`aria-label="${label}"`)
+      expect(html).toContain(`data-tip="${label}"`)
+    }
+    expect(html).toContain('ophy-tree-supported')
+    expect(html).toContain('>a<')
+  })
+  it('saves a tree that opens on its own', () => {
+    const svg = standaloneSvg('<svg class="ophy-tree" style="transform:scale(2)" viewBox="0 0 1 1"><path class="ophy-tree-edge"></path></svg>')
+    expect(svg).toContain('xmlns="http://www.w3.org/2000/svg"')
+    expect(svg).not.toContain('transform')
+    expect(svg).toMatch(/<svg[^>]*><style>\.ophy-tree-edge\{fill:none/)
+  })
+  it('hides icons from screen readers so words do the naming', () => {
+    expect(renderToStaticMarkup(<Icon name="fit" />)).toContain('aria-hidden="true"')
   })
 })

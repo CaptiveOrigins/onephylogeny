@@ -15,6 +15,7 @@ export type Platform = {
   tools?: ToolRunner
   openTextFile: () => Promise<{ name: string; text: string } | null>
   reveal: (path: string) => Promise<void>
+  print?: () => Promise<void>
 }
 
 export const isMac = () => '__TAURI_INTERNALS__' in window

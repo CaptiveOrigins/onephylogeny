@@ -9,13 +9,13 @@
   "repository": { "type": "git", "url": "git+https://github.com/mgilardi/onephylogeny.git", "directory": "packages/react" },
   "type": "module",
   "sideEffects": ["*.css"],
-  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }, "./styles.css": "./src/styles.css" },
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }, "./canvas": { "types": "./dist/canvas.d.ts", "import": "./dist/canvas.js" }, "./icons": { "types": "./dist/icons.d.ts", "import": "./dist/icons.js" }, "./styles.css": "./src/styles.css" },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": ["dist", "src/styles.css", "README.md", "LICENSE"],
   "engines": { "node": ">=22" },
   "scripts": {
-    "build": "tsup src/index.tsx --format esm --dts --clean --target es2022 --external react",
+    "build": "tsup src/index.tsx src/canvas.tsx src/icons.tsx --format esm --dts --clean --target es2022 --external react",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "prepack": "pnpm run build"
