@@ -1,4 +1,5 @@
 import type { PanelBundle } from './build.js'
+import { deriveEvaluation } from './derive.js'
 import type { Diagnostic, Panel, ProvenanceClass, Result } from './model.js'
 import { sha256Hex } from './sha256.js'
 
@@ -31,6 +32,13 @@ export function verifyBundle({ panel, sequences, referenceSequence }: PanelBundl
   const out: Diagnostic[] = []
   if (!panel.checksum || !verifyPanel(panel)) out.push({ severity: 'error', code: 'checksum-mismatch', message: 'The panel changed after it was sealed' })
   if (panel.sequencesChecksum !== sequencesChecksum(sequences, referenceSequence)) out.push({ severity: 'error', code: 'sequences-changed', message: "The panel's sequences aren't the ones it was sealed with" })
+  if (out.length) return out
+  const derived = deriveEvaluation({
+    length: panel.reference.length, windows: panel.windows, rules: panel.rules,
+    groups: panel.groups.map((g) => ({ id: g.id, records: g.evidence.filter((e) => e.use === 'lineage-and-location').map((e) => ({ aligned: sequences[e.record] ?? '', block: e.block })) })),
+  })
+  const stored = { coverage: Object.fromEntries(panel.groups.map((g) => [g.id, g.coverage])), pairs: panel.pairs }
+  if (canonicalJson(stored) !== canonicalJson(derived)) out.push({ severity: 'error', code: 'derivation-mismatch', message: "The panel's sites and coverage don't follow from its sequences and rules" })
   return out
 }
 
@@ -50,23 +58,25 @@ function coordinateKeys(value: unknown, path = ''): string[] {
 export function validatePanel(panel: Panel): Diagnostic[] {
   const out: Diagnostic[] = []
   const error = (code: string, message: string, path?: string) => out.push({ severity: 'error', code, message, ...(path ? { path } : {}) })
-  if (panel.schemaVersion !== 1) error('schema-version', `Unknown schema version ${String(panel.schemaVersion)}`)
+  if (panel.schemaVersion !== 2) error('schema-version', `Unknown schema version ${String(panel.schemaVersion)}`)
   if (!panel.taxa.length) error('no-taxa', 'A panel needs at least one taxon', 'taxa')
-  if (!panel.thresholds) error('no-thresholds', 'A panel must state the thresholds it is read with', 'thresholds')
+  if (!panel.rules) error('no-rules', 'A panel must state the rules it is read with', 'rules')
   if (!panel.gates) error('no-gates', 'A panel must state the record checks its members passed', 'gates')
   if (!panel.groups.length) error('no-groups', 'A panel needs at least one group', 'groups')
+  if (!panel.windows?.length) error('no-windows', 'A panel needs at least one window', 'windows')
+  for (const [w, window] of (panel.windows ?? []).entries())
+    if (window.start < 0 || window.end <= window.start || window.end > panel.reference.length)
+      error('window-range', `Window ${window.id} (${window.start}-${window.end}) is outside the reference (length ${panel.reference.length})`, `windows.${w}`)
+  for (const [i, pair] of (panel.pairs ?? []).entries()) {
+    const window = panel.windows?.find((w) => w.id === pair.window)
+    for (const site of pair.sites) if (!window || site.position < window.start || site.position >= window.end) error('site-outside-window', `Site ${site.position} is outside window ${pair.window}`, `pairs.${i}`)
+  }
   const seen = new Set<string>()
   for (const [g, group] of panel.groups.entries()) {
     if (seen.has(group.id)) error('duplicate-group', `Group id ${group.id} is used twice`, `groups.${g}.id`)
     seen.add(group.id)
-    if (!group.windows.length) error('no-windows', `Group ${group.id} has no evaluable window`, `groups.${g}.windows`)
-    for (const [w, window] of group.windows.entries()) {
-      const path = `groups.${g}.windows.${w}`
-      if (window.start < 0 || window.end <= window.start || window.end > panel.reference.length)
-        error('window-range', `Window ${window.start}-${window.end} is outside the reference (length ${panel.reference.length})`, path)
-      for (const site of window.diagnosticSites)
-        if (site.position < window.start || site.position >= window.end) error('site-outside-window', `Diagnostic site ${site.position} is outside its window`, path)
-    }
+    if (!group.evidence.some((e) => e.use === 'lineage-and-location')) error('no-location-evidence', `Group ${group.id} has no record that can show where it occurs`, `groups.${g}.evidence`)
+    else if (group.coverage.every((c) => !c.columnsAtDepth.length)) out.push({ severity: 'warning', code: 'group-not-evaluable', message: `Group ${group.id} has too few records to be compared in any window, so results can only report it as not evaluable`, path: `groups.${g}.coverage` })
     for (const [e, item] of group.evidence.entries())
       if (item.use === 'lineage-and-location' && !LOCATION_EVIDENCE.includes(item.provenanceClass))
         error('invalid-location-evidence', `Record ${item.record} is ${item.provenanceClass}, so it can't show where a group occurs`, `groups.${g}.evidence.${e}`)
@@ -92,6 +102,9 @@ export function validateResult(result: Result, panel?: Panel): Diagnostic[] {
     const path = `findings.${i}`
     if (finding.overlap === 0 && finding.status !== 'not_evaluable') error('no-shared-sites', `Group ${finding.group} shares no sites, so its status must be not_evaluable`, path)
     if (!finding.reason.trim()) error('finding-without-reason', `The finding for ${finding.group} gives no reason`, path)
+    // A group can't be ruled out by anything except a resolved pair. No coverage, no bridge and no distance can do it.
+    if (finding.status === 'excluded_within_panel' && !result.pairs.some((p) => p.state === 'resolved' && p.favors !== finding.group && (p.a === finding.group || p.b === finding.group)))
+      error('exclusion-without-pair', `Group ${finding.group} is excluded, but no resolved pair rules it out`, path)
   }
   if (panel) {
     if (panel.id !== result.panel.id || panel.version !== result.panel.version || panel.checksum !== result.panel.checksum)

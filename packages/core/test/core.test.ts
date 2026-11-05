@@ -57,7 +57,7 @@ describe('comparison', () => {
     const c = compareAligned('ACGT----', '----ACGT')
     expect(c.overlap).toBe(0)
     expect(c.pDistance).toBeNull()
-    expect(compatibility('ACGT----', '----ACGT')).toBe('not-evaluable')
+    expect(compatibility('ACGT----', '----ACGT', 1)).toBe('not-evaluable')
   })
   it('separates ambiguity that could match from ambiguity that cannot', () => {
     expect(compareAligned('R', 'A')).toMatchObject({ unresolved: 1, differences: 0 })
@@ -75,7 +75,7 @@ describe('haplotypes', () => {
   it('never merges a shorter record into a longer one', () => {
     const h = collapseHaplotypes([{ id: 'long', aligned: 'ACGTACGT' }, { id: 'short', aligned: 'ACGT----' }])
     expect(h).toHaveLength(2)
-    expect(compatibility('ACGTACGT', 'ACGT----')).toBe('compatible')
+    expect(compatibility('ACGTACGT', 'ACGT----', 1)).toBe('compatible')
   })
   it('groups identical same-coverage records', () => {
     const h = collapseHaplotypes([{ id: 'a', aligned: 'AC-T' }, { id: 'b', aligned: 'AC-T' }, { id: 'c', aligned: 'AGGT' }])

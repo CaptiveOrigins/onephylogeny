@@ -22,7 +22,8 @@ const settings = {
   ],
   notCovered: ['Everywhere outside the example regions'],
   validatedScope: [],
-  thresholds: { minOverlap: 20, tolerance: 1, minDiagnosticConflicts: 2 },
+  windows: [{ id: 'front', label: 'Front', start: 0, end: 120 }, { id: 'back', label: 'Back', start: 120, end: 200 }],
+  rules: { minSharedColumns: 20, minDepthPerColumn: 1, minBlocksForExclusion: 1, minDecisiveSites: 2, tolerance: 1 },
 }
 const members = [
   { record: 'N1', group: 'north', aligned: mutate([5, 50, 90]), provenanceClass: 'wild-documented' as const, block: 'site-1' },

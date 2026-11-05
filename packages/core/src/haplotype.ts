@@ -37,8 +37,8 @@ export function collapseHaplotypes(records: Aligned[]): Haplotype[] {
 
 export type Compatibility = 'compatible' | 'conflict' | 'not-evaluable'
 
-/** Whether two sequences could be the same haplotype over what they share. No shared sites decides nothing. */
-export function compatibility(a: string, b: string, minOverlap = 1): Compatibility {
+/** Whether two sequences could be the same haplotype over what they share. The caller must say how much sharing decides anything. */
+export function compatibility(a: string, b: string, minOverlap: number): Compatibility {
   const c = compareAligned(a, b)
   if (c.overlap < minOverlap) return 'not-evaluable'
   return c.differences > 0 ? 'conflict' : 'compatible'

@@ -1,5 +1,5 @@
 import { NcbiClient, suggestOutgroups, type OutgroupLadder } from '@captiveorigins/onephylogeny-acquire'
-import { LOCATION_EVIDENCE, parseCuration, parseFasta, parseProfile, validateProfile, type Curation, type Diagnostic, type EvidenceUse, type Panel, type Profile, type ProvenanceClass, type Result, type RunEvent, type SequenceRecord, type Snapshot } from '@captiveorigins/onephylogeny-core'
+import { DEFAULT_RULES, LOCATION_EVIDENCE, parseCuration, parseFasta, parseProfile, validateProfile, type Curation, type Diagnostic, type EvaluationRules, type EvidenceUse, type Panel, type PanelWindow, type Profile, type ProvenanceClass, type Result, type RunEvent, type SequenceRecord, type Snapshot } from '@captiveorigins/onephylogeny-core'
 import { buildPanelFromRun, buildTree, EngineError, fetchAndAnchor, isCancelled, loadPanel, profilePaths, runSample, type EngineContext, type RecordOutcome, type TreeOutcome } from '@captiveorigins/onephylogeny-engine'
 import { EventLog, OutgroupLadderView, PanelSummary, ResultView, ValidationView } from '@captiveorigins/onephylogeny-react'
 import { TreeCanvas } from '@captiveorigins/onephylogeny-react/canvas'
@@ -26,7 +26,7 @@ function newProfile(title: string, id: string): Profile {
     selection: { id, title, taxa: [], marker: { kind: 'gene', gene: '', synonyms: [], products: [] }, outgroups: [], exclude: [], filters: { minLength: 300, maxAmbiguous: 10 } },
     reference: { accession: '' },
     tree: { model: 'MFP', bootstrap: 1000, shAlrt: 1000, seed: 1, threads: 1 },
-    panel: { id: `${id}-panel`, version: '0.1.0', groups: [], notCovered: [], validatedScope: [], thresholds: { minOverlap: 100, tolerance: 1, minDiagnosticConflicts: 2 } },
+    panel: { id: `${id}-panel`, version: '0.1.0', groups: [], notCovered: [], validatedScope: [], rules: DEFAULT_RULES },
   }
 }
 
@@ -327,7 +327,10 @@ function Records({ profile, curation, decide, records, outcomes, runId, platform
 function PanelTab({ profile, edit, save, state, hasRun, busy, platform, onBuild }: { profile: Profile; edit: (p: Profile) => void; save: () => Promise<void>; state: { panel: Panel; diagnostics: Diagnostic[]; validation: any; unassigned: number } | null; hasRun: boolean; busy: boolean; platform: Platform; onBuild: () => void }) {
   const panel = profile.panel!
   const setP = (x: Partial<typeof panel>) => edit({ ...profile, panel: { ...panel, ...x } })
-  const th = panel.thresholds
+  const th = panel.rules ?? DEFAULT_RULES
+  const setRule = (key: keyof EvaluationRules, value: number) => setP({ rules: { ...th, [key]: value } })
+  const windows = panel.windows ?? []
+  const setWindow = (i: number, x: Partial<PanelWindow>) => setP({ windows: windows.map((w, n) => (n === i ? { ...w, ...x } : w)) })
   const P = profilePaths(profile.id)
   const [newGroup, setNewGroup] = useState('')
   return (
@@ -342,10 +345,18 @@ function PanelTab({ profile, edit, save, state, hasRun, busy, platform, onBuild 
       <div className="grid">
         <Field label="Panel id"><input value={panel.id} onChange={(e) => setP({ id: slug(e.target.value) })} /></Field>
         <Field label="Version" hint="A new version never overwrites results"><input value={panel.version} onChange={(e) => setP({ version: e.target.value.trim() })} /></Field>
-        <Field label="Minimum shared sites" hint="Below this, a group is not evaluable"><input type="number" min={1} value={th.minOverlap} onChange={(e) => setP({ thresholds: { ...th, minOverlap: Number(e.target.value) } })} /></Field>
-        <Field label="Extra differences allowed"><input type="number" min={0} value={th.tolerance} onChange={(e) => setP({ thresholds: { ...th, tolerance: Number(e.target.value) } })} /></Field>
-        <Field label="Fixed-site conflicts to exclude"><input type="number" min={1} value={th.minDiagnosticConflicts} onChange={(e) => setP({ thresholds: { ...th, minDiagnosticConflicts: Number(e.target.value) } })} /></Field>
+        <Field label="Minimum shared columns" hint="Below this, a group is not evaluable"><input type="number" min={1} value={th.minSharedColumns} onChange={(e) => setRule('minSharedColumns', Number(e.target.value))} /></Field>
+        <Field label="Records needed per column" hint="One record never makes a group comparable"><input type="number" min={1} value={th.minDepthPerColumn} onChange={(e) => setRule('minDepthPerColumn', Number(e.target.value))} /></Field>
+        <Field label="Sampling sites needed to rule a group out"><input type="number" min={1} value={th.minBlocksForExclusion} onChange={(e) => setRule('minBlocksForExclusion', Number(e.target.value))} /></Field>
+        <Field label="Decisive sites to resolve a pair"><input type="number" min={1} value={th.minDecisiveSites} onChange={(e) => setRule('minDecisiveSites', Number(e.target.value))} /></Field>
+        <Field label="Extra differences allowed"><input type="number" min={0} value={th.tolerance} onChange={(e) => setRule('tolerance', Number(e.target.value))} /></Field>
       </div>
+      <h3>Windows</h3>
+      <p className="muted">Named stretches of the reference, usually where amplicons fall. With none, the whole marker is one window. Set these from where records start and stop, never from results.</p>
+      {windows.length > 0 && <table className="ophy-table"><thead><tr><th>Id</th><th>Name</th><th>First column</th><th>Last column</th><th /></tr></thead><tbody>
+        {windows.map((w, i) => <tr key={i}><td><input aria-label="Window id" value={w.id} onChange={(e) => setWindow(i, { id: slug(e.target.value) })} /></td><td><input aria-label="Window name" value={w.label} onChange={(e) => setWindow(i, { label: e.target.value })} /></td><td><input aria-label="First column" type="number" min={1} value={w.start + 1} onChange={(e) => setWindow(i, { start: Number(e.target.value) - 1 })} /></td><td><input aria-label="Last column" type="number" min={1} value={w.end} onChange={(e) => setWindow(i, { end: Number(e.target.value) })} /></td><td><button onClick={() => setP({ windows: windows.filter((_, n) => n !== i) })}>Remove</button></td></tr>)}
+      </tbody></table>}
+      <div className="actions"><button onClick={() => setP({ windows: [...windows, { id: `window-${windows.length + 1}`, label: `Window ${windows.length + 1}`, start: 0, end: 1 }] })}>Add window</button></div>
       <Field label="What this panel doesn't cover" hint="Regions or populations with no samples, comma separated. Every report shows this"><input defaultValue={panel.notCovered.join(', ')} onBlur={(e) => setP({ notCovered: lines(e.target.value) })} /></Field>
       <div className="actions"><button className="primary" disabled={busy || !hasRun || !panel.groups.length} onClick={onBuild}>Build and validate panel</button>{!hasRun && <span className="muted">Fetch records first.</span>}{state && <button onClick={() => platform.reveal(`${P.panel(state.panel.id, state.panel.version)}/panel.json`)}>Show exported files</button>}</div>
       {state && <>

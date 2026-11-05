@@ -31,7 +31,7 @@ const profile: Profile = {
   schemaVersion: 1, id: 'demo', title: 'Demo',
   selection: { id: 's', title: 'S', taxa: [{ source: 'ncbi-taxonomy', id: '1' }], marker: { kind: 'gene', gene: 'x' }, outgroups: [], exclude: [{ accession: 'B2.1', reason: 'Chimera in the source paper' }], filters: { minLength: 100 } },
   reference: { accession: 'R1.1' },
-  panel: { id: 'p', version: '1', groups: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], notCovered: ['Elsewhere'], validatedScope: [], thresholds: { minOverlap: 50, tolerance: 1, minDiagnosticConflicts: 2 } },
+  panel: { id: 'p', version: '1', groups: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], notCovered: ['Elsewhere'], validatedScope: [], rules: { minSharedColumns: 50, minDepthPerColumn: 1, minBlocksForExclusion: 1, minDecisiveSites: 2, tolerance: 1 } },
 }
 
 function makeContext(failFetch: () => boolean = () => false): EngineContext & { store: ReturnType<typeof memory>; requested: string[] } {
@@ -179,7 +179,7 @@ describe('runs and panels stay true', () => {
     const { bundle } = await buildPanelFromRun(ctx, profile, curation)
     const loaded = await loadPanel(ctx.store, profilePaths('demo').panel('p', '1'))
     const before = testSample(mutate([10, 200, 450]), 's', loaded)
-    expect(loaded.panel.thresholds).toEqual(profile.panel!.thresholds)
+    expect(loaded.panel.rules).toEqual(profile.panel!.rules)
     expect(bundle.panel.checksum).toBe(loaded.panel.checksum)
     expect(before.result?.panel.checksum).toBe(bundle.panel.checksum)
   })
@@ -243,7 +243,7 @@ describe('content-addressed steps', () => {
     await fetchAndAnchor(ctx, profile)
     await buildPanelFromRun(ctx, profile, curation2)
     reset()
-    const changed = { ...profile, panel: { ...profile.panel!, version: '2', thresholds: { ...profile.panel!.thresholds, tolerance: 3 } } }
+    const changed = { ...profile, panel: { ...profile.panel!, version: '2', rules: { ...profile.panel!.rules, tolerance: 3 } } }
     await buildPanelFromRun(ctx, changed, curation2)
     expect(stepsRun(events, 'running')).toEqual(['panel', 'validate'])
     expect(stepsRun(events, 'running')).not.toContain('anchor')

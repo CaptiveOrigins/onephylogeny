@@ -82,16 +82,23 @@ export type PanelSettings = {
   groups: { id: Id; label: string; region?: string }[]
   notCovered: string[]
   validatedScope: string[]
-  thresholds: EvaluationThresholds
+  /** Named stretches of the reference, usually where amplicons fall. Without them the whole marker is one window. */
+  windows?: PanelWindow[]
+  rules: EvaluationRules
 }
 
-export type EvaluationThresholds = {
-  /** Fewer shared sites than this means not evaluable. */
-  minOverlap: number
-  /** Differences allowed beyond a group's own spread. */
+/** How to read a panel. Uncalibrated, stated values: none of this is a probability. */
+export type EvaluationRules = {
+  /** Fewer columns than this, shared with a group's well-covered columns in a window, means not evaluable there. */
+  minSharedColumns: number
+  /** A column counts for a group only with at least this many records. One record never makes a group comparable. */
+  minDepthPerColumn: number
+  /** Independent sampling sites a group needs at a column before a conflict there can rule it out. */
+  minBlocksForExclusion: number
+  /** Sites favoring one side, with none favoring the other, needed to resolve a pair of groups. */
+  minDecisiveSites: number
+  /** Differences allowed beyond a group's own spread, scaled to the columns compared. */
   tolerance: number
-  /** Conflicts at a group's fixed sites needed before excluding it. */
-  minDiagnosticConflicts: number
 }
 
 /** Human decisions about records, kept apart from what sources say. Every decision can carry a note. */
@@ -106,6 +113,8 @@ export type RecordDecision = {
   use?: EvidenceUse
   /** Sampling site or block, used so validation never tests a record against its own site. */
   site?: string
+  /** The paper or submission this record comes from. Defaults to the title on its source record. */
+  study?: string
   /** The source of a reported origin, such as a paper's table. Required for `origin-reported`. */
   originSource?: string
   exclude?: boolean
@@ -154,11 +163,45 @@ export type Run = {
   diagnostics: Diagnostic[]
 }
 
-/** Half-open reference coordinates: `start` is included, `end` is not. */
-export type PanelWindow = {
-  start: number
-  end: number
-  diagnosticSites: { position: number; bases: string }[]
+/** A named stretch of the reference, the same for every group. Half-open: `start` is included, `end` is not. */
+export type PanelWindow = { id: Id; label: string; start: number; end: number }
+
+/** What one group has in one window. A group short of depth is reported as data, never left out. */
+export type GroupCoverage = {
+  window: Id
+  records: number
+  blocks: number
+  /** Half-open runs of columns with enough records. */
+  columnsAtDepth: [number, number][]
+  /** The largest differences-per-column from any haplotype to its nearest groupmate here. Null if nothing could be compared. */
+  spreadRate: number | null
+  /** How many more records would bring this window's best column up to depth. */
+  recordsNeeded: number
+}
+
+export type PairSide = { a: number; b: number }
+
+/** A column where two groups share no possible base, in records that can show location. */
+export type PairSite = {
+  position: number
+  a: string
+  b: string
+  depth: PairSide
+  blocks: PairSide
+  /** 95% upper bound on the share of a group carrying a state not seen here, `1 - 0.05^(1/n)`. Optimistic: it treats records as independent. */
+  unseenUpper95: PairSide
+}
+
+/** Two groups in one window. `not_evaluable` is kept as data, because an empty list of sites alone is ambiguous. */
+export type PanelPair = {
+  a: Id
+  b: Id
+  window: Id
+  state: 'resolvable' | 'no_fixed_sites' | 'not_evaluable'
+  reason?: string
+  records: PairSide
+  blocks: PairSide
+  sites: PairSite[]
 }
 
 /** How a reference record may be used. Records assigned by sequence can never show where a group occurs. */
@@ -169,15 +212,16 @@ export type PanelGroup = {
   label: string
   /** A generalized named region. Panels never hold coordinates. */
   region?: string
-  windows: PanelWindow[]
-  evidence: { record: Id; use: EvidenceUse; provenanceClass: ProvenanceClass; originSource?: string }[]
+  coverage: GroupCoverage[]
+  /** `block` is an opaque label, so a panel doesn't reveal sampling sites. */
+  evidence: { record: Id; use: EvidenceUse; provenanceClass: ProvenanceClass; originSource?: string; block?: string; study?: string }[]
 }
 
 export type PanelStatus = 'candidate' | 'active' | 'superseded' | 'withdrawn'
 
 /** An immutable reference panel, exported as this JSON with sequences in FASTA beside it. */
 export type Panel = {
-  schemaVersion: 1
+  schemaVersion: 2
   id: Id
   version: string
   checksum?: string
@@ -185,7 +229,10 @@ export type Panel = {
   taxa: ExternalId[]
   marker: Marker
   reference: { accession: string; length: number; codonStart?: number; geneticCode?: GeneticCode }
+  windows: PanelWindow[]
   groups: PanelGroup[]
+  /** Every pair of groups in every window. Derived from sequences and rules, and derived again on load. */
+  pairs: PanelPair[]
   /** Regions, populations or windows this panel can't speak to. Reports must carry them. */
   notCovered: string[]
   /** The claims this panel has been validated for. Empty means none yet. */
@@ -193,7 +240,7 @@ export type Panel = {
   sources: { citation: string; url?: string }[]
   builtBy: Id
   /** Part of the sealed panel, so editing a profile can never change what a panel version concludes. */
-  thresholds: EvaluationThresholds
+  rules: EvaluationRules
   /** The record checks its members passed, sealed so a sample is held to the same checks. */
   gates: GateSettings
   /** Hash of the aligned sequences and reference that travel beside this JSON, so the seal covers them too. */
@@ -204,23 +251,77 @@ export type Panel = {
 
 export type Query = { id: Id; sequence: string; source: string; sha256: string; taxonClaim?: ExternalId }
 
-export type FindingStatus = 'consistent' | 'excluded_within_panel' | 'not_evaluable' | 'inconclusive' | 'novel_or_unsampled_flag'
+export type FindingStatus = 'consistent' | 'excluded_within_panel' | 'not_evaluable' | 'inconclusive'
+
+/** Why a group got the status it did, in a form code can count. */
+export type FindingReason =
+  | 'within-spread'
+  | 'contradicted-outside-spread'
+  /** Within the group's spread, yet decisive sites favor another group. */
+  | 'contradicted-within-spread'
+  /** Further than the group's spread, with no decisive sites against it. */
+  | 'outside-spread-not-contradicted'
+  | 'no-location-evidence'
+  /** No column in the query's windows has enough records. */
+  | 'too-few-records'
+  | 'too-few-shared-columns'
+
+export type FindingWindow = { window: Id; sharedColumns: number; differences: number; unresolved: number; allowedDifferences: number; nearest: Id[] }
 
 export type Finding = {
   group: Id
   status: FindingStatus
+  reasonCode: FindingReason
   reason: string
-  /** Sites this group could be compared on. */
+  /** Columns compared, counting only those where this group has enough records. */
   overlap: number
+  /** Columns where an ambiguity code could match or differ, so they neither support nor count against. */
+  unresolved?: number
   differences?: number
-  /** Differences per shared site with the nearest record. Compare this, not raw counts, across groups with different coverage. */
+  /** Differences per column over everything compared. Compare this, not raw counts, across groups with different coverage. */
   distance?: number
+  /** Sites this query covers that separate this group from another. Many shared columns with none of these establish little. */
+  informativeSites: number
+  /** Independent sampling sites behind the columns compared. */
+  blocks?: number
+  /** More records this group needs before it can be compared here. */
+  recordsNeeded?: number
+  windows: FindingWindow[]
   evidence: Id[]
+}
+
+export type PairReason = 'decisive-sites' | 'group-not-evaluable' | 'no-sites-covered' | 'too-few-decisive-sites' | 'sites-disagree' | 'thin-group'
+
+/** Whether this query separates two groups. `not_resolved` is a real answer: the columns it covers don't separate them. */
+export type PairFinding = {
+  a: Id
+  b: Id
+  state: 'resolved' | 'not_resolved' | 'not_evaluable'
+  reasonCode: PairReason
+  /** The group the decisive sites favor, when resolved. */
+  favors?: Id
+  sitesCovered: number
+  forA: number
+  forB: number
+  /** Bases matching neither side, which may signal an unsampled population. */
+  neither: number
+  /** Ambiguity codes, counted for neither side. */
+  ambiguous: number
+}
+
+/** Belongs to the query, not to a group: it never overwrites what was found about one. */
+export type Novelty = {
+  /** True when no evaluated group fits. A single unmatched base is reported but doesn't flag the query. */
+  flagged: boolean
+  reasons: ('no-consistent-group' | 'base-matching-neither-side')[]
+  /** The evaluated group nearest by rate, when none fits. */
+  closest?: Id
+  neitherSideSites: number
 }
 
 /** One query against one exact panel version. Stored verbatim wherever it travels. */
 export type Result = {
-  schemaVersion: 1
+  schemaVersion: 2
   query: Id
   /** Hash of the exact sequence tested. */
   querySha256?: string
@@ -230,5 +331,11 @@ export type Result = {
   run: Id
   overlap: number
   findings: Finding[]
+  pairs: PairFinding[]
+  /** Groups with no finding either way. The true group could be one of these. */
+  candidatesNotEvaluated: Id[]
+  novelty: Novelty
+  /** Why this result falls outside what the panel has been validated for. Empty means it's inside. */
+  outOfValidatedScope: string[]
   caveats: string[]
 }

@@ -8,7 +8,7 @@ import { CoverageBars, EventLog, LineageCard, OutgroupLadderView, parseNewickFor
 const ref = 'ACGT'.repeat(50)
 const mut = (at: number[]) => [...ref].map((c, i) => (at.includes(i) ? (c === 'A' ? 'C' : 'A') : c)).join('')
 const blank = (s: string, from: number, to: number) => [...s].map((c, i) => (i >= from && i < to ? c : '-')).join('')
-const settings = { id: 'p', version: '1', groups: [{ id: 'a', label: 'Group A', region: 'North' }, { id: 'b', label: 'Group B' }, { id: 'c', label: 'Group C' }], notCovered: ['Far region'], validatedScope: [], thresholds: { minOverlap: 20, tolerance: 1, minDiagnosticConflicts: 2 } }
+const settings = { id: 'p', version: '1', groups: [{ id: 'a', label: 'Group A', region: 'North' }, { id: 'b', label: 'Group B' }, { id: 'c', label: 'Group C' }], notCovered: ['Far region'], validatedScope: [], rules: { minSharedColumns: 20, minDepthPerColumn: 1, minBlocksForExclusion: 1, minDecisiveSites: 2, tolerance: 1 } }
 const { panel, sequences } = buildPanel({
   settings, taxa: [{ source: 't', id: '1' }], marker: { kind: 'gene', gene: 'g' }, reference: { accession: 'R.1', length: 200 }, sources: [], builtBy: 'r',
   members: [
@@ -23,7 +23,7 @@ const result: Result = evaluateQuery(query, { panel, sequences }, opts)
 
 describe('views', () => {
   it('states a clear conclusion and shows every group', () => {
-    expect(summarizeResult(result, panel)).toBe('Consistent with Group A')
+    expect(summarizeResult(result, panel)).toBe('Consistent with Group A. Not evaluated: Group C.')
     const html = renderToStaticMarkup(<ResultView result={result} panel={panel} queryAligned={query} />)
     for (const text of ['Group A', 'Group B', 'Group C', 'Not evaluable', 'Far region', 'This sample']) expect(html).toContain(text)
   })
@@ -32,7 +32,7 @@ describe('views', () => {
   })
   it('says so when nothing can be evaluated', () => {
     const none = evaluateQuery(blank(mut([]), 0, 5), { panel, sequences }, opts)
-    expect(summarizeResult(none, panel)).toMatch(/Not enough shared sequence/)
+    expect(summarizeResult(none, panel)).toMatch(/Not enough comparable data/)
   })
   it('keeps the record-page card short, and links to the detail', () => {
     const html = renderToStaticMarkup(<LineageCard result={result} panel={panel} marker="gene g" href="/detail" />)

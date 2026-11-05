@@ -219,6 +219,7 @@ const defaultValidate = async (input: ValidationInput): Promise<ValidationReport
 export async function buildPanelFromRun(ctx: EngineContext, profile: Profile, curation: Curation, id?: string): Promise<PanelBuildOutcome> {
   const settings = profile.panel
   if (!settings) throw new EngineError('invalid-profile', 'The profile has no panel settings', 'Add groups in the Panel tab')
+  if (!settings.rules) throw new EngineError('invalid-profile', 'This profile predates evaluation rules, so a panel built from it would use values nobody chose', 'Set the rules in the Panel tab and give the panel a new version')
   const P = profilePaths(profile.id)
   const sourceId = id ?? (await ctx.store.exists(P.latest) ? (await ctx.store.read(P.latest)).trim() : '')
   if (!sourceId) throw new EngineError('run-missing', 'No finished fetch run exists yet', 'Fetch records first')
@@ -231,7 +232,9 @@ export async function buildPanelFromRun(ctx: EngineContext, profile: Profile, cu
     const aligned = parseFasta(await gated.read('aligned.fasta'))
     const reference = parseFasta(await gated.read('reference.fasta'))[0]!
     const groupIds = new Set(settings.groups.map((g) => g.id))
-    const members: (PanelMember & { block?: string })[] = []
+    const records = JSON.parse(await (await loadArtifact(ctx.store, gated.manifest.inputs[0]!)).read('records.json')) as SequenceRecord[]
+    const studyOf = new Map(records.map((r) => [r.version, r.publications.find((p) => p.title && p.title !== 'Direct Submission')?.title]))
+    const members: PanelMember[] = []
     const diagnostics: Diagnostic[] = []
     let unassigned = 0
     for (const e of aligned) {
@@ -239,10 +242,10 @@ export async function buildPanelFromRun(ctx: EngineContext, profile: Profile, cu
       if (decision?.exclude) continue
       if (!decision?.group) { unassigned++; continue }
       if (!groupIds.has(decision.group)) { diagnostics.push({ severity: 'error', code: 'unknown-group', message: `${e.id} names group ${decision.group}, which isn't in the panel settings`, ids: [e.id] }); continue }
-      members.push({ record: e.id, group: decision.group, aligned: e.sequence, provenanceClass: decision.provenanceClass ?? 'unknown', ...(decision.use ? { use: decision.use } : {}), ...(decision.site ? { block: decision.site } : {}), ...(decision.originSource ? { originSource: decision.originSource } : {}) })
+      const study = decision.study ?? studyOf.get(e.id)
+      members.push({ record: e.id, group: decision.group, aligned: e.sequence, provenanceClass: decision.provenanceClass ?? 'unknown', ...(decision.use ? { use: decision.use } : {}), ...(decision.site ? { block: decision.site } : {}), ...(decision.originSource ? { originSource: decision.originSource } : {}), ...(study ? { study } : {}) })
     }
     if (!members.length && !diagnostics.some((d) => d.severity === 'error')) throw new EngineError('empty-panel', 'No records are assigned to a group, so there is nothing to build', 'Assign records to groups in the Records tab')
-    const records = JSON.parse(await (await loadArtifact(ctx.store, gated.manifest.inputs[0]!)).read('records.json')) as SequenceRecord[]
     const memberIds = new Set(members.map((m) => m.record))
     const citations = new Map<string, { citation: string }>()
     for (const r of records) if (memberIds.has(r.version)) for (const p of r.publications) if (p.title) citations.set(p.title, { citation: [p.authors, p.title, p.journal].filter(Boolean).join('. ') })
@@ -292,7 +295,7 @@ export async function buildPanelFromRun(ctx: EngineContext, profile: Profile, cu
 export async function loadPanel(store: Store, dir: string): Promise<PanelBundle> {
   if (!(await store.exists(`${dir}/panel.json`))) throw new EngineError('panel-missing', 'This panel hasn\'t been built yet', 'Build it in the Panel tab')
   const panel = JSON.parse(await store.read(`${dir}/panel.json`)) as Panel
-  if (!panel.thresholds || !panel.gates || !panel.sequencesChecksum) throw new EngineError('panel-outdated', `Panel ${panel.id} version ${panel.version} was built before panels sealed their thresholds, checks and sequences`, 'Build it again under a new version')
+  if (panel.schemaVersion !== 2) throw new EngineError('panel-outdated', `Panel ${panel.id} version ${panel.version} was built with an earlier format, so it can't be read by the current evaluator`, 'Build it again under a new version')
   const fasta = parseFasta(await store.read(`${dir}/panel.fasta`))
   const referenceSequence = fasta.find((f) => f.id === '__reference__')?.sequence
   const bundle: PanelBundle = { panel, sequences: Object.fromEntries(fasta.filter((f) => f.id !== '__reference__').map((f) => [f.id, f.sequence])), ...(referenceSequence ? { referenceSequence } : {}) }
@@ -312,7 +315,7 @@ export function testSample(sequence: string, queryId: string, bundle: PanelBundl
   if (!a || diagnostics.some((d) => d.severity === 'error')) return { result: null, diagnostics }
   const result = evaluateQuery(a.aligned, bundle, {
     queryId, runId: options.runId ?? 'sample', querySha256: hashText(sequence.toUpperCase()), producedBy: [ENGINE, ALIGNER],
-    caveats: ['Thresholds are configured values and these statuses are not probabilities', ...diagnostics.filter((d) => d.severity === 'warning').map((d) => d.message)],
+    caveats: ['Rules are configured values and these statuses are not probabilities', ...diagnostics.filter((d) => d.severity === 'warning').map((d) => d.message)],
   })
   diagnostics.push(...validateResult(result, bundle.panel))
   return { result, diagnostics, aligned: a.aligned, insertions: a.insertions.reduce((s, x) => s + x.length, 0), deletions: a.deletions.reduce((s, x) => s + x.length, 0), identity: a.identity, clipped: a.clipped }

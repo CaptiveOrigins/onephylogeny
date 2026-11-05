@@ -1,12 +1,13 @@
-import { compareAligned, coverage, isMissing } from './sequence.js'
+import { basesOf, compareAligned, coverage } from './sequence.js'
+import { deriveEvaluation, wholeMarker } from './derive.js'
 import { DEFAULT_GATES, type GateSettings } from './gates.js'
 import { LOCATION_EVIDENCE, sealPanel, sequencesChecksum } from './panel.js'
-import type { Diagnostic, EvaluationThresholds, Finding, Panel, PanelGroup, PanelSettings, ProvenanceClass, Result, EvidenceUse } from './model.js'
+import type { Diagnostic, Finding, FindingReason, FindingWindow, Id, Novelty, PairFinding, PairReason, Panel, PanelGroup, PanelSettings, ProvenanceClass, Result, EvidenceUse } from './model.js'
 
 /** A panel and the aligned sequences its evidence names. Panels stay JSON; sequences travel in FASTA beside them. */
 export type PanelBundle = { panel: Panel; sequences: Record<string, string>; referenceSequence?: string }
 
-export type PanelMember = { record: string; group: string; aligned: string; provenanceClass: ProvenanceClass; use?: EvidenceUse; originSource?: string }
+export type PanelMember = { record: string; group: string; aligned: string; provenanceClass: ProvenanceClass; use?: EvidenceUse; originSource?: string; block?: string; study?: string }
 
 export type BuildPanelInput = {
   settings: PanelSettings
@@ -25,66 +26,51 @@ export type BuildPanelInput = {
 const useOf = (m: Pick<PanelMember, 'use' | 'provenanceClass'>): EvidenceUse => m.use ?? (LOCATION_EVIDENCE.includes(m.provenanceClass) ? 'lineage-and-location' : 'lineage-only')
 const locates = (m: Pick<PanelMember, 'use' | 'provenanceClass'>) => useOf(m) === 'lineage-and-location'
 
-function basesAt(members: PanelMember[], position: number): Set<string> {
-  const out = new Set<string>()
-  for (const m of members) {
-    const c = m.aligned[position]?.toUpperCase()
-    if (c === 'A' || c === 'C' || c === 'G' || c === 'T') out.add(c)
-  }
-  return out
-}
-
 /**
- * Builds a sealed panel: evaluable windows from real coverage, and sites fixed against every other group.
- * Only records that can show where a group occurs shape windows, fixed sites and spread. A record assigned to a group by
- * its own sequence stays listed, but counting it would make the group's definition depend on the answer being tested.
+ * Builds a sealed panel: coverage per group and sites per pair of groups, in named windows. Only records that can show
+ * where a group occurs shape these. A record assigned to a group by its own sequence stays listed, but counting it would
+ * make the group's definition depend on the answer being tested.
  */
 export function buildPanel(input: BuildPanelInput): PanelBundle {
   const { settings } = input
-  const members = input.members.filter(locates)
   const length = input.reference.length
+  const windows = settings.windows?.length ? settings.windows : wholeMarker(length)
+  // Opaque, so a distributed panel doesn't name its sampling sites.
+  const blockNames = new Map([...new Set(input.members.flatMap((m) => (m.block ? [m.block] : [])))].sort().map((b, i) => [b, `block-${i + 1}`]))
+  const block = (m: PanelMember) => (m.block ? blockNames.get(m.block) : undefined)
+  const derived = deriveEvaluation({
+    length, windows, rules: settings.rules,
+    groups: settings.groups.map((g) => ({ id: g.id, records: input.members.filter((m) => m.group === g.id && locates(m)).map((m) => ({ aligned: m.aligned, block: block(m) })) })),
+  })
   const groups: PanelGroup[] = settings.groups.map((g) => {
-    const own = members.filter((m) => m.group === g.id)
-    const others = members.filter((m) => m.group !== g.id)
-    const windows: PanelGroup['windows'] = []
-    let start = -1
-    for (let i = 0; i <= length; i++) {
-      const covered = i < length && own.some((m) => !isMissing(m.aligned[i]?.toUpperCase()))
-      if (covered && start < 0) start = i
-      if (!covered && start >= 0) {
-        const diagnosticSites: PanelGroup['windows'][number]['diagnosticSites'] = []
-        for (let p = start; p < i; p++) {
-          const a = basesAt(own, p)
-          const b = basesAt(others, p)
-          if (a.size && b.size && ![...a].some((x) => b.has(x))) diagnosticSites.push({ position: p, bases: [...a].sort().join('') })
-        }
-        windows.push({ start, end: i, diagnosticSites })
-        start = -1
-      }
-    }
     return {
       id: g.id,
       label: g.label,
       ...(g.region ? { region: g.region } : {}),
-      windows,
-      evidence: input.members.filter((m) => m.group === g.id).map((m) => ({ record: m.record, use: useOf(m), provenanceClass: m.provenanceClass, ...(m.originSource ? { originSource: m.originSource } : {}) })),
+      coverage: derived.coverage[g.id]!,
+      evidence: input.members.filter((m) => m.group === g.id).map((m) => {
+        const b = block(m)
+        return { record: m.record, use: useOf(m), provenanceClass: m.provenanceClass, ...(m.originSource ? { originSource: m.originSource } : {}), ...(b ? { block: b } : {}), ...(m.study ? { study: m.study } : {}) }
+      }),
     }
   })
   const sequences = Object.fromEntries(input.members.map((m) => [m.record, m.aligned]))
   const panel = sealPanel({
-    schemaVersion: 1,
+    schemaVersion: 2,
     id: settings.id,
     version: settings.version,
     status: 'candidate',
     taxa: input.taxa,
     marker: input.marker,
     reference: input.reference,
+    windows,
     groups,
+    pairs: derived.pairs,
     notCovered: settings.notCovered,
     validatedScope: settings.validatedScope,
     sources: input.sources,
     builtBy: input.builtBy,
-    thresholds: settings.thresholds,
+    rules: settings.rules,
     gates: input.gates ?? DEFAULT_GATES,
     sequencesChecksum: sequencesChecksum(sequences, input.referenceSequence),
     ...(input.builtWith ? { builtWith: input.builtWith } : {}),
@@ -92,79 +78,161 @@ export function buildPanel(input: BuildPanelInput): PanelBundle {
   return { panel, sequences, ...(input.referenceSequence ? { referenceSequence: input.referenceSequence } : {}) }
 }
 
-/** How far members of a group sit from their nearest groupmate, over a shared minimum overlap. */
-function groupSpread(group: PanelGroup, sequences: Record<string, string>, minOverlap: number): number {
-  const seqs = [...new Set(group.evidence.filter(locates).map((e) => sequences[e.record]).filter((s): s is string => Boolean(s)))]
-  let spread = 0
-  for (const a of seqs) {
-    let nearest = Infinity
-    for (const b of seqs) {
-      if (a === b) continue
-      const c = compareAligned(a, b)
-      if (c.overlap >= minOverlap && c.differences < nearest) nearest = c.differences
-    }
-    if (nearest !== Infinity && nearest > spread) spread = nearest
-  }
-  return spread
-}
-
 export type EvaluateOptions = { queryId: string; runId: string; caveats?: string[]; querySha256?: string; producedBy?: { name: string; version: string }[] }
 
-/**
- * Tests one query against every group of a panel. Every group gets a finding with its reason. Statuses come from
- * shared sites, nearest differences and fixed sites, using stated thresholds; none of this is a probability.
- */
-export function evaluateQuery(queryAligned: string, bundle: PanelBundle, options: EvaluateOptions): Result {
+type GroupEvaluation = { finding: Finding; windows: Set<string> }
+
+/** Can this group be compared with this query at all, and how near is it? Says nothing yet about other groups. */
+function compareWithGroup(query: string, group: PanelGroup, bundle: PanelBundle): GroupEvaluation {
   const { panel, sequences } = bundle
-  const { minOverlap, tolerance, minDiagnosticConflicts } = panel.thresholds
-  const span = coverage(queryAligned)
-  const findings: Finding[] = panel.groups.map((group) => {
-    let overlap = 0
+  const { minSharedColumns, tolerance } = panel.rules
+  const usable = group.evidence.filter(locates)
+  const notEvaluable = (reasonCode: FindingReason, reason: string, overlap = 0, recordsNeeded?: number): GroupEvaluation => ({
+    finding: { group: group.id, status: 'not_evaluable', reasonCode, reason, overlap, informativeSites: 0, windows: [], evidence: [], ...(recordsNeeded ? { recordsNeeded } : {}) }, windows: new Set(),
+  })
+  if (!usable.length) return notEvaluable('no-location-evidence', 'This group has no record that can show where it occurs')
+  const windows: FindingWindow[] = []
+  let bestShared = 0
+  let needed = 0
+  let differences = 0
+  let compared = 0
+  let unresolved = 0
+  let queryHasWindow = false
+  for (const cov of group.coverage) {
+    const window = panel.windows.find((w) => w.id === cov.window)!
+    let inWindow = 0
+    for (let i = window.start; i < window.end; i++) if (basesOf(query[i])) inWindow++
+    if (inWindow >= minSharedColumns) {
+      queryHasWindow = true
+      needed = Math.max(needed, cov.recordsNeeded)
+    }
+    let shared = 0
+    for (const [s, e] of cov.columnsAtDepth) for (let i = s; i < e; i++) if (basesOf(query[i])) shared++
+    if (shared > bestShared) bestShared = shared
+    if (shared < minSharedColumns) continue
     let nearest = Infinity
-    let nearestRate = Infinity
-    let nearestRecords: string[] = []
-    const usable = group.evidence.filter(locates)
-    if (!usable.length) return { group: group.id, status: 'not_evaluable', reason: 'This group has no record that can show where it occurs', overlap: 0, evidence: [] }
+    let best: { differences: number; overlap: number; unresolved: number } | null = null
+    let records: string[] = []
     for (const e of usable) {
       const seq = sequences[e.record]
       if (!seq) continue
-      const c = compareAligned(queryAligned, seq)
-      if (c.overlap > overlap) overlap = c.overlap
-      if (c.overlap < minOverlap) continue
-      if (c.differences < nearest) { nearest = c.differences; nearestRate = c.pDistance ?? Infinity; nearestRecords = [e.record] }
-      else if (c.differences === nearest) nearestRecords.push(e.record)
+      const c = compareAligned(query, seq, window)
+      if (c.overlap < minSharedColumns || c.pDistance === null) continue
+      if (c.pDistance < nearest) { nearest = c.pDistance; best = c; records = [e.record] }
+      else if (c.pDistance === nearest) records.push(e.record)
     }
-    if (nearest === Infinity) {
-      return { group: group.id, status: 'not_evaluable', reason: `Shares ${overlap} sites at most, below the minimum of ${minOverlap}`, overlap, evidence: [] }
-    }
-    let agree = 0
-    let conflict = 0
-    for (const window of group.windows) {
-      for (const site of window.diagnosticSites) {
-        const base = queryAligned[site.position]?.toUpperCase()
-        if (base !== 'A' && base !== 'C' && base !== 'G' && base !== 'T') continue
-        if (site.bases.includes(base)) agree++
-        else conflict++
+    if (!best) continue
+    const allowedDifferences = Math.ceil((cov.spreadRate ?? 0) * best.overlap) + tolerance
+    windows.push({ window: cov.window, sharedColumns: shared, differences: best.differences, unresolved: best.unresolved, allowedDifferences, nearest: records.slice(0, 5) })
+    differences += best.differences
+    compared += best.overlap
+    unresolved += best.unresolved
+  }
+  if (!windows.length) {
+    if (queryHasWindow && needed > 0) return notEvaluable('too-few-records', `Needs ${needed} more records before these columns can be compared`, bestShared, needed)
+    return notEvaluable('too-few-shared-columns', `Shares ${bestShared} well-covered columns at most, below the minimum of ${minSharedColumns}`, bestShared)
+  }
+  const blockCount = group.coverage.filter((c) => windows.some((w) => w.window === c.window)).reduce((n, c) => Math.max(n, c.blocks), 0)
+  return {
+    windows: new Set(windows.map((w) => w.window)),
+    finding: {
+      group: group.id, status: 'inconclusive', reasonCode: 'outside-spread-not-contradicted', reason: '',
+      overlap: windows.reduce((n, w) => n + w.sharedColumns, 0), unresolved, differences, distance: compared ? differences / compared : 0,
+      informativeSites: 0, blocks: blockCount, windows, evidence: [...new Set(windows.flatMap((w) => w.nearest))].slice(0, 5),
+    },
+  }
+}
+
+/** Do the columns this query covers separate these two groups? */
+function comparePair(query: string, a: Id, b: Id, evaluated: Map<Id, GroupEvaluation>, panel: Panel): { pair: PairFinding; covered: Set<number> } {
+  const { minDecisiveSites, minBlocksForExclusion } = panel.rules
+  const [ea, eb] = [evaluated.get(a)!, evaluated.get(b)!]
+  const windows = panel.pairs.filter((p) => p.a === a && p.b === b && ea.windows.has(p.window) && eb.windows.has(p.window))
+  const tally = { sitesCovered: 0, forA: 0, forB: 0, neither: 0, ambiguous: 0 }
+  const covered = new Set<number>()
+  if (!windows.length) return { pair: { a, b, state: 'not_evaluable', reasonCode: 'group-not-evaluable', ...tally }, covered }
+  // Conflicts that count against a side: only where that side has enough independent sites to be ruled out.
+  let strongAgainstA = 0
+  let strongAgainstB = 0
+  for (const site of windows.flatMap((p) => p.sites)) {
+    const possible = basesOf(query[site.position])
+    if (!possible) continue
+    covered.add(site.position)
+    tally.sitesCovered++
+    if (possible.length > 1) { tally.ambiguous++; continue }
+    if (site.a.includes(possible)) {
+      tally.forA++
+      if (site.blocks.b >= minBlocksForExclusion) strongAgainstB++
+    } else if (site.b.includes(possible)) {
+      tally.forB++
+      if (site.blocks.a >= minBlocksForExclusion) strongAgainstA++
+    } else tally.neither++
+  }
+  const unresolved = (reasonCode: PairReason): { pair: PairFinding; covered: Set<number> } => ({ pair: { a, b, state: 'not_resolved', reasonCode, ...tally }, covered })
+  if (!tally.sitesCovered) return unresolved('no-sites-covered')
+  if (tally.forA && tally.forB) return unresolved('sites-disagree')
+  const [lead, strong] = tally.forA ? [tally.forA, strongAgainstB] : [tally.forB, strongAgainstA]
+  if (lead < minDecisiveSites) return unresolved('too-few-decisive-sites')
+  if (strong < minDecisiveSites) return unresolved('thin-group')
+  return { pair: { a, b, state: 'resolved', reasonCode: 'decisive-sites', favors: tally.forA ? a : b, ...tally }, covered }
+}
+
+/**
+ * Asks three things separately: can each group be compared, do the columns this query covers separate each pair, and does
+ * anything rule a group out. Statuses come from stated rules, and none of this is a probability.
+ */
+export function evaluateQuery(queryAligned: string, bundle: PanelBundle, options: EvaluateOptions): Result {
+  const { panel } = bundle
+  const span = coverage(queryAligned)
+  const evaluated = new Map(panel.groups.map((g) => [g.id, compareWithGroup(queryAligned, g, bundle)]))
+  const pairs: PairFinding[] = []
+  const contradictedBy = new Map<Id, Id[]>()
+  const informative = new Map<Id, Set<number>>(panel.groups.map((g) => [g.id, new Set<number>()]))
+  for (let x = 0; x < panel.groups.length; x++) {
+    for (let y = x + 1; y < panel.groups.length; y++) {
+      const [a, b] = [panel.groups[x]!.id, panel.groups[y]!.id]
+      const { pair, covered } = comparePair(queryAligned, a, b, evaluated, panel)
+      pairs.push(pair)
+      for (const p of covered) { informative.get(a)!.add(p); informative.get(b)!.add(p) }
+      if (pair.state === 'resolved') {
+        const loser = pair.favors === a ? b : a
+        contradictedBy.set(loser, [...(contradictedBy.get(loser) ?? []), pair.favors!])
       }
     }
-    const allowed = groupSpread(group, sequences, minOverlap) + tolerance
-    const evidence = nearestRecords.slice(0, 5)
-    const detail = `${nearest} differences from the nearest record over up to ${overlap} sites; ${agree} fixed sites agree and ${conflict} conflict`
-    if (nearest <= allowed && conflict < minDiagnosticConflicts) return { group: group.id, status: 'consistent', reason: `Within this group's spread (${allowed} allowed): ${detail}`, overlap, differences: nearest, distance: nearestRate, evidence }
-    if (nearest > allowed && conflict >= minDiagnosticConflicts) return { group: group.id, status: 'excluded_within_panel', reason: `Outside this group's spread (${allowed} allowed): ${detail}`, overlap, differences: nearest, distance: nearestRate, evidence }
-    return { group: group.id, status: 'inconclusive', reason: `Signals disagree (${allowed} allowed): ${detail}`, overlap, differences: nearest, distance: nearestRate, evidence }
+  }
+  const labelOf = (id: Id) => panel.groups.find((g) => g.id === id)?.label ?? id
+  const findings = panel.groups.map((g): Finding => {
+    const f = evaluated.get(g.id)!.finding
+    if (f.status === 'not_evaluable') return f
+    const within = f.windows.every((w) => w.differences <= w.allowedDifferences)
+    const by = contradictedBy.get(g.id) ?? []
+    const allowed = f.windows.map((w) => `${w.differences} of ${w.allowedDifferences} allowed over ${w.sharedColumns} columns in ${w.window}`).join('; ')
+    const sites = informative.get(g.id)!.size
+    const detail = `${allowed}; ${sites} separating sites covered`
+    const base = { ...f, informativeSites: sites }
+    if (within && !by.length) return { ...base, status: 'consistent', reasonCode: 'within-spread', reason: `Within this group's spread: ${detail}` }
+    if (!within && by.length) return { ...base, status: 'excluded_within_panel', reasonCode: 'contradicted-outside-spread', reason: `Outside this group's spread, and decisive sites favor ${by.map(labelOf).join(', ')}: ${detail}` }
+    if (by.length) return { ...base, status: 'inconclusive', reasonCode: 'contradicted-within-spread', reason: `Within this group's spread, yet decisive sites favor ${by.map(labelOf).join(', ')}: ${detail}` }
+    return { ...base, status: 'inconclusive', reasonCode: 'outside-spread-not-contradicted', reason: `Outside this group's spread, but no decisive sites rule it out: ${detail}` }
   })
   const evaluable = findings.filter((f) => f.status !== 'not_evaluable')
-  if (evaluable.length && !findings.some((f) => f.status === 'consistent')) {
-    const closest = evaluable.reduce((a, b) => ((a.distance ?? Infinity) <= (b.distance ?? Infinity) ? a : b))
-    closest.status = 'novel_or_unsampled_flag'
-    closest.reason = `No group is consistent. This is the closest, which may mean an unsampled population: ${closest.reason}`
-  }
+  const neitherSideSites = new Set(panel.pairs.flatMap((p) => p.sites).filter((s) => {
+    const possible = basesOf(queryAligned[s.position])
+    return possible?.length === 1 && !s.a.includes(possible) && !s.b.includes(possible)
+  }).map((s) => s.position)).size
+  const noFit = evaluable.length > 0 && !evaluable.some((f) => f.status === 'consistent')
+  const reasons: Novelty['reasons'] = [...(noFit ? ['no-consistent-group' as const] : []), ...(neitherSideSites ? ['base-matching-neither-side' as const] : [])]
+  const closest = noFit ? evaluable.reduce((a, b) => ((a.distance ?? Infinity) <= (b.distance ?? Infinity) ? a : b)).group : undefined
+  const candidatesNotEvaluated = findings.filter((f) => f.status === 'not_evaluable').map((f) => f.group)
   const caveats = [...(options.caveats ?? [])]
-  for (const f of findings) if (f.status === 'not_evaluable') caveats.push(`${f.group} could not be evaluated, so this result says nothing about it`)
+  for (const f of findings) if (f.status === 'not_evaluable') caveats.push(`${labelOf(f.group)} could not be evaluated, so this result says nothing about it`)
   if (panel.notCovered.length) caveats.push(`This panel does not cover: ${panel.notCovered.join(', ')}`)
+  const outOfValidatedScope = [
+    ...(panel.status === 'active' ? [] : [`This panel is ${panel.status}, not active`]),
+    ...(panel.validatedScope.length ? [] : ['This panel has no validated claims yet']),
+  ]
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     query: options.queryId,
     ...(options.querySha256 ? { querySha256: options.querySha256 } : {}),
     ...(options.producedBy ? { producedBy: options.producedBy } : {}),
@@ -172,12 +240,20 @@ export function evaluateQuery(queryAligned: string, bundle: PanelBundle, options
     run: options.runId,
     overlap: span?.bases ?? 0,
     findings,
+    pairs,
+    candidatesNotEvaluated,
+    novelty: { flagged: noFit, reasons, ...(closest ? { closest } : {}), neitherSideSites },
+    outOfValidatedScope,
     caveats,
   }
 }
 
-/** How each test's true group came out. `includedTruth + excludedTruth + inconclusive + flagged + notEvaluable` equals `tested`. */
-export type GroupScore = { group: string; tested: number; includedTruth: number; onlyTruth: number; excludedTruth: number; inconclusive: number; flagged: number; notEvaluable: number; meanConsistent: number }
+/**
+ * How each test's true group came out. `includedTruth + excludedTruth + inconclusive + notEvaluable` equals `tested`.
+ * `flagged` overlaps those: it counts tests where the query itself was flagged as possibly novel. `onlyTruthAllEvaluated`
+ * is the stricter `onlyTruth`: every other group could be compared too, so nothing unevaluated could be the real answer.
+ */
+export type GroupScore = { group: string; tested: number; includedTruth: number; onlyTruth: number; onlyTruthAllEvaluated: number; excludedTruth: number; inconclusive: number; flagged: number; notEvaluable: number; meanConsistent: number }
 
 export type ValidationReport = {
   scheme: 'leave-one-block-out' | 'leave-one-group-out'
@@ -191,7 +267,7 @@ export type ValidationReport = {
   diagnostics: Diagnostic[]
 }
 
-export type ValidationInput = Omit<BuildPanelInput, 'members'> & { members: (PanelMember & { block?: string })[] }
+export type ValidationInput = BuildPanelInput
 
 /** Tests each block of records against a panel rebuilt without it, so a record never meets its own site. */
 export function leaveOneBlockOut(input: ValidationInput): ValidationReport {
@@ -205,7 +281,7 @@ export function leaveOneBlockOut(input: ValidationInput): ValidationReport {
   const scores = new Map<string, GroupScore>()
   const score = (g: string) => {
     let s = scores.get(g)
-    if (!s) { s = { group: g, tested: 0, includedTruth: 0, onlyTruth: 0, excludedTruth: 0, inconclusive: 0, flagged: 0, notEvaluable: 0, meanConsistent: 0 }; scores.set(g, s) }
+    if (!s) { s = { group: g, tested: 0, includedTruth: 0, onlyTruth: 0, onlyTruthAllEvaluated: 0, excludedTruth: 0, inconclusive: 0, flagged: 0, notEvaluable: 0, meanConsistent: 0 }; scores.set(g, s) }
     return s
   }
   let tested = 0
@@ -225,10 +301,13 @@ export function leaveOneBlockOut(input: ValidationInput): ValidationReport {
       if (finding?.status === 'not_evaluable') s.notEvaluable++
       else if (finding?.status === 'excluded_within_panel') s.excludedTruth++
       else if (finding?.status === 'inconclusive') s.inconclusive++
-      else if (finding?.status === 'novel_or_unsampled_flag') s.flagged++
+      if (result.novelty.flagged) s.flagged++
       if (consistent.includes(m.group)) {
         s.includedTruth++
-        if (consistent.length === 1) s.onlyTruth++
+        if (consistent.length === 1) {
+          s.onlyTruth++
+          if (!result.candidatesNotEvaluated.length) s.onlyTruthAllEvaluated++
+        }
       }
     }
   }
@@ -254,7 +333,7 @@ export function leaveOneGroupOut(input: ValidationInput): ValidationReport {
     const held = input.members.filter((m) => m.group === g.id)
     const settings = { ...input.settings, groups: input.settings.groups.filter((x) => x.id !== g.id) }
     const bundle = buildPanel({ ...input, settings, members: input.members.filter((m) => m.group !== g.id) })
-    const s: GroupScore = { group: g.id, tested: 0, includedTruth: 0, onlyTruth: 0, excludedTruth: 0, inconclusive: 0, flagged: 0, notEvaluable: 0, meanConsistent: 0 }
+    const s: GroupScore = { group: g.id, tested: 0, includedTruth: 0, onlyTruth: 0, onlyTruthAllEvaluated: 0, excludedTruth: 0, inconclusive: 0, flagged: 0, notEvaluable: 0, meanConsistent: 0 }
     for (const m of held.filter(locates)) {
       const result = evaluateQuery(m.aligned, bundle, { queryId: m.record, runId: 'validation' })
       const consistent = result.findings.filter((f) => f.status === 'consistent').length

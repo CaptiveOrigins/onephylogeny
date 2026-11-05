@@ -9,7 +9,6 @@
 .ophy-status-excluded_within_panel { color: var(--ophy-muted, #5b6577); }
 .ophy-status-not_evaluable { color: var(--ophy-muted, #5b6577); border-style: dashed; }
 .ophy-status-inconclusive { color: var(--ophy-warning, #8a5a14); }
-.ophy-status-novel_or_unsampled_flag { color: var(--ophy-flag, #a23a3d); }
 .ophy-coverage { width: 100%; max-width: 760px; display: block; margin: 8px 0; }
 .ophy-coverage-label { font-size: 12px; fill: currentColor; }
 .ophy-coverage-axis { font-size: 10px; fill: var(--ophy-muted, #5b6577); }
