@@ -15,6 +15,10 @@
 - `rules` replace `thresholds`: shared columns, records per column, sampling sites to rule a group out, decisive sites and tolerance. Windows can be set in the Panel tab.
 - Group spread is per window and scales with the columns compared. `compatibility` now requires its minimum overlap.
 - Loading a panel derives its sites again and refuses a mismatch.
+- Validation harness: claims per pair and window, tested for sites, wrong answers, an exact interval on sites, agreement across studies, shuffled labels, a no-structure simulation and a minimum length. See `fullValidation`.
+- **Breaking for profiles:** written `validatedScope` is ignored. Panels gain `claims`, and Payload refuses to activate a panel with no validated claims.
+- Hold-out reports add record, haplotype and study schemes, and every row reports sites beside records.
+- React: `ClaimsView`, and `ValidationView` shows the ladder and claims.
 - React: `PairTable`, and the panel and validation views show pairs, records still needed and the stricter "all others compared" count.
 - React: `TreeCanvas`, with pan, zoom, Fit, Download SVG and Print, plus the suite's shared `icons`. `TreeFigure` stays server-renderable.
 - Mac app: the tree uses the canvas. Download saves `tree.svg` to the profile's exports, and Print opens the system dialog.

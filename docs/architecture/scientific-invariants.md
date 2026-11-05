@@ -30,6 +30,8 @@ Every package keeps these rules. A rule without a passing test is pending, and i
 | P24 | **One record never makes a group comparable, and one site never rules a group out.** Records with no site count as one. | `build.test.ts` (evaluator version 2) |
 | P25 | **Consistent with two groups isn't telling them apart.** A query covering no separating site gets `not_resolved`. | `build.test.ts` (evaluator version 2) |
 | P26 | **Novelty belongs to the query.** It never overwrites a finding, and groups that couldn't be compared are named as candidates. | `build.test.ts` (evaluator version 2) |
+| P28 | **A panel's scope comes only from claims that pass validation.** Written scope is ignored, and passing stays labeled exploratory. | `build.test.ts` (claims) |
+| P29 | **A refusal isn't agreement.** A study counts toward cross-study checks only if an answer was reached about it. | `build.test.ts` (claims) |
 | P27 | **A panel's sites follow from its data.** Loading derives them again and refuses a mismatch. | `build.test.ts` (evaluator version 2) |
 
 What these results can claim, and which rules are fixed before a test, is set out in the [analysis protocol](analysis-protocol.md).

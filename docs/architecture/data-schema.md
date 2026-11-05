@@ -9,7 +9,7 @@ The TypeScript types in [`packages/core/src/model.ts`](../../packages/core/src/m
 | `Profile` | How to run a selection | `selection`, `reference`, `tree` (`model`, `bootstrap`, `shAlrt`, `seed`, `threads`) |
 | `Snapshot` | An immutable download | `sources`, `records`, `rawFiles` (path and hash), `checksum` |
 | `Run` | What actually happened | resolved `profile`, `snapshot`, `tools` (versions and hashes), `seed`, `status`, `events`, `outputs`, `diagnostics` |
-| `Panel` | An immutable reference panel | `version`, `checksum`, `status`, `taxa`, `marker`, `reference`, `windows`, `groups`, `pairs`, `notCovered`, `validatedScope`, `sources`, `builtBy`, `rules`, `gates`, `sequencesChecksum`, `builtWith` |
+| `Panel` | An immutable reference panel | `version`, `checksum`, `status`, `taxa`, `marker`, `reference`, `windows`, `groups`, `pairs`, `notCovered`, `validatedScope`, `claims`, `sources`, `builtBy`, `rules`, `gates`, `sequencesChecksum`, `builtWith` |
 | `PanelWindow` | A named stretch of the reference, the same for every group | `id`, `label`, `start`, `end` |
 | `PanelGroup` | One group in a panel | `label`, `region` (a generalized name), `coverage` per window, `evidence` with each record's `use`, `provenanceClass`, opaque `block` and `study` |
 | `GroupCoverage` | What a group has in a window | `records`, `blocks`, `columnsAtDepth`, `spreadRate`, `recordsNeeded` |
@@ -25,6 +25,7 @@ The TypeScript types in [`packages/core/src/model.ts`](../../packages/core/src/m
 - **Pair state** in a result is `resolved`, `not_resolved` or `not_evaluable`. `not_resolved` is a real answer: the columns this query covers don't separate the two groups.
 - **Novelty** belongs to the query. It's flagged when no evaluated group fits, and it never overwrites what was found about a group.
 - **Rules.** A column counts for a group only at `minDepthPerColumn` records. A conflict can rule a group out only where it has `minBlocksForExclusion` sampling sites. Records with no site all count as one.
+- **Scope.** `validatedScope` and `claims` come only from a validation report. A claim is one pair of groups in one window, with a minimum length. `basis` stays `exploratory` until a test meeting the analysis protocol's section 2 runs.
 - **Derived values.** A panel's coverage and pairs follow from its sequences and rules. Loading derives them again and refuses a mismatch.
 - **Evidence use.** Only `wild-documented`, `museum-documented` and `origin-reported` records may be `lineage-and-location`, and `origin-reported` must name its `originSource`. Other records stay listed but don't shape coverage, pair sites, spread, findings or validation.
 - **Windows** are half-open: `start` is included and `end` is not.

@@ -15,3 +15,5 @@ Kept current. Nothing listed here is claimed as done.
 - OneTaxonomy export writes a phylogeny record, which OneTaxonomy can't yet open as a file in a Mac app because its Studio isn't built.
 - Reference panels depend on human curation. The app makes review by study easy, but it doesn't read papers.
 - Rule values come from the research notes and are uncalibrated. With them, groups under 5 records per column can't be compared at all, and a window with few sampling sites can't rule anything out.
+- Validation gates are our own proposals. Controls take minutes per testable claim, and the cross-study check can pass in one direction only.
+- Groups were drawn by people who had seen these sequences, so shuffled-label controls show labels carry structure, not that the groups are independently confirmed.
