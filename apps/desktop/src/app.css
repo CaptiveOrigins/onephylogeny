@@ -79,3 +79,5 @@ main { overflow-y: auto; min-width: 0; }
 .error p { margin: 0; }
 .error .next { color: var(--text); margin-top: 4px; }
 .busy button { min-height: 26px; padding: 1px 8px; margin-inline-start: 6px; }
+.working { color: var(--muted); }
+.crash { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; color: var(--muted); max-height: 240px; overflow-y: auto; }

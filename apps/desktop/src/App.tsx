@@ -4,10 +4,32 @@ import { buildPanelFromRun, buildTree, EngineError, fetchAndAnchor, isCancelled,
 import { EventLog, OutgroupLadderView, PanelSummary, ResultView, ValidationView } from '@captiveorigins/onephylogeny-react'
 import { TreeCanvas } from '@captiveorigins/onephylogeny-react/canvas'
 import { treeToPhylogeny } from '@captiveorigins/onephylogeny-onetaxonomy'
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Platform, Settings } from './platform'
 import { PREVIEW_SAMPLE } from './platform-preview'
 import { validateInWorker } from './validate'
+
+/** Without this, a crash in one tab leaves a blank window with nothing to report. */
+class TabBoundary extends Component<{ children: ReactNode }, { failure: Error | null }> {
+  override state = { failure: null as Error | null }
+  static getDerivedStateFromError(failure: Error) { return { failure } }
+  override render() {
+    const { failure } = this.state
+    if (!failure) return this.props.children
+    return <div role="alert" className="error"><p>This tab hit an error and couldn't show: {failure.message}</p><p className="next">What to do: send this text to whoever maintains the app, then try another tab. Your files weren't changed.</p><pre className="crash">{failure.stack}</pre></div>
+  }
+}
+
+/** A long job says it's still going and how long it's taken, right where it was started. */
+function Working({ label, hint }: { label: string; hint?: string }) {
+  const [seconds, setSeconds] = useState(0)
+  useEffect(() => {
+    const started = Date.now()
+    const timer = setInterval(() => setSeconds(Math.floor((Date.now() - started) / 1000)), 1000)
+    return () => clearInterval(timer)
+  }, [])
+  return <span role="status" className="working">{label}… {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}{hint ? ` ${hint}` : ''}</span>
+}
 
 const PROVENANCE: { value: ProvenanceClass; label: string }[] = [
   { value: 'unknown', label: 'Unknown' }, { value: 'wild-documented', label: 'Wild, documented' }, { value: 'museum-documented', label: 'Museum, documented' },
@@ -77,6 +99,16 @@ export function App({ platform }: { platform: Platform }) {
     compute: { validate: validateInWorker },
     onEvent: (e) => { if (e.level !== 'debug') setEvents((x) => [...x, e]) },
   })
+  // Failures outside a render, such as a background worker dying, would otherwise vanish silently.
+  useEffect(() => {
+    const report = (e: ErrorEvent | PromiseRejectionEvent) => {
+      const reason = 'reason' in e ? e.reason : e.error ?? e.message
+      setError(reason instanceof Error ? reason.message : String(reason))
+    }
+    window.addEventListener('error', report)
+    window.addEventListener('unhandledrejection', report)
+    return () => { window.removeEventListener('error', report); window.removeEventListener('unhandledrejection', report) }
+  }, [])
   const attempt = async (label: string, work: () => Promise<void>) => {
     controller.current = new AbortController()
     setBusy(label)
@@ -175,6 +207,7 @@ export function App({ platform }: { platform: Platform }) {
           {busy && <span role="status" className="busy">{busy}… <button onClick={() => controller.current?.abort()}>Cancel</button></span>}
         </header>
         {error && <div role="alert" className="error"><p>{error}</p>{action && <p className="next">What to do: {action}</p>}</div>}
+        <TabBoundary key={`${profile.id}:${tab}`}>
         {tab === 'setup' && <Setup profile={profile} edit={edit} save={save} saved={saved} platform={platform} attempt={attempt} client={() => new NcbiClient(engine().ncbi)} />}
         {tab === 'records' && <Records profile={profile} curation={curation} decide={decide} records={records} outcomes={outcomes} runId={runId} platform={platform} busy={Boolean(busy)} onFetch={() => attempt('Fetching records', async () => {
           await save()
@@ -182,7 +215,7 @@ export function App({ platform }: { platform: Platform }) {
           const out = await fetchAndAnchor(engine(), profile)
           setRecords(out.records); setOutcomes(out.outcomes); setRunId(out.run.id)
         })} />}
-        {tab === 'panel' && <PanelTab profile={profile} edit={edit} save={save} state={panelState} hasRun={Boolean(runId)} busy={Boolean(busy)} platform={platform} onBuild={() => attempt('Building panel', async () => {
+        {tab === 'panel' && <PanelTab profile={profile} edit={edit} save={save} state={panelState} hasRun={Boolean(runId)} busy={Boolean(busy)} busyLabel={busy} platform={platform} onBuild={() => attempt('Building panel', async () => {
           await save()
           const out = await buildPanelFromRun(engine(), profile, curation)
           setPanelState({ panel: out.bundle.panel, diagnostics: out.diagnostics, validation: out.validation, unassigned: out.unassigned })
@@ -190,6 +223,7 @@ export function App({ platform }: { platform: Platform }) {
         {tab === 'sample' && <SampleTab profile={profile} platform={platform} hasPanel={Boolean(panelState)} attempt={attempt} context={engine} />}
         {tab === 'tree' && <TreeTab profile={profile} edit={edit} platform={platform} records={records} attempt={attempt} run={(w) => buildTree(engine(), profile, { absoluteDir: platform.root()!, ...(w ? { window: w } : {}) })} hasRun={Boolean(runId)} />}
         {tab === 'log' && <section className="pane"><p className="muted">{runId ? `Run ${runId}` : 'No run yet'}</p><EventLog events={events} />{runId && P && <button onClick={() => platform.reveal(`${P.run(runId)}/run.json`)}>Show run files</button>}</section>}
+        </TabBoundary>
       </main>
     </div>
   )
@@ -324,7 +358,7 @@ function Records({ profile, curation, decide, records, outcomes, runId, platform
   )
 }
 
-function PanelTab({ profile, edit, save, state, hasRun, busy, platform, onBuild }: { profile: Profile; edit: (p: Profile) => void; save: () => Promise<void>; state: { panel: Panel; diagnostics: Diagnostic[]; validation: any; unassigned: number } | null; hasRun: boolean; busy: boolean; platform: Platform; onBuild: () => void }) {
+function PanelTab({ profile, edit, save, state, hasRun, busy, busyLabel, platform, onBuild }: { profile: Profile; edit: (p: Profile) => void; save: () => Promise<void>; state: { panel: Panel; diagnostics: Diagnostic[]; validation: any; unassigned: number } | null; hasRun: boolean; busy: boolean; busyLabel: string | null; platform: Platform; onBuild: () => void }) {
   const panel = profile.panel!
   const setP = (x: Partial<typeof panel>) => edit({ ...profile, panel: { ...panel, ...x } })
   const th = panel.rules ?? DEFAULT_RULES
@@ -335,6 +369,7 @@ function PanelTab({ profile, edit, save, state, hasRun, busy, platform, onBuild 
   const [newGroup, setNewGroup] = useState('')
   return (
     <section className="pane form">
+      {busyLabel === 'Opening' && <p><Working label="Loading this profile's records and panel" /></p>}
       <h3>Groups</h3>
       <p className="muted">Groups are your working hypothesis. Assign records to them in the Records tab, and the validation below tests them.</p>
       <table className="ophy-table"><thead><tr><th>Name</th><th>Region</th><th /></tr></thead><tbody>
@@ -358,7 +393,7 @@ function PanelTab({ profile, edit, save, state, hasRun, busy, platform, onBuild 
       </tbody></table>}
       <div className="actions"><button onClick={() => setP({ windows: [...windows, { id: `window-${windows.length + 1}`, label: `Window ${windows.length + 1}`, start: 0, end: 1 }] })}>Add window</button></div>
       <Field label="What this panel doesn't cover" hint="Regions or populations with no samples, comma separated. Every report shows this"><input defaultValue={panel.notCovered.join(', ')} onBlur={(e) => setP({ notCovered: lines(e.target.value) })} /></Field>
-      <div className="actions"><button className="primary" disabled={busy || !hasRun || !panel.groups.length} onClick={onBuild}>Build and validate panel</button>{!hasRun && <span className="muted">Fetch records first.</span>}{state && <button onClick={() => platform.reveal(`${P.panel(state.panel.id, state.panel.version)}/panel.json`)}>Show exported files</button>}</div>
+      <div className="actions"><button className="primary" disabled={busy || !hasRun || !panel.groups.length} onClick={onBuild}>Build and validate panel</button>{busyLabel === 'Building panel' && <Working label="Building and validating" hint="Each testable pair of groups takes minutes, because its controls rebuild the panel many times. Cancel is at the top." />}{!hasRun && <span className="muted">Fetch records first.</span>}{state && <button onClick={() => platform.reveal(`${P.panel(state.panel.id, state.panel.version)}/panel.json`)}>Show exported files</button>}</div>
       {state && <>
         <h3>{state.panel.id} version {state.panel.version}</h3>
         <Diagnostics items={state.diagnostics} />
