@@ -95,6 +95,7 @@ export function App({ platform }: { platform: Platform }) {
   useEffect(() => { void refresh() }, [refresh, root])
 
   const controller = useRef<AbortController | null>(null)
+  const busyRef = useRef<string | null>(null)
   const engine = (): EngineContext => ({
     store: platform.store, ncbi: { fetch: platform.fetch, tool: 'onephylogeny-mac' }, ...(platform.tools ? { tools: platform.tools } : {}),
     ...(controller.current ? { signal: controller.current.signal } : {}),
@@ -113,8 +114,12 @@ export function App({ platform }: { platform: Platform }) {
   }, [])
   const attempt = async (label: string, work: () => Promise<void>) => {
     // One job at a time. A second would take over the status and Cancel, and could put its result on the wrong profile.
-    if (controller.current) return
+    if (controller.current) {
+      setError(`${busyRef.current ?? 'Another job'} is still running. Wait for it to finish or cancel it, then try again.`)
+      return
+    }
     controller.current = new AbortController()
+    busyRef.current = label
     setBusy(label)
     setBusySince(Date.now())
     setError(null)

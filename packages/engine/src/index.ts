@@ -267,7 +267,7 @@ export async function buildPanelFromRun(ctx: EngineContext, profile: Profile, cu
     const validationArtifact = await scope.step({
       type: 'validation', step: { name: 'validate', version: 2 }, inputs: [ref(gated)], parameters: { fingerprint },
       run: async (put) => {
-        const reports = await (ctx.compute?.validate ?? defaultValidate)({ ...input, members })
+        const reports = await (ctx.compute?.validate ?? defaultValidate)({ ...input, members }, ctx.signal)
         await put('validation.json', json(reports))
       },
     })
