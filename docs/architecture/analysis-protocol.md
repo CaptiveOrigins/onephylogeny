@@ -70,3 +70,4 @@ Each entry records the date, what changed, why, and which results it touches.
 | Date | Change | Why | Results affected |
 | --- | --- | --- | --- |
 | 2026-11-04 | Protocol adopted, and all earlier results reclassified as exploratory | Owner's instruction to favor what academics would accept over a preferred answer | Everything through panel `0.3.0` |
+| 2026-11-04 | Integrity fixes (commit `a8fa42b`) applied to the first species' records, with no check value changed after seeing the outcome | Records assigned by sequence could shape a group; panels weren't verified on load; some bad records could pass | Panel `0.4.0`. Of 294 records, the same 293 passed. Hold-out counts match `0.3.0` exactly. The fixes guard against failures this data didn't show, so that match isn't new evidence |
