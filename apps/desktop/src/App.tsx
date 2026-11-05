@@ -112,9 +112,9 @@ export function App({ platform }: { platform: Platform }) {
     return () => { window.removeEventListener('error', report); window.removeEventListener('unhandledrejection', report) }
   }, [])
   const attempt = async (label: string, work: () => Promise<void>) => {
-    controller.current = new AbortController()
     // One job at a time. A second would take over the status and Cancel, and could put its result on the wrong profile.
     if (controller.current) return
+    controller.current = new AbortController()
     setBusy(label)
     setBusySince(Date.now())
     setError(null)
