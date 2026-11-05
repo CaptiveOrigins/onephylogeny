@@ -49,7 +49,7 @@ onephylogeny tree      --workspace DIR --profile ID   # needs IQ-TREE
 onephylogeny trace     --workspace DIR --profile ID --type T --key K   # everything that produced an artifact
 ```
 
-A profile is plain JSON and holds every choice: taxa, marker, reference, filters, outgroups, groups and thresholds.
+A profile is plain JSON and holds every choice: taxa, marker, reference, filters, outgroups, groups and rules.
 
 ## Develop
 
