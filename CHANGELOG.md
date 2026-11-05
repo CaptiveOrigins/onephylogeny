@@ -18,7 +18,7 @@
 - Validation harness: claims per pair and window, tested for sites, wrong answers, an exact interval on sites, agreement across studies, shuffled labels, a no-structure simulation and a minimum length. See `fullValidation`.
 - **Breaking for profiles:** written `validatedScope` is ignored. Panels gain `claims`, and Payload refuses to activate a panel with no validated claims.
 - Hold-out reports add record, haplotype and study schemes, and every row reports sites beside records.
-- Mac app: a crash in a tab now shows the error instead of a blank window, and other failures appear in the error banner. Long panel builds show elapsed time beside the button, and opening a profile says it's loading.
+- Mac app: a crash in a tab now shows the error instead of a blank window, and other failures appear in the error banner. Long panel builds show elapsed time beside the button, and opening a profile says it's loading. The clock keeps counting across tabs, only one job runs at a time, and setting provenance for a study shows what it's doing and what's now set.
 - React: `ClaimsView`, and `ValidationView` shows the ladder and claims.
 - React: `PairTable`, and the panel and validation views show pairs, records still needed and the stricter "all others compared" count.
 - React: `TreeCanvas`, with pan, zoom, Fit, Download SVG and Print, plus the suite's shared `icons`. `TreeFigure` stays server-renderable.
