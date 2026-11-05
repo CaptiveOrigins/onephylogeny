@@ -86,7 +86,25 @@ A NUMT is an old copy of mitochondrial DNA in the nuclear genome, and it can pas
 
 `scripts/numt-fixture.py` builds a synthetic genome with planted copies, to check the script before use.
 
-## 8. Deviation log
+## 8. Evaluator version 2
+
+The evaluator stops asking "which group is this?" as one question. It asks whether a group can be compared at all, whether the columns a query covers separate each pair of groups, and whether a group has enough independent sites to be ruled out. These rules were committed before this evaluator ran on real data. Any later change goes in the deviation log.
+
+**Rule values.** `minSharedColumns` 100, `minDepthPerColumn` 5, `minBlocksForExclusion` 3, `minDecisiveSites` 2, `tolerance` 1. They come from the techniques research, written before this code existed, and none is calibrated. **They aren't to be lowered because a group becomes untestable.**
+
+**First species.** Windows follow where the amplicons start and stop, not any result: 5' is columns 1 to 435, and 3' is 436 to 1144. Records without a site all count as one block per group, so missing data can't look like independent sites.
+
+**Expected before running** (panel `0.5.0`, against `0.4.0`):
+
+- The Guianas (4 records) and Brazil south/Chaco (2) become `not_evaluable` everywhere, because no column reaches depth 5. Their counts leave the hold-out totals.
+- Brazil east can be compared in 5' only. With one site it can't be excluded, so a query it doesn't fit stays `inconclusive`.
+- 3' queries get `not_evaluable` for Brazil east, and `candidatesNotEvaluated` names it.
+- Short fragments with no decisive site give `not_resolved` for West/East.
+- The share of tests where only the true group is consistent may fall. If it does, that's the cost of asking a harder question, and it gets reported as it is.
+
+**Reporting.** Hold-out results go in the deviation log whether or not they match these expectations, labeled exploratory. Nothing above becomes a confirmatory test, since these records shaped the method.
+
+## 9. Deviation log
 
 Each entry records the date, what changed, why, and which results it touches.
 
