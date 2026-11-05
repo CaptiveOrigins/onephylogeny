@@ -28,7 +28,7 @@ const profile: Profile = {
   schemaVersion: 1, id: 'golden', title: 'Golden',
   selection: { id: 's', title: 'S', taxa: [{ source: 'ncbi-taxonomy', id: '1' }], marker: { kind: 'gene', gene: 'cytb', products: ['cytochrome b'], organelle: 'mitochondrion' }, outgroups: [], exclude: [], filters: { minLength: 300 } },
   reference: { accession: 'NC_080265.1', codonStart: 0, geneticCode: 2 },
-  panel: { id: 'golden-panel', version: '1', groups: [{ id: 'n', label: 'North' }, { id: 'nw', label: 'Northwest' }, { id: 'ne', label: 'Northeast' }, { id: 's', label: 'South' }], notCovered: ['Untested regions'], validatedScope: [], thresholds: { minOverlap: 100, tolerance: 1, minDiagnosticConflicts: 2 } },
+  panel: { id: 'golden-panel', version: '1', groups: [{ id: 'n', label: 'North' }, { id: 'nw', label: 'Northwest' }, { id: 'ne', label: 'Northeast' }, { id: 's', label: 'South' }], notCovered: ['Untested regions'], validatedScope: [], rules: { minSharedColumns: 100, minDepthPerColumn: 1, minBlocksForExclusion: 1, minDecisiveSites: 2, tolerance: 1 } },
 }
 const assign = (group: string, ...ids: string[]) => Object.fromEntries(ids.map((id, i) => [id, { group, provenanceClass: 'wild-documented' as const, site: `${group}-${i}` }]))
 const curation: Curation = { schemaVersion: 1, records: {

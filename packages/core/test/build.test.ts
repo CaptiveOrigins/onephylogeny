@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { alignToReference, assessAlignment, DEFAULT_GATES, buildPanel, evaluateQuery, gatesForRecord, leaveOneBlockOut, leaveOneGroupOut, reverseComplement, validatePanel, validateResult, verifyBundle, type BuildPanelInput, type PanelSettings } from '../src/index.js'
+import { alignToReference, assessAlignment, DEFAULT_GATES, buildPanel, evaluateQuery, gatesForRecord, leaveOneBlockOut, leaveOneGroupOut, reverseComplement, sealPanel, validatePanel, validateResult, verifyBundle, type BuildPanelInput, type PanelSettings } from '../src/index.js'
 
 function randomSeq(n: number, seed = 7): string {
   // mulberry32: a short linear generator repeats itself, which makes "unrelated" sequences share long runs.
@@ -76,7 +76,7 @@ const siteB = [20, 210, 460]
 const seqOf = (at: number[]) => mutate(ref, at)
 const settings: PanelSettings = {
   id: 'p', version: '1', groups: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }, { id: 'c', label: 'C' }],
-  notCovered: ['Elsewhere'], validatedScope: [], thresholds: { minOverlap: 50, tolerance: 1, minDiagnosticConflicts: 2 },
+  notCovered: ['Elsewhere'], validatedScope: [], rules: { minSharedColumns: 50, minDepthPerColumn: 1, minBlocksForExclusion: 1, minDecisiveSites: 2, tolerance: 1 },
 }
 const blank = (s: string, from: number, to: number) => [...s].map((c, i) => (i >= from && i < to ? c : '-')).join('')
 const input: BuildPanelInput = {
@@ -92,12 +92,12 @@ const input: BuildPanelInput = {
 
 describe('panels from members', () => {
   const bundle = buildPanel(input)
-  it('builds a valid sealed panel with real windows', () => {
+  it('builds a valid sealed panel with real coverage', () => {
     expect(validatePanel(bundle.panel).filter((d) => d.severity === 'error')).toEqual([])
-    expect(bundle.panel.groups.find((g) => g.id === 'c')!.windows.map((w) => [w.start, w.end])).toEqual([[0, 100]])
+    expect(bundle.panel.groups.find((g) => g.id === 'c')!.coverage[0]!.columnsAtDepth).toEqual([[0, 100]])
   })
-  it('finds sites fixed against all other groups', () => {
-    const sites = bundle.panel.groups.find((g) => g.id === 'a')!.windows[0]!.diagnosticSites.map((s) => s.position)
+  it('finds sites that separate each pair', () => {
+    const sites = bundle.panel.pairs.find((p) => p.a === 'a' && p.b === 'b')!.sites.map((s) => s.position)
     expect(sites).toEqual(expect.arrayContaining(siteA))
   })
   it('never lets a seized record count as location evidence', () => {
@@ -121,16 +121,16 @@ describe('evaluateQuery', () => {
   })
   it('flags a query unlike any group', () => {
     const s = status(seqOf([1, 2, 3, 40, 50, 60, 70, 80, 90, 120, 130, 140]))
-    expect(Object.values(s)).toContain('novel_or_unsampled_flag')
     expect(Object.values(s)).not.toContain('consistent')
+    expect(evaluateQuery(seqOf([1, 2, 3, 40, 50, 60, 70, 80, 90, 120, 130, 140]), bundle, options).novelty.flagged).toBe(true)
   })
   it('names the closest group by rate, so short windows are not favored', () => {
     const short = buildPanel({ ...input, members: [...input.members.filter((m) => m.group !== 'c'), { record: 'c1', group: 'c', aligned: blank(seqOf([5, 6, 7, 8, 9, 11]), 0, 100), provenanceClass: 'wild-documented' }] })
     const far = [...Array(40).keys()].map((i) => 100 + i * 12)
     const r = evaluateQuery(seqOf([5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, ...far]), short, options)
-    const flagged = r.findings.find((f) => f.status === 'novel_or_unsampled_flag')!
+    const closest = r.findings.find((f) => f.group === r.novelty.closest)!
     const rates = r.findings.filter((f) => f.distance !== undefined).map((f) => f.distance!)
-    expect(flagged.distance).toBe(Math.min(...rates))
+    expect(closest.distance).toBe(Math.min(...rates))
   })
   it('produces results that pass validation, carrying coverage caveats', () => {
     const r = evaluateQuery(seqOf(siteA), bundle, options)
@@ -142,7 +142,7 @@ describe('evaluateQuery', () => {
 describe('records assigned by their own sequence', () => {
   const R = randomSeq(200, 11)
   const at = (...sites: number[]) => mutate(R, sites)
-  const settings = { id: 'p', version: '1', groups: [{ id: 'x', label: 'X' }, { id: 'y', label: 'Y' }], notCovered: ['Z'], validatedScope: [], thresholds: { minOverlap: 20, tolerance: 0, minDiagnosticConflicts: 2 } }
+  const settings = { id: 'p', version: '1', groups: [{ id: 'x', label: 'X' }, { id: 'y', label: 'Y' }], notCovered: ['Z'], validatedScope: [], rules: { minSharedColumns: 20, minDepthPerColumn: 1, minBlocksForExclusion: 1, minDecisiveSites: 2, tolerance: 0 } }
   const base = { settings, taxa: [{ source: 't', id: '1' }], marker: { kind: 'gene' as const, gene: 'g' }, reference: { accession: 'R.1', length: 200 }, sources: [], builtBy: 'test' }
   const wild = [
     { record: 'x1', group: 'x', aligned: at(10, 20, 30, 40), provenanceClass: 'origin-reported' as const, originSource: 's' },
@@ -157,7 +157,7 @@ describe('records assigned by their own sequence', () => {
   it("can't erase a fixed site or turn an exclusion into consistent", () => {
     const clean = buildPanel({ ...base, members: wild })
     const withSeized = buildPanel({ ...base, members: [...wild, seized] })
-    const sites = (b: typeof clean) => b.panel.groups.map((g) => g.windows.flatMap((w) => w.diagnosticSites))
+    const sites = (b: typeof clean) => b.panel.pairs.flatMap((p) => p.sites)
     expect(sites(withSeized)).toEqual(sites(clean))
     const status = (b: typeof clean) => evaluateQuery(query, b, options).findings.find((f) => f.group === 'x')!
     expect(status(clean).status).toBe('excluded_within_panel')
@@ -175,7 +175,7 @@ describe('records assigned by their own sequence', () => {
     const x = evaluateQuery(query, b, options).findings.find((f) => f.group === 'x')!
     expect(x.status).toBe('not_evaluable')
     expect(x.reason).toMatch(/no record that can show/)
-    expect(validatePanel(b.panel).map((d) => d.code)).toContain('no-windows')
+    expect(validatePanel(b.panel).map((d) => d.code)).toContain('no-location-evidence')
   })
   it('is never scored as test truth', () => {
     const report = leaveOneBlockOut({ ...base, members: [...wild, { ...seized, block: 'site-s' }].map((m, i) => ({ block: `site-${i}`, ...m })) })
@@ -192,6 +192,136 @@ describe('records assigned by their own sequence', () => {
   })
 })
 
+describe('evaluator version 2', () => {
+  const R = randomSeq(900, 21)
+  const at = (...sites: number[]) => mutate(R, sites)
+  const windows = [{ id: 'front', label: 'Front', start: 0, end: 450 }, { id: 'back', label: 'Back', start: 450, end: 900 }]
+  const rules = { minSharedColumns: 100, minDepthPerColumn: 5, minBlocksForExclusion: 3, minDecisiveSites: 2, tolerance: 1 }
+  const a = [10, 200, 500, 700]
+  const b = [20, 210, 510, 710]
+  const base = (groups: string[]) => ({
+    settings: { id: 'p', version: '1', groups: groups.map((id) => ({ id, label: id.toUpperCase() })), notCovered: ['Z'], validatedScope: [], windows, rules },
+    taxa: [{ source: 't', id: '1' }], marker: { kind: 'gene' as const, gene: 'g' }, reference: { accession: 'R.1', length: 900 }, sources: [], builtBy: 'test',
+  })
+  const member = (record: string, group: string, aligned: string, block: string) => ({ record, group, aligned, provenanceClass: 'wild-documented' as const, block })
+  const many = (group: string, sites: number[], blocks = 3, n = 6) => Array.from({ length: n }, (_, i) => member(`${group}${i}`, group, at(...sites, 300 + i * 17), `${group}-site-${i % blocks}`))
+  const options = { queryId: 'q', runId: 'r' }
+  const members = [...many('a', a), ...many('b', b)]
+  const bundle = buildPanel({ ...base(['a', 'b']), members })
+  const pair = (r: ReturnType<typeof evaluateQuery>, x: string, y: string) => r.pairs.find((p) => p.a === x && p.b === y)!
+  const finding = (r: ReturnType<typeof evaluateQuery>, g: string) => r.findings.find((f) => f.group === g)!
+  const blank2 = (s: string, from: number, to: number) => [...s].map((c, i) => (i >= from && i < to ? c : '-')).join('')
+
+  it("doesn't let a third group erase what separates two others", () => {
+    const c = member('c0', 'c', at(...a.slice(0, 2), ...b.slice(0, 2)), 'c-site')
+    const withC = buildPanel({ ...base(['a', 'b', 'c']), settings: { ...base(['a', 'b', 'c']).settings, rules: { ...rules, minDepthPerColumn: 1 } }, members: [...members, c] })
+    const without = buildPanel({ ...base(['a', 'b']), settings: { ...base(['a', 'b']).settings, rules: { ...rules, minDepthPerColumn: 1 } }, members })
+    expect(withC.panel.pairs.filter((p) => p.a === 'a' && p.b === 'b')).toEqual(without.panel.pairs)
+  })
+  it('gives a fragment with no decisive site not_resolved, even when both groups are consistent', () => {
+    const fragment = blank2(at(...a), 230, 480)
+    const r = evaluateQuery(fragment, bundle, options)
+    expect(pair(r, 'a', 'b')).toMatchObject({ state: 'not_resolved', reasonCode: 'no-sites-covered', sitesCovered: 0 })
+    expect(finding(r, 'a').status).toBe('consistent')
+    expect(finding(r, 'b').status).toBe('consistent')
+    expect(finding(r, 'a').informativeSites).toBe(0)
+  })
+  it('resolves a pair from decisive sites and rules out the other group', () => {
+    const r = evaluateQuery(at(...a), bundle, options)
+    expect(pair(r, 'a', 'b')).toMatchObject({ state: 'resolved', favors: 'a', forA: 8, forB: 0 })
+    expect(finding(r, 'a').status).toBe('consistent')
+    expect(finding(r, 'b').status).toBe('excluded_within_panel')
+    expect(validateResult(r, bundle.panel)).toEqual([])
+  })
+  it("doesn't resolve a pair when sites disagree", () => {
+    const r = evaluateQuery(at(a[0]!, a[1]!, b[2]!, b[3]!), bundle, options)
+    expect(pair(r, 'a', 'b')).toMatchObject({ state: 'not_resolved', reasonCode: 'sites-disagree' })
+  })
+  it("doesn't let one record make a group comparable", () => {
+    const b2 = buildPanel({ ...base(['a', 'b']), members: [...many('a', a), ...many('b', b, 3, 4)] })
+    const r = evaluateQuery(at(...b), b2, options)
+    expect(finding(r, 'b')).toMatchObject({ status: 'not_evaluable', reasonCode: 'too-few-records', recordsNeeded: 1 })
+    expect(r.candidatesNotEvaluated).toEqual(['b'])
+    expect(pair(r, 'a', 'b')).toMatchObject({ state: 'not_evaluable', reasonCode: 'group-not-evaluable' })
+    expect(b2.panel.pairs.every((p) => p.state === 'not_evaluable')).toBe(true)
+  })
+  it("can't rule out a group from one sampling site", () => {
+    const b2 = buildPanel({ ...base(['a', 'b']), members: [...many('a', a), ...many('b', b, 1)] })
+    const r = evaluateQuery(at(...a), b2, options)
+    expect(pair(r, 'a', 'b')).toMatchObject({ state: 'not_resolved', reasonCode: 'thin-group' })
+    expect(finding(r, 'b').status).toBe('inconclusive')
+    expect(finding(r, 'b').reasonCode).toBe('outside-spread-not-contradicted')
+    // The well-sampled side can still be ruled out by the thin side's states.
+    const other = evaluateQuery(at(...b), b2, options)
+    expect(pair(other, 'a', 'b')).toMatchObject({ state: 'resolved', favors: 'b' })
+  })
+  it('counts records without a site as one block, so missing data looks like nothing', () => {
+    const noSites = [...many('a', a), ...many('b', b).map(({ block: _block, ...m }) => m)]
+    const b2 = buildPanel({ ...base(['a', 'b']), members: noSites })
+    expect(b2.panel.groups.find((g) => g.id === 'b')!.coverage[0]!.blocks).toBe(1)
+    expect(pair(evaluateQuery(at(...a), b2, options), 'a', 'b').reasonCode).toBe('thin-group')
+  })
+  it('lets a compatible ambiguity break a fixed site', () => {
+    const ambiguous = [...many('a', a), ...many('b', b).map((m, i) => (i ? m : { ...m, aligned: m.aligned.slice(0, 10) + 'N' + m.aligned.slice(11) }))]
+    const refBase = R[10]!
+    const code = refBase === 'A' || refBase === 'C' ? 'M' : refBase === 'G' ? 'R' : 'W'
+    const withCode = many('b', b).map((m, i) => (i ? m : { ...m, aligned: m.aligned.slice(0, 10) + code + m.aligned.slice(11) }))
+    const site = (ms: typeof members) => buildPanel({ ...base(['a', 'b']), members: ms }).panel.pairs.find((p) => p.window === 'front')!.sites.map((s) => s.position)
+    expect(site(ambiguous as typeof members)).toContain(10)
+    expect(site([...many('a', a), ...withCode])).not.toContain(10)
+  })
+  it('leaves a group with no records in the query window not evaluable, whatever else is known', () => {
+    const backOnly = many('a', a).map((m) => ({ ...m, aligned: blank2(m.aligned, 450, 900) }))
+    const b2 = buildPanel({ ...base(['a', 'b']), members: [...backOnly, ...many('b', b)] })
+    const r = evaluateQuery(blank2(at(...b), 0, 450), b2, options)
+    expect(finding(r, 'a').status).toBe('not_evaluable')
+    expect(b2.panel.pairs.find((p) => p.window === 'front')!.state).toBe('not_evaluable')
+  })
+  it('keeps novelty on the query and never overwrites a finding', () => {
+    const far = [...Array(40).keys()].map((i) => 30 + i * 21)
+    const r = evaluateQuery(at(...far), bundle, options)
+    expect(r.novelty).toMatchObject({ flagged: true, reasons: expect.arrayContaining(['no-consistent-group']) })
+    expect(r.novelty.closest).toBeDefined()
+    for (const f of r.findings) expect(['consistent', 'excluded_within_panel', 'inconclusive', 'not_evaluable']).toContain(f.status)
+  })
+  it('counts a base matching neither side without flagging the query', () => {
+    const third = R[10] === 'G' ? 'T' : 'G'
+    const other = at(...a)
+    const q = other.slice(0, 20) + (other[20] === third || at(...b)[20] === third ? 'T' : third) + other.slice(21)
+    const r = evaluateQuery(q, bundle, options)
+    expect(r.novelty.neitherSideSites).toBeGreaterThan(0)
+    expect(r.novelty.flagged).toBe(false)
+  })
+  it('scales a group spread to the columns compared', () => {
+    // Each record differs from its nearest groupmate at many columns, so the spread is wide enough to scale.
+    const wide = Array.from({ length: 6 }, (_, i) => member(`w${i}`, 'a', at(...a, ...Array.from({ length: 8 }, (_, k) => 230 + i * 30 + k)), `s${i % 3}`))
+    const b2 = buildPanel({ ...base(['a', 'b']), members: [...wide, ...many('b', b)] })
+    const full = finding(evaluateQuery(at(...a), b2, options), 'a').windows[0]!
+    const short = finding(evaluateQuery(blank2(at(...a), 0, 150), b2, options), 'a').windows[0]!
+    expect(short.sharedColumns).toBeLessThan(full.sharedColumns)
+    expect(short.allowedDifferences).toBeLessThan(full.allowedDifferences)
+  })
+  it('says a candidate panel is outside validated scope', () => {
+    expect(evaluateQuery(at(...a), bundle, options).outOfValidatedScope).toHaveLength(2)
+  })
+  it('hides site names, and refuses stored sites that its sequences do not support', () => {
+    expect(JSON.stringify(bundle.panel)).not.toContain('a-site')
+    expect(verifyBundle(bundle)).toEqual([])
+    const forged = sealPanel({ ...bundle.panel, pairs: bundle.panel.pairs.map((p) => ({ ...p, sites: [] })) })
+    expect(verifyBundle({ ...bundle, panel: forged }).map((d) => d.code)).toEqual(['derivation-mismatch'])
+  })
+  it('keeps the study on each record', () => {
+    const b2 = buildPanel({ ...base(['a', 'b']), members: [{ ...many('a', a)[0]!, study: 'Paper A' }, ...many('a', a).slice(1), ...many('b', b)] })
+    expect(b2.panel.groups[0]!.evidence[0]!.study).toBe('Paper A')
+  })
+  it('reports stricter counts when another group could not be compared', () => {
+    const report = leaveOneBlockOut({ ...base(['a', 'b']), members: [...many('a', a, 3, 9), ...many('b', b, 3, 2)] })
+    const s = report.groups.find((g) => g.group === 'a')!
+    expect(s.onlyTruth).toBeGreaterThan(0)
+    expect(s.onlyTruthAllEvaluated).toBe(0)
+  })
+})
+
 describe('validation harness', () => {
   it('leave-one-block-out never tests a record against its own block', () => {
     const members = input.members.map((m) => ({ ...m, block: m.group === 'a' ? 'same-site' : `s-${m.record}` }))
@@ -202,7 +332,7 @@ describe('validation harness', () => {
   })
   it('every test is counted exactly once', () => {
     const report = leaveOneBlockOut({ ...input, members: input.members.map((m, i) => ({ ...m, block: `s${i}` })) })
-    for (const g of report.groups) expect(g.includedTruth + g.excludedTruth + g.inconclusive + g.flagged + g.notEvaluable).toBe(g.tested)
+    for (const g of report.groups) expect(g.includedTruth + g.excludedTruth + g.inconclusive + g.notEvaluable).toBe(g.tested)
   })
   it('warns when records have no site', () => {
     expect(leaveOneBlockOut({ ...input, members: input.members }).diagnostics.map((d) => d.code)).toContain('records-without-site')

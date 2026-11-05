@@ -27,8 +27,8 @@ let version = 0
 const panelData = (over = {}) => ({ key: 'p', version: String(++version), marker: 'gene', checksum: `sha256:${version}`, groups: [{ groupId: 'a', label: 'A', regionName: 'North' }, { groupId: 'b', label: 'B' }], ...over })
 const createPanel = (over = {}) => payload.create({ collection: 'panels' as never, data: panelData(over) as never }) as unknown as Promise<any>
 const activate = (id: unknown) => payload.update({ collection: 'panels' as never, id: id as string, data: { status: 'active' } as never }) as unknown as Promise<any>
-const resultFor = (p: any, over = {}) => ({ schemaVersion: 1, query: 'q', run: 'r', overlap: 500, caveats: [], panel: { id: p.key, version: p.version, checksum: p.checksum },
-  findings: [{ group: 'a', status: 'consistent', reason: 'Close', overlap: 500, evidence: ['x'] }, { group: 'b', status: 'not_evaluable', reason: 'No shared sites', overlap: 0, evidence: [] }], ...over })
+const resultFor = (p: any, over = {}) => ({ schemaVersion: 2, query: 'q', run: 'r', overlap: 500, caveats: [], pairs: [], candidatesNotEvaluated: ['b'], novelty: { flagged: false, reasons: [], neitherSideSites: 0 }, outOfValidatedScope: [], panel: { id: p.key, version: p.version, checksum: p.checksum },
+  findings: [{ group: 'a', status: 'consistent', reasonCode: 'within-spread', reason: 'Close', overlap: 500, informativeSites: 3, windows: [], evidence: ['x'] }, { group: 'b', status: 'not_evaluable', reasonCode: 'too-few-shared-columns', reason: 'No shared sites', overlap: 0, informativeSites: 0, windows: [], evidence: [] }], ...over })
 const assign = (p: any, result: unknown = resultFor(p)) => payload.create({ collection: 'assignments' as never, data: { subject: animal, panel: p.id, summary: 'Consistent with A', result } as never }) as unknown as Promise<any>
 
 describe('panels', () => {

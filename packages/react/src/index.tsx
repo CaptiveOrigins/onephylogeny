@@ -1,4 +1,4 @@
-import type { Finding, FindingStatus, Panel, Result, RunEvent, ValidationReport } from '@captiveorigins/onephylogeny-core'
+import type { Finding, FindingStatus, PairFinding, Panel, Result, RunEvent, ValidationReport } from '@captiveorigins/onephylogeny-core'
 
 export type Labels = Partial<Record<FindingStatus, string>>
 
@@ -7,7 +7,6 @@ const STATUS: Record<FindingStatus, { label: string; mark: string }> = {
   excluded_within_panel: { label: 'Excluded within this panel', mark: '×' },
   not_evaluable: { label: 'Not evaluable', mark: '–' },
   inconclusive: { label: 'Inconclusive', mark: '?' },
-  novel_or_unsampled_flag: { label: 'Possibly unsampled', mark: '!' },
 }
 
 export const statusLabel = (status: FindingStatus, labels?: Labels) => labels?.[status] ?? STATUS[status].label
@@ -18,17 +17,18 @@ export function StatusBadge({ status, labels }: { status: FindingStatus; labels?
 }
 
 const groupLabel = (panel: Panel, id: string) => panel.groups.find((g) => g.id === id)?.label ?? id
-const ORDER: FindingStatus[] = ['consistent', 'novel_or_unsampled_flag', 'inconclusive', 'excluded_within_panel', 'not_evaluable']
+const ORDER: FindingStatus[] = ['consistent', 'inconclusive', 'excluded_within_panel', 'not_evaluable']
 
 /** The headline in plain words, including when the honest answer is that nothing can be said. */
 export function summarizeResult(result: Result, panel: Panel): string {
   const named = (status: FindingStatus) => result.findings.filter((f) => f.status === status).map((f) => groupLabel(panel, f.group))
   const consistent = named('consistent')
-  if (consistent.length === 1) return `Consistent with ${consistent[0]}`
-  if (consistent.length) return `Can't separate: ${consistent.join(', ')}`
-  const novel = named('novel_or_unsampled_flag')
-  if (novel.length) return `No group fits. Closest is ${novel[0]}, which may mean an unsampled population`
-  if (result.findings.every((f) => f.status === 'not_evaluable')) return 'Not enough shared sequence to evaluate any group'
+  const untested = result.candidatesNotEvaluated.map((g) => groupLabel(panel, g))
+  if (result.findings.every((f) => f.status === 'not_evaluable')) return 'Not enough comparable data to evaluate any group'
+  const unknown = untested.length ? ` Not evaluated: ${untested.join(', ')}.` : ''
+  if (consistent.length === 1) return `Consistent with ${consistent[0]}.${unknown}`
+  if (consistent.length) return `Can't separate: ${consistent.join(', ')}.${unknown}`
+  if (result.novelty.closest) return `No evaluated group fits. Closest is ${groupLabel(panel, result.novelty.closest)}, which may mean an unsampled population.${unknown}`
   return 'Inconclusive against this panel'
 }
 
@@ -48,7 +48,7 @@ export function CoverageBars({ panel, queryAligned, queryLabel = 'This sample' }
       if (!has && start >= 0) { queryWindows.push({ start, end: i }); start = -1 }
     }
   }
-  const rows = [...(queryAligned ? [{ id: '__q', label: queryLabel, windows: queryWindows }] : []), ...panel.groups.map((g) => ({ id: g.id, label: g.label, windows: g.windows }))]
+  const rows = [...(queryAligned ? [{ id: '__q', label: queryLabel, windows: queryWindows }] : []), ...panel.groups.map((g) => ({ id: g.id, label: g.label, windows: g.coverage.flatMap((c) => c.columnsAtDepth.map(([start, end]) => ({ start, end }))) }))]
   const H = rows.length * rowH + 24
   return (
     <svg className="ophy-coverage" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Coverage of each group across ${L} reference columns`}>
@@ -65,13 +65,44 @@ export function CoverageBars({ panel, queryAligned, queryLabel = 'This sample' }
   )
 }
 
+const PAIR_REASON: Record<PairFinding['reasonCode'], string> = {
+  'decisive-sites': 'Decisive sites agree',
+  'group-not-evaluable': "At least one group can't be compared here",
+  'no-sites-covered': 'This sequence covers no site that separates them',
+  'too-few-decisive-sites': 'Too few separating sites covered',
+  'sites-disagree': 'Separating sites disagree',
+  'thin-group': 'Sites favor one side, but the other has too few independent sites to rule out',
+}
+const PAIR_STATE: Record<PairFinding['state'], string> = { resolved: 'Resolved', not_resolved: 'Not resolved', not_evaluable: 'Not evaluable' }
+
+/** Whether this sequence separates each pair of groups. "Not resolved" is a real answer. */
+export function PairTable({ result, panel }: { result: Result; panel: Panel }) {
+  if (!result.pairs.length) return null
+  return (
+    <table className="ophy-table">
+      <thead><tr><th>Pair</th><th>State</th><th>Sites covered</th><th>Why</th></tr></thead>
+      <tbody>
+        {result.pairs.map((p) => (
+          <tr key={`${p.a}|${p.b}`}>
+            <th scope="row">{groupLabel(panel, p.a)} / {groupLabel(panel, p.b)}</th>
+            <td>{PAIR_STATE[p.state]}{p.favors ? `: favors ${groupLabel(panel, p.favors)}` : ''}</td>
+            <td>{p.sitesCovered} ({p.forA} and {p.forB}{p.neither ? `, ${p.neither} neither` : ''})</td>
+            <td>{PAIR_REASON[p.reasonCode]}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
 /** Everything behind a conclusion: each group, its status, and why. */
 export function ResultView({ result, panel, queryAligned, labels }: { result: Result; panel: Panel; queryAligned?: string; labels?: Labels }) {
   const findings = [...result.findings].sort((a, b) => ORDER.indexOf(a.status) - ORDER.indexOf(b.status))
   return (
     <section className="ophy-result">
       <h3>{summarizeResult(result, panel)}</h3>
-      <p className="ophy-muted">Tested against {panel.id} version {panel.version}, over {result.overlap} sites.</p>
+      <p className="ophy-muted">Tested against {panel.id} version {panel.version}, over {result.overlap} columns.</p>
+      {result.outOfValidatedScope.length > 0 && <p className="ophy-warning">Outside what this panel has been validated for: {result.outOfValidatedScope.join('. ')}.</p>}
       <CoverageBars panel={panel} {...(queryAligned ? { queryAligned } : {})} />
       <table className="ophy-table">
         <thead><tr><th>Group</th><th>Status</th><th>Why</th><th>Nearest records</th></tr></thead>
@@ -86,6 +117,8 @@ export function ResultView({ result, panel, queryAligned, labels }: { result: Re
           ))}
         </tbody>
       </table>
+      <PairTable result={result} panel={panel} />
+      {result.novelty.neitherSideSites > 0 && <p className="ophy-muted">{result.novelty.neitherSideSites} separating sites hold a base matching neither group.</p>}
       {result.caveats.length > 0 && <><h4>What this can't tell you</h4><ul className="ophy-caveats">{result.caveats.map((c) => <li key={c}>{c}</li>)}</ul></>}
     </section>
   )
@@ -107,7 +140,7 @@ export function PanelSummary({ panel }: { panel: Panel }) {
   return (
     <section>
       <table className="ophy-table">
-        <thead><tr><th>Group</th><th>Region</th><th>Records</th><th>Can show location</th><th>Sites fixed against other groups</th></tr></thead>
+        <thead><tr><th>Group</th><th>Region</th><th>Records</th><th>Can show location</th><th>Comparable in</th><th>Records still needed</th></tr></thead>
         <tbody>
           {panel.groups.map((g) => (
             <tr key={g.id}>
@@ -115,12 +148,20 @@ export function PanelSummary({ panel }: { panel: Panel }) {
               <td>{g.region ?? '–'}</td>
               <td>{g.evidence.length}</td>
               <td>{g.evidence.filter((e) => e.use === 'lineage-and-location').length}</td>
-              <td>{g.windows.reduce((s, w) => s + w.diagnosticSites.length, 0)}</td>
+              <td>{g.coverage.filter((c) => c.columnsAtDepth.length).map((c) => c.window).join(', ') || 'Nowhere yet'}</td>
+              <td>{g.coverage.filter((c) => c.recordsNeeded).map((c) => `${c.recordsNeeded} in ${c.window}`).join(', ') || '–'}</td>
             </tr>
           ))}
         </tbody>
       </table>
       <CoverageBars panel={panel} />
+      <h4>What separates each pair</h4>
+      <table className="ophy-table">
+        <thead><tr><th>Pair</th><th>Window</th><th>Sites</th><th>Records</th><th>Sites per side</th></tr></thead>
+        <tbody>
+          {panel.pairs.map((p) => <tr key={`${p.a}|${p.b}|${p.window}`}><th scope="row">{groupLabel(panel, p.a)} / {groupLabel(panel, p.b)}</th><td>{p.window}</td><td>{p.state === 'not_evaluable' ? 'Not evaluable' : p.sites.length}</td><td>{p.records.a} and {p.records.b}</td><td>{p.blocks.a} and {p.blocks.b}</td></tr>)}
+        </tbody>
+      </table>
       {panel.notCovered.length > 0 && <p><strong>Not covered:</strong> {panel.notCovered.join(', ')}</p>}
       <p className="ophy-muted">Checksum {panel.checksum}</p>
     </section>
@@ -135,9 +176,9 @@ export function ValidationView({ blocks, groups }: { blocks: ValidationReport; g
     <section>
       <h4>Holding out each sampling site</h4>
       <table className="ophy-table">
-        <thead><tr><th>Group</th><th>True group consistent</th><th>Only the true group</th><th>True group excluded</th><th>Inconclusive or flagged</th><th>Not evaluable</th></tr></thead>
+        <thead><tr><th>Group</th><th>True group consistent</th><th>Only the true group</th><th>Only the true group, all others compared</th><th>True group excluded</th><th>Inconclusive</th><th>Not evaluable</th></tr></thead>
         <tbody>
-          {blocks.groups.map((g) => <tr key={g.group}><th scope="row">{g.group}</th><td>{pct(g.includedTruth, g.tested)}</td><td>{pct(g.onlyTruth, g.tested)}</td><td>{pct(g.excludedTruth, g.tested)}</td><td>{pct(g.inconclusive + g.flagged, g.tested)}</td><td>{pct(g.notEvaluable, g.tested)}</td></tr>)}
+          {blocks.groups.map((g) => <tr key={g.group}><th scope="row">{g.group}</th><td>{pct(g.includedTruth, g.tested)}</td><td>{pct(g.onlyTruth, g.tested)}</td><td>{pct(g.onlyTruthAllEvaluated, g.tested)}</td><td>{pct(g.excludedTruth, g.tested)}</td><td>{pct(g.inconclusive, g.tested)}</td><td>{pct(g.notEvaluable, g.tested)}</td></tr>)}
         </tbody>
       </table>
       {blocks.untestedGroups.length > 0 && <p className="ophy-warning">Not tested, because all their records come from one site: {blocks.untestedGroups.join(', ')}.</p>}

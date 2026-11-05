@@ -86,7 +86,25 @@ A NUMT is an old copy of mitochondrial DNA in the nuclear genome, and it can pas
 
 `scripts/numt-fixture.py` builds a synthetic genome with planted copies, to check the script before use.
 
-## 8. Deviation log
+## 8. Evaluator version 2
+
+The evaluator stops asking "which group is this?" as one question. It asks whether a group can be compared at all, whether the columns a query covers separate each pair of groups, and whether a group has enough independent sites to be ruled out. These rules were committed before this evaluator ran on real data. Any later change goes in the deviation log.
+
+**Rule values.** `minSharedColumns` 100, `minDepthPerColumn` 5, `minBlocksForExclusion` 3, `minDecisiveSites` 2, `tolerance` 1. They come from the techniques research, written before this code existed, and none is calibrated. **They aren't to be lowered because a group becomes untestable.**
+
+**First species.** Windows follow where the amplicons start and stop, not any result: 5' is columns 1 to 435, and 3' is 436 to 1144. Records without a site all count as one block per group, so missing data can't look like independent sites.
+
+**Expected before running** (panel `0.5.0`, against `0.4.0`):
+
+- The Guianas (4 records) and Brazil south/Chaco (2) become `not_evaluable` everywhere, because no column reaches depth 5. Their counts leave the hold-out totals.
+- Brazil east can be compared in 5' only. With one site it can't be excluded, so a query it doesn't fit stays `inconclusive`.
+- 3' queries get `not_evaluable` for Brazil east, and `candidatesNotEvaluated` names it.
+- Short fragments with no decisive site give `not_resolved` for West/East.
+- The share of tests where only the true group is consistent may fall. If it does, that's the cost of asking a harder question, and it gets reported as it is.
+
+**Reporting.** Hold-out results go in the deviation log whether or not they match these expectations, labeled exploratory. Nothing above becomes a confirmatory test, since these records shaped the method.
+
+## 9. Deviation log
 
 Each entry records the date, what changed, why, and which results it touches.
 
@@ -95,3 +113,4 @@ Each entry records the date, what changed, why, and which results it touches.
 | 2026-11-04 | Protocol adopted, and all earlier results reclassified as exploratory | Owner's instruction to favor what academics would accept over a preferred answer | Everything through panel `0.3.0` |
 | 2026-11-04 | Integrity fixes (commit `a8fa42b`) applied to the first species' records, with no check value changed after seeing the outcome | Records assigned by sequence could shape a group; panels weren't verified on load; some bad records could pass | Panel `0.4.0`. Of 294 records, the same 293 passed. Hold-out counts match `0.3.0` exactly. The fixes guard against failures this data didn't show, so that match isn't new evidence |
 | 2026-11-04 | NUMT screen first run on real data (commit `df54e00`), with rules unchanged after seeing the outcome | Priority 0 item; `blastn` 2.17.0 against *C. abingdonii* CheloAbing_2.0 | 293 records screened: 291 *C. carbonarius* and 2 *C. denticulatus* outgroups. 0 flagged, 293 `no-signal`. Two loci in the library, 11.7% and 24.6% from the reference. This clears no record. Panel `0.4.0` isn't changed, and the library isn't in a panel yet |
+| 2026-11-05 | Evaluator version 2 first run (commit `0c6f4b0`), with rules unchanged after seeing the outcome. Panel `0.5.0` | Section 8 | **Whole records, holding out each site:** the true group is consistent and alone for 177 of 177 West and East records, but with every other group compared, 0 of 177, because the Guianas and Chaco can't be compared anywhere. All 4 Guianas records are `not_evaluable` for their own group and flagged as possibly novel. Brazil east and Chaco stay untested. Removing whole groups: 0 of 193 wrongly consistent. **3' fragments, held-out sites, 5 fixed positions per record:** at 100 columns, 708 of 885 resolved West/East correctly, 177 were `not_resolved` and consistent with both, and none resolved wrongly. At 150 to 709 columns all resolved correctly, which holds for these positions only. **5' queries:** West/East can't be resolved at all, because West has 2 sites there and East has 1. Brazil east can't be excluded. **Predictions:** one was wrong. Guianas records stay in the hold-out total as `not_evaluable` rather than leaving it. The others held. All exploratory |

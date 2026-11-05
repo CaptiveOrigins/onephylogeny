@@ -10,6 +10,12 @@
 - New error `terminal-discordance` for foreign tails. Frame-shifting indels and in-frame stops now exclude records from panels, and still warn on samples.
 - Analysis protocol: all results so far are exploratory, and rules are fixed before tests.
 - NUMT screen (`scripts/numt-screen.mjs`): searches a related genome for nuclear copies of a marker and flags records closer to a copy than to the reference. It runs outside the app and needs BLAST+.
+- **Breaking for panels and results:** schema version 2. Evaluation compares groups in pairs, within named windows. Earlier panels load as outdated.
+- Results report `pairs` (`resolved`, `not_resolved` or `not_evaluable`), `candidatesNotEvaluated`, `novelty` and `outOfValidatedScope`. `novel_or_unsampled_flag` is gone from findings.
+- `rules` replace `thresholds`: shared columns, records per column, sampling sites to rule a group out, decisive sites and tolerance. Windows can be set in the Panel tab.
+- Group spread is per window and scales with the columns compared. `compatibility` now requires its minimum overlap.
+- Loading a panel derives its sites again and refuses a mismatch.
+- React: `PairTable`, and the panel and validation views show pairs, records still needed and the stricter "all others compared" count.
 - React: `TreeCanvas`, with pan, zoom, Fit, Download SVG and Print, plus the suite's shared `icons`. `TreeFigure` stays server-renderable.
 - Mac app: the tree uses the canvas. Download saves `tree.svg` to the profile's exports, and Print opens the system dialog.
 - Playground: every view on invented data (`apps/playground`).

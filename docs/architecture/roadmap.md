@@ -66,7 +66,7 @@ The techniques research changes what comes next, and the [analysis protocol](ana
 
 1. **Integrity.** Close the record-check gaps, seal checks and sequences into panels, and verify on load. *Code done. The genome NUMT screen has run once for the first species and flagged nothing, which clears no record. Shipping its library inside panels is still to do.*
 2. **Provenance.** Reported origins are labelled as reports, and records assigned by sequence no longer shape a panel. *Done.*
-3. **Evaluation.** Named windows, sites per pair of groups, depth rules, and a `not_resolved` state.
+3. **Evaluation.** Named windows, sites per pair of groups, depth rules, and a `not_resolved` state. *Done, with uncalibrated rules.*
 4. **Validation.** Hold-out ladder, fragments, controls and intervals on sites. Validated scope comes from a report, not by hand.
 5. **Stage 2's dataset format,** on schema version 2.
 6. **Reporting.** Reference-class counts instead of probabilities, then expert review.

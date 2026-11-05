@@ -15,8 +15,8 @@ Every package keeps these rules. A rule without a passing test is pending, and i
 | P9 | **Provenance starts unknown.** GenBank location is not treated as origin; publications are kept with each record. | `core.test.ts` (GenBank) |
 | P10 | **Exact coordinates are opt-in.** Sheets leave them out by default; distributed panels use generalized regions. | `core.test.ts` (record sheet), `panel.test.ts` (panels) |
 | P11 | **Every exclusion has a reason.** | `core.test.ts` (profiles) |
-| P12 | **Assigned records are never evidence of location,** and don't shape a group's sites, spread, findings or validation. | `panel.test.ts` (panels), `build.test.ts` (records assigned by their own sequence) |
-| P13 | **Claims are scoped** to one group and panel version. | `panel.test.ts` (results); windows pending |
+| P12 | **Assigned records are never evidence of location,** and don't shape a group's coverage, sites, spread, findings or validation. | `panel.test.ts` (panels), `build.test.ts` (records assigned by their own sequence) |
+| P13 | **Claims are scoped** to one group and panel version. | `panel.test.ts` (results), `build.test.ts` (evaluator version 2) |
 | P14 | **Failures stop a run;** retries can't duplicate records and skips can't pass silently. | Pending (acquire) |
 | P15 | **Stated confidence must be calibrated** before it is shown as a probability. | Pending (validation) |
 | P16 | **Saved panels are never rewritten.** Changed content needs a new version, and results name the exact version. | `engine.test.ts` (runs and panels stay true) |
@@ -26,5 +26,10 @@ Every package keeps these rules. A rule without a passing test is pending, and i
 | P20 | **Every input gets an outcome.** Excluded records stay in the output with their reasons. | `engine.test.ts`, `golden.test.ts` |
 | P21 | **A reported origin names its source.** | `panel.test.ts` (panels) |
 | P22 | **An unannotated record gets the same checks,** unless it's many times the reference's length. | `build.test.ts` (gates) |
+| P23 | **Adding a group can't erase what separates two others.** Sites belong to a pair of groups in a named window. | `build.test.ts` (evaluator version 2) |
+| P24 | **One record never makes a group comparable, and one site never rules a group out.** Records with no site count as one. | `build.test.ts` (evaluator version 2) |
+| P25 | **Consistent with two groups isn't telling them apart.** A query covering no separating site gets `not_resolved`. | `build.test.ts` (evaluator version 2) |
+| P26 | **Novelty belongs to the query.** It never overwrites a finding, and groups that couldn't be compared are named as candidates. | `build.test.ts` (evaluator version 2) |
+| P27 | **A panel's sites follow from its data.** Loading derives them again and refuses a mismatch. | `build.test.ts` (evaluator version 2) |
 
 What these results can claim, and which rules are fixed before a test, is set out in the [analysis protocol](analysis-protocol.md).

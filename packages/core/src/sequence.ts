@@ -5,6 +5,9 @@ const IUPAC: Record<string, string> = {
   A: 'A', C: 'C', G: 'G', T: 'T', U: 'T', R: 'AG', Y: 'CT', S: 'CG', W: 'AT', K: 'GT', M: 'AC', B: 'CGT', D: 'AGT', H: 'ACT', V: 'ACG',
 }
 
+/** The bases a code may stand for, or undefined for gaps, N and anything else without information. */
+export const basesOf = (c: string | undefined): string | undefined => (c === undefined ? undefined : IUPAC[c.toUpperCase()])
+
 export const isMissing = (c: string | undefined) => c === undefined || !(c in IUPAC)
 
 export type Window = { start: number; end: number }
