@@ -1,3 +1,4 @@
+import type { PanelBundle } from './build.js'
 import type { Diagnostic, Panel, ProvenanceClass, Result } from './model.js'
 import { sha256Hex } from './sha256.js'
 
@@ -21,7 +22,20 @@ export const sealPanel = (panel: Panel): Panel => ({ ...panel, checksum: panelCh
 
 export const verifyPanel = (panel: Panel): boolean => panel.checksum === panelChecksum(panel)
 
-const LOCATION_EVIDENCE: readonly ProvenanceClass[] = ['wild-documented', 'museum-documented']
+/** Hashes what travels beside a panel's JSON. Without this, editing the sequences file would change conclusions while the seal still passed. */
+export const sequencesChecksum = (sequences: Record<string, string>, referenceSequence?: string): string =>
+  `sha256:${sha256Hex(canonicalJson({ referenceSequence: referenceSequence ?? null, sequences }))}`
+
+/** Checks a panel and its sequences against the seal. Returns what's wrong; repairs nothing. */
+export function verifyBundle({ panel, sequences, referenceSequence }: PanelBundle): Diagnostic[] {
+  const out: Diagnostic[] = []
+  if (!panel.checksum || !verifyPanel(panel)) out.push({ severity: 'error', code: 'checksum-mismatch', message: 'The panel changed after it was sealed' })
+  if (panel.sequencesChecksum !== sequencesChecksum(sequences, referenceSequence)) out.push({ severity: 'error', code: 'sequences-changed', message: "The panel's sequences aren't the ones it was sealed with" })
+  return out
+}
+
+/** Provenance that can support a statement about where a group occurs. Assigned-by-sequence classes can't. */
+export const LOCATION_EVIDENCE: readonly ProvenanceClass[] = ['wild-documented', 'museum-documented', 'origin-reported']
 
 function coordinateKeys(value: unknown, path = ''): string[] {
   if (Array.isArray(value)) return value.flatMap((v, i) => coordinateKeys(v, `${path}.${i}`))
@@ -39,6 +53,7 @@ export function validatePanel(panel: Panel): Diagnostic[] {
   if (panel.schemaVersion !== 1) error('schema-version', `Unknown schema version ${String(panel.schemaVersion)}`)
   if (!panel.taxa.length) error('no-taxa', 'A panel needs at least one taxon', 'taxa')
   if (!panel.thresholds) error('no-thresholds', 'A panel must state the thresholds it is read with', 'thresholds')
+  if (!panel.gates) error('no-gates', 'A panel must state the record checks its members passed', 'gates')
   if (!panel.groups.length) error('no-groups', 'A panel needs at least one group', 'groups')
   const seen = new Set<string>()
   for (const [g, group] of panel.groups.entries()) {
@@ -55,6 +70,8 @@ export function validatePanel(panel: Panel): Diagnostic[] {
     for (const [e, item] of group.evidence.entries())
       if (item.use === 'lineage-and-location' && !LOCATION_EVIDENCE.includes(item.provenanceClass))
         error('invalid-location-evidence', `Record ${item.record} is ${item.provenanceClass}, so it can't show where a group occurs`, `groups.${g}.evidence.${e}`)
+      else if (item.provenanceClass === 'origin-reported' && !item.originSource)
+        error('origin-source-missing', `Record ${item.record} is origin-reported, but names no source for that origin`, `groups.${g}.evidence.${e}`)
   }
   for (const path of coordinateKeys(panel)) error('coordinates-in-panel', 'Panels use generalized regions and never hold coordinates', path.slice(1))
   if (panel.status !== 'candidate') {

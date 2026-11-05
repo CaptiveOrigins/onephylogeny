@@ -19,7 +19,7 @@ The TypeScript types in [`packages/core/src/model.ts`](../../packages/core/src/m
 
 - **Panel status** runs `candidate`, `active`, `superseded` or `withdrawn`. Status isn't part of a panel's checksum, but everything else is.
 - **Finding status** is one of `consistent`, `excluded_within_panel`, `not_evaluable`, `inconclusive` or `novel_or_unsampled_flag`. A group with no shared sites can only be `not_evaluable`, and every group in the panel must be reported.
-- **Evidence use.** Only `wild-documented` and `museum-documented` records may be `lineage-and-location`.
+- **Evidence use.** Only `wild-documented`, `museum-documented` and `origin-reported` records may be `lineage-and-location`, and `origin-reported` must name its `originSource`. Other records stay listed but don't shape windows, fixed sites, spread, findings or validation.
 - **Windows** are half-open: `start` is included and `end` is not.
 
 The types and validators exist, but nothing builds panels or results yet.
