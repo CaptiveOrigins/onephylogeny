@@ -84,6 +84,8 @@ A NUMT is an old copy of mitochondrial DNA in the nuclear genome, and it can pas
 - The distance from the found copies to the reference is reported, because copies far from every record leave this rule little power: a record has to come very close before the rule can fire.
 - Results on panels through `0.4.0` are exploratory, since the records aren't new.
 
+**In panels.** A library saved at `profiles/<id>/numt-screen/numt-library.fasta` is sealed into each panel built afterward, so every sample is checked against the same copies under this same rule. A flag is a warning on the result, and results with no flag say that doesn't clear them. Panels built earlier have no library, and their checksums don't change.
+
 `scripts/numt-fixture.py` builds a synthetic genome with planted copies, to check the script before use.
 
 ## 8. Evaluator version 2

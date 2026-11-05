@@ -219,6 +219,27 @@ const curation2: Curation = { schemaVersion: 1, records: {
   'A1.1': { group: 'a', provenanceClass: 'wild-documented', site: 's1' }, 'A2.1': { group: 'a', provenanceClass: 'wild-documented', site: 's2' }, 'B1.1': { group: 'b', provenanceClass: 'wild-documented', site: 's3' },
 } }
 
+describe('a NUMT library from a screen', () => {
+  const curation = curation2
+  const copy = mutate([3, 33, 63, 93, 123, 153, 183, 213, 243, 273, 303, 333, 363, 393, 423, 453, 483, 513, 543, 573])
+  it('is sealed into new panels, flags a close sequence, and never says a clean one is cleared', async () => {
+    const ctx = makeContext()
+    await fetchAndAnchor(ctx, profile)
+    const plain = await buildPanelFromRun(ctx, profile, curation)
+    expect(plain.bundle.panel.numtCopies).toBeUndefined()
+    await ctx.store.write(`profiles/${profile.id}/numt-screen/numt-library.fasta`, `>locus1 scaffold:1-600\n${copy}\n`)
+    const panelled = { ...profile, panel: { ...profile.panel!, version: '9.9.9' } }
+    const { bundle } = await buildPanelFromRun(ctx, panelled, curation)
+    expect(bundle.panel.numtCopies).toEqual([{ id: 'locus1', aligned: copy }])
+    const flagged = testSample(copy, 'looks-nuclear', bundle)
+    expect(flagged.diagnostics.map((d) => d.code)).toContain('numt-flagged')
+    expect(flagged.result?.caveats.join(' ')).toContain('Flagged for review')
+    const clean = testSample(REF, 'clean', bundle)
+    expect(clean.diagnostics.map((d) => d.code)).not.toContain('numt-flagged')
+    expect(clean.result?.caveats.join(' ')).toContain("doesn't clear it")
+  })
+})
+
 describe('content-addressed steps', () => {
   it('reuses every step when nothing changed', async () => {
     const { ctx, events, reset } = withEvents()
