@@ -1,4 +1,4 @@
-import { buildPanel, evaluateQuery, leaveOneBlockOut, leaveOneGroupOut } from '@captiveorigins/onephylogeny-core'
+import { buildPanel, evaluateQuery, fullValidation } from '@captiveorigins/onephylogeny-core'
 import { EventLog, LineageCard, OutgroupLadderView, PanelSummary, ResultView, ValidationView } from '@captiveorigins/onephylogeny-react'
 import { TreeCanvas } from '@captiveorigins/onephylogeny-react/canvas'
 import { useState } from 'react'
@@ -23,6 +23,7 @@ const settings = {
   notCovered: ['Everywhere outside the example regions'],
   validatedScope: [],
   windows: [{ id: 'front', label: 'Front', start: 0, end: 120 }, { id: 'back', label: 'Back', start: 120, end: 200 }],
+  controls: { shuffles: 19, simulations: 2 },
   rules: { minSharedColumns: 20, minDepthPerColumn: 1, minBlocksForExclusion: 1, minDecisiveSites: 2, tolerance: 1 },
 }
 const members = [
@@ -46,7 +47,7 @@ const tabs = {
   Result: () => <ResultView result={result} panel={panel} queryAligned={query} />,
   'Lineage card': () => <LineageCard result={result} panel={panel} marker="example gene" />,
   Panel: () => <PanelSummary panel={panel} />,
-  Validation: () => <ValidationView blocks={leaveOneBlockOut(input)} groups={leaveOneGroupOut(input)} />,
+  Validation: () => <ValidationView {...fullValidation(input)} panel={panel} />,
   Tree: () => <TreeCanvas newick={newick} thresholds={[80, 95]} height="24rem" />,
   Outgroups: () => (
     <OutgroupLadderView

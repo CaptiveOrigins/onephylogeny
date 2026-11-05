@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { alignToReference, assessAlignment, DEFAULT_GATES, buildPanel, evaluateQuery, gatesForRecord, leaveOneBlockOut, leaveOneGroupOut, reverseComplement, sealPanel, validatePanel, validateResult, verifyBundle, type BuildPanelInput, type PanelSettings } from '../src/index.js'
+import { alignToReference, assessAlignment, DEFAULT_GATES, buildPanel, evaluateQuery, gatesForRecord, leaveOneBlockOut, leaveOneGroupOut, clopperPearson, fullValidation, reverseComplement, sealPanel, validatedScopeFromReport, validatePanel, validateResult, verifyBundle, type BuildPanelInput, type ClaimReport, type PanelSettings } from '../src/index.js'
 
 function randomSeq(n: number, seed = 7): string {
   // mulberry32: a short linear generator repeats itself, which makes "unrelated" sequences share long runs.
@@ -320,6 +320,99 @@ describe('evaluator version 2', () => {
     expect(s.onlyTruth).toBeGreaterThan(0)
     expect(s.onlyTruthAllEvaluated).toBe(0)
   })
+})
+
+describe('claims', () => {
+  // Short sequences and the fewest controls that can still reach the gates: these run on every commit.
+  const R = randomSeq(320, 31)
+  const at = (...sites: number[]) => mutate(R, sites)
+  const rules = { minSharedColumns: 100, minDepthPerColumn: 5, minBlocksForExclusion: 3, minDecisiveSites: 2, tolerance: 1 }
+  const a = [10, 50, 90, 130, 170, 210, 250, 290]
+  const b = [20, 60, 100, 140, 180, 220, 260, 300]
+  const base = (groups = ['a', 'b']) => ({
+    settings: { id: 'p', version: '1', groups: groups.map((id) => ({ id, label: id.toUpperCase() })), notCovered: ['Z'], validatedScope: [], windows: [{ id: 'w', label: 'W', start: 0, end: 320 }], rules, controls: { shuffles: 19, simulations: 1, seed: 5 } },
+    taxa: [{ source: 't', id: '1' }], marker: { kind: 'gene' as const, gene: 'g' }, reference: { accession: 'R.1', length: 320 }, sources: [], builtBy: 'test', referenceSequence: R,
+  })
+  const member = (group: string, sites: number[], i: number, study: string, nSites = 6) => ({ record: `${group}${i}`, group, aligned: at(...sites, 31 + i * 2), provenanceClass: 'wild-documented' as const, block: `${group}-${i % nSites}`, study })
+  const many = (group: string, sites: number[], n = 18, nSites = 9) => Array.from({ length: n }, (_, i) => member(group, sites, i, i % 2 ? 'Paper 1' : 'Paper 2', nSites))
+  const claimOf = (members: ReturnType<typeof many>) => fullValidation({ ...base(), members }).claims[0]!
+  const gate = (c: ClaimReport, g: ClaimReport['gates'][number]['gate']) => c.gates.find((x) => x.gate === g)!
+
+  it('gives the exact interval', () => {
+    expect(clopperPearson(3, 3)[0]).toBeCloseTo(0.025 ** (1 / 3), 6)
+    expect(clopperPearson(0, 3)[1]).toBeCloseTo(1 - 0.025 ** (1 / 3), 6)
+    // Published value for 5 of 10: 0.187 to 0.813.
+    const [lo, hi] = clopperPearson(5, 10)
+    expect(lo).toBeCloseTo(0.187, 3)
+    expect(hi).toBeCloseTo(0.813, 3)
+  })
+  it('passes a strong split on many sites and two studies, and only then fills the scope', { timeout: 60000 }, () => {
+    const c = claimOf([...many('a', a), ...many('b', b)])
+    expect(c.gates.filter((g) => !g.passed).map((g) => g.detail)).toEqual([])
+    expect(c.passed).toBe(true)
+    expect(c.minColumns).toBeDefined()
+    expect(validatedScopeFromReport([c])[0]).toMatchObject({ a: 'a', b: 'b', window: 'w', basis: 'exploratory' })
+  })
+  it('stops at the sites gate and says the rest did not run', () => {
+    const c = claimOf([...many('a', a, 12, 3), ...many('b', b)])
+    expect(gate(c, 'sites').passed).toBe(false)
+    expect(gate(c, 'shuffled-labels').ran).toBe(false)
+    expect(validatedScopeFromReport([c])).toEqual([])
+  })
+  it('fails a claim from a single study', { timeout: 60000 }, () => {
+    const c = claimOf([...many('a', a), ...many('b', b)].map((m) => ({ ...m, study: 'Only paper' })))
+    expect(gate(c, 'across-studies').passed).toBe(false)
+    expect(c.passed).toBe(false)
+  })
+  it('fails when groups are really one population, on the shuffled control', { timeout: 60000 }, () => {
+    // Labels mean nothing here: every record is drawn from the same few haplotypes, whatever its group.
+    const mixed = (group: string) => Array.from({ length: 12 }, (_, i) => ({ ...member(group, i % 2 ? a : b, i, i % 2 ? 'Paper 1' : 'Paper 2') }))
+    const c = claimOf([...mixed('a'), ...mixed('b')])
+    expect(c.passed).toBe(false)
+    expect(gate(c, 'shuffled-labels').passed).toBe(false)
+  })
+  it('fails when one study gives the wrong answer', { timeout: 60000 }, () => {
+    // Paper 2's labels are swapped relative to Paper 1, so the split only holds within a study.
+    const swapped = (group: string, other: number[], own: number[]) => Array.from({ length: 12 }, (_, i) => member(group, i % 2 ? own : other, i, i % 2 ? 'Paper 1' : 'Paper 2'))
+    const c = claimOf([...swapped('a', b, a), ...swapped('b', a, b)])
+    expect(gate(c, 'across-studies').passed).toBe(false)
+  })
+  it("doesn't count a refusal to resolve as agreement across studies", { timeout: 60000 }, () => {
+    // Each paper holds one site per group, so without it the other can't rule anything out: every test refuses.
+    const thin = (group: string, sites: number[], n: number, prefix: string, study: string) => Array.from({ length: n }, (_, i) => ({ ...member(group, sites, i, study), record: `${prefix}${group}${i}`, block: `${prefix}${group}-${i % 9}` }))
+    const c = fullValidation({ ...base(), settings: { ...base().settings, rules: { ...rules, minBlocksForExclusion: 10 } }, members: [...thin('a', a, 18, 'x', 'Paper 1'), ...thin('b', b, 18, 'y', 'Paper 2')] }).claims[0]!
+    expect(gate(c, 'across-studies').passed).toBe(false)
+    expect(gate(c, 'across-studies').detail).toContain('with an answer reached for 0')
+  })
+  it('never takes a scope from the settings, only from claims', () => {
+    const b2 = buildPanel({ ...base(), settings: { ...base().settings, validatedScope: ['anything at all'] }, members: [...many('a', a), ...many('b', b)] })
+    expect(b2.panel.validatedScope).toEqual([])
+    expect(evaluateQuery(at(...a), b2, { queryId: 'q', runId: 'r' }).outOfValidatedScope).toContain('This panel has no validated claims yet')
+  })
+  it('says when a query falls outside a validated claim', () => {
+    const claims = [{ a: 'a', b: 'b', window: 'w', minColumns: 300, sites: { a: 6, b: 6 }, basis: 'exploratory' as const }]
+    const b2 = buildPanel({ ...base(), members: [...many('a', a), ...many('b', b)], claims })
+    expect(b2.panel.validatedScope[0]).toContain('300+ columns')
+    const full = evaluateQuery(at(...a), b2, { queryId: 'q', runId: 'r' })
+    expect(full.outOfValidatedScope.filter((x) => x.includes('validated claim'))).toEqual([])
+    const short = evaluateQuery('-'.repeat(100) + at(...a).slice(100), b2, { queryId: 'q', runId: 'r' })
+    expect(short.outOfValidatedScope.join(' ')).toContain("isn't a validated claim")
+  })
+  it('reports sites beside records, and hides intervals below 4 sites', () => {
+    const r = leaveOneBlockOut({ ...base(), members: [...many('a', a, 12, 3), ...many('b', b)] })
+    expect(r.sites!.find((s) => s.group === 'a')).toMatchObject({ records: 12, sites: 3 })
+    expect(r.sites!.find((s) => s.group === 'a')!.interval).toBeUndefined()
+    expect(r.sites!.find((s) => s.group === 'b')!.interval).toBeDefined()
+    expect(r.diagnostics.map((d) => d.code)).toContain('too-few-blocks')
+  })
+  it('warns when one site dominates a group', () => {
+    const lopsided = many('a', a).map((m, i) => ({ ...m, block: i < 12 ? 'big' : m.block }))
+    expect(leaveOneBlockOut({ ...base(), members: [...lopsided, ...many('b', b)] }).diagnostics.map((d) => d.code)).toContain('single-block-dominates')
+  })
+  it('is repeatable from its seed', () => {
+    const members = [...many('a', a), ...many('b', b)]
+    expect(claimOf(members)).toEqual(claimOf(members))
+  }, 60000)
 })
 
 describe('validation harness', () => {

@@ -8,6 +8,7 @@ const panel: Panel = {
   reference: { accession: 'R1.1', length: 100 },
   windows: [{ id: 'w', label: 'W', start: 0, end: 100 }],
   pairs: [],
+  claims: [],
   groups: [
     { id: 'a', label: 'A', coverage: [{ window: 'w', records: 1, blocks: 1, columnsAtDepth: [[0, 50]], spreadRate: null, recordsNeeded: 0 }], evidence: [{ record: 'r1', use: 'lineage-and-location', provenanceClass: 'wild-documented' }] },
     { id: 'b', label: 'B', coverage: [{ window: 'w', records: 1, blocks: 1, columnsAtDepth: [[50, 100]], spreadRate: null, recordsNeeded: 0 }], evidence: [{ record: 'r2', use: 'lineage-and-location', provenanceClass: 'wild-documented' }] },

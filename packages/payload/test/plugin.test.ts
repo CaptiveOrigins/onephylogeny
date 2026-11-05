@@ -24,7 +24,7 @@ beforeAll(async () => {
 afterAll(async () => { await payload?.destroy(); await mongo?.stop() })
 
 let version = 0
-const panelData = (over = {}) => ({ key: 'p', version: String(++version), marker: 'gene', checksum: `sha256:${version}`, groups: [{ groupId: 'a', label: 'A', regionName: 'North' }, { groupId: 'b', label: 'B' }], ...over })
+const panelData = (over = {}) => ({ key: 'p', version: String(++version), marker: 'gene', checksum: `sha256:${version}`, validatedScope: ['a vs b in w, 100+ columns (exploratory)'], groups: [{ groupId: 'a', label: 'A', regionName: 'North' }, { groupId: 'b', label: 'B' }], ...over })
 const createPanel = (over = {}) => payload.create({ collection: 'panels' as never, data: panelData(over) as never }) as unknown as Promise<any>
 const activate = (id: unknown) => payload.update({ collection: 'panels' as never, id: id as string, data: { status: 'active' } as never }) as unknown as Promise<any>
 const resultFor = (p: any, over = {}) => ({ schemaVersion: 2, query: 'q', run: 'r', overlap: 500, caveats: [], pairs: [], candidatesNotEvaluated: ['b'], novelty: { flagged: false, reasons: [], neitherSideSites: 0 }, outOfValidatedScope: [], panel: { id: p.key, version: p.version, checksum: p.checksum },

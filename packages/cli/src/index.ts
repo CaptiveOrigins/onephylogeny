@@ -90,7 +90,7 @@ async function main() {
   } else if (command === 'panel') {
     const curation = parseCuration(await store.read(P.curation))
     const { bundle, diagnostics, validation, unassigned } = await buildPanelFromRun(ctx, profile, curation)
-    console.log(JSON.stringify({ panel: bundle.panel.id, version: bundle.panel.version, checksum: bundle.panel.checksum, groups: bundle.panel.groups.map((g) => ({ id: g.id, records: g.evidence.length, coverage: g.coverage.map((c) => `${c.window}: ${c.records} records, ${c.blocks} sites${c.recordsNeeded ? `, needs ${c.recordsNeeded} more` : ''}`) })), pairs: bundle.panel.pairs.map((p) => `${p.a} / ${p.b} in ${p.window}: ${p.state === 'not_evaluable' ? 'not evaluable' : `${p.sites.length} sites`}`), unassigned, diagnostics, validation }, null, 2))
+    console.log(JSON.stringify({ panel: bundle.panel.id, version: bundle.panel.version, checksum: bundle.panel.checksum, groups: bundle.panel.groups.map((g) => ({ id: g.id, records: g.evidence.length, coverage: g.coverage.map((c) => `${c.window}: ${c.records} records, ${c.blocks} sites${c.recordsNeeded ? `, needs ${c.recordsNeeded} more` : ''}`) })), pairs: bundle.panel.pairs.map((p) => `${p.a} / ${p.b} in ${p.window}: ${p.state === 'not_evaluable' ? 'not evaluable' : `${p.sites.length} sites`}`), claims: validation.claims.map((c) => ({ pair: `${c.a} / ${c.b}`, window: c.window, passed: c.passed, minColumns: c.minColumns, gates: c.gates.filter((g) => g.ran).map((g) => `${g.passed ? 'pass' : 'FAIL'} ${g.gate}: ${g.detail}`) })), scope: bundle.panel.validatedScope, unassigned, diagnostics, validation }, null, 2))
   } else if (command === 'test') {
     const file = flag('fasta')
     if (!file) throw new Error('--fasta is required')

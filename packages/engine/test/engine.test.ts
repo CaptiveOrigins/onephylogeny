@@ -245,7 +245,7 @@ describe('content-addressed steps', () => {
     reset()
     const changed = { ...profile, panel: { ...profile.panel!, version: '2', rules: { ...profile.panel!.rules, tolerance: 3 } } }
     await buildPanelFromRun(ctx, changed, curation2)
-    expect(stepsRun(events, 'running')).toEqual(['panel', 'validate'])
+    expect(stepsRun(events, 'running')).toEqual(['validate', 'panel'])
     expect(stepsRun(events, 'running')).not.toContain('anchor')
   })
   it('rebuilding when a stored output was altered, not trusting it', async () => {

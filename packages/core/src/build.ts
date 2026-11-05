@@ -2,7 +2,8 @@ import { basesOf, compareAligned, coverage } from './sequence.js'
 import { deriveEvaluation, wholeMarker } from './derive.js'
 import { DEFAULT_GATES, type GateSettings } from './gates.js'
 import { LOCATION_EVIDENCE, sealPanel, sequencesChecksum } from './panel.js'
-import type { Diagnostic, Finding, FindingReason, FindingWindow, Id, Novelty, PairFinding, PairReason, Panel, PanelGroup, PanelSettings, ProvenanceClass, Result, EvidenceUse } from './model.js'
+import type { Diagnostic, Finding, FindingReason, FindingWindow, Id, Novelty, PairFinding, PairReason, Panel, PanelGroup, PanelSettings, ProvenanceClass, Result, EvidenceUse, ValidatedClaim } from './model.js'
+import { CLAIM_GATES, clopperPearson, describeClaim } from './validation.js'
 
 /** A panel and the aligned sequences its evidence names. Panels stay JSON; sequences travel in FASTA beside them. */
 export type PanelBundle = { panel: Panel; sequences: Record<string, string>; referenceSequence?: string }
@@ -21,10 +22,12 @@ export type BuildPanelInput = {
   builtWith?: { name: string; version: string }[]
   /** The record checks these members passed. */
   gates?: GateSettings
+  /** Claims that passed validation. Only these reach a panel's scope, whatever the settings say. */
+  claims?: ValidatedClaim[]
 }
 
-const useOf = (m: Pick<PanelMember, 'use' | 'provenanceClass'>): EvidenceUse => m.use ?? (LOCATION_EVIDENCE.includes(m.provenanceClass) ? 'lineage-and-location' : 'lineage-only')
-const locates = (m: Pick<PanelMember, 'use' | 'provenanceClass'>) => useOf(m) === 'lineage-and-location'
+export const useOf = (m: Pick<PanelMember, 'use' | 'provenanceClass'>): EvidenceUse => m.use ?? (LOCATION_EVIDENCE.includes(m.provenanceClass) ? 'lineage-and-location' : 'lineage-only')
+export const locates = (m: Pick<PanelMember, 'use' | 'provenanceClass'>) => useOf(m) === 'lineage-and-location'
 
 /**
  * Builds a sealed panel: coverage per group and sites per pair of groups, in named windows. Only records that can show
@@ -32,6 +35,13 @@ const locates = (m: Pick<PanelMember, 'use' | 'provenanceClass'>) => useOf(m) ==
  * make the group's definition depend on the answer being tested.
  */
 export function buildPanel(input: BuildPanelInput): PanelBundle {
+  const bundle = unsealedBundle(input)
+  const panel = sealPanel({ ...bundle.panel, sequencesChecksum: sequencesChecksum(bundle.sequences, input.referenceSequence) })
+  return { ...bundle, panel }
+}
+
+/** The same panel without hashing, for validation, which builds thousands and never keeps one. */
+export function unsealedBundle(input: BuildPanelInput): PanelBundle {
   const { settings } = input
   const length = input.reference.length
   const windows = settings.windows?.length ? settings.windows : wholeMarker(length)
@@ -55,7 +65,8 @@ export function buildPanel(input: BuildPanelInput): PanelBundle {
     }
   })
   const sequences = Object.fromEntries(input.members.map((m) => [m.record, m.aligned]))
-  const panel = sealPanel({
+  const claims = input.claims ?? []
+  const panel: Panel = {
     schemaVersion: 2,
     id: settings.id,
     version: settings.version,
@@ -67,14 +78,15 @@ export function buildPanel(input: BuildPanelInput): PanelBundle {
     groups,
     pairs: derived.pairs,
     notCovered: settings.notCovered,
-    validatedScope: settings.validatedScope,
+    validatedScope: claims.map(describeClaim),
+    claims,
     sources: input.sources,
     builtBy: input.builtBy,
     rules: settings.rules,
     gates: input.gates ?? DEFAULT_GATES,
-    sequencesChecksum: sequencesChecksum(sequences, input.referenceSequence),
+    sequencesChecksum: '',
     ...(input.builtWith ? { builtWith: input.builtWith } : {}),
-  })
+  }
   return { panel, sequences, ...(input.referenceSequence ? { referenceSequence: input.referenceSequence } : {}) }
 }
 
@@ -229,8 +241,19 @@ export function evaluateQuery(queryAligned: string, bundle: PanelBundle, options
   if (panel.notCovered.length) caveats.push(`This panel does not cover: ${panel.notCovered.join(', ')}`)
   const outOfValidatedScope = [
     ...(panel.status === 'active' ? [] : [`This panel is ${panel.status}, not active`]),
-    ...(panel.validatedScope.length ? [] : ['This panel has no validated claims yet']),
+    ...(panel.claims.length ? [] : ['This panel has no validated claims yet']),
   ]
+  if (panel.claims.length) {
+    for (const p of pairs.filter((x) => x.state === 'resolved')) {
+      const covers = panel.claims.some((c) => {
+        if (c.a !== p.a || c.b !== p.b) return false
+        const w = panel.windows.find((x) => x.id === c.window)
+        return Boolean(w) && [...queryAligned.slice(w!.start, w!.end)].filter((x) => basesOf(x)).length >= c.minColumns
+      })
+      if (!covers) outOfValidatedScope.push(`${labelOf(p.a)} vs ${labelOf(p.b)} isn't a validated claim for this much sequence`)
+    }
+    if (!pairs.some((p) => p.state === 'resolved')) outOfValidatedScope.push('This sequence resolves none of the validated claims')
+  }
   return {
     schemaVersion: 2,
     query: options.queryId,
@@ -255,11 +278,18 @@ export function evaluateQuery(queryAligned: string, bundle: PanelBundle, options
  */
 export type GroupScore = { group: string; tested: number; includedTruth: number; onlyTruth: number; onlyTruthAllEvaluated: number; excludedTruth: number; inconclusive: number; flagged: number; notEvaluable: number; meanConsistent: number }
 
+/**
+ * Sites beside records, for one group. `interval` is left out below 4 sites, where only counts can be honest. A site
+ * counts as right only if all its records are.
+ */
+export type GroupSites = { group: string; records: number; sites: number; largestSiteShare: number; sitesRight: number; interval?: [number, number] }
+
 export type ValidationReport = {
-  scheme: 'leave-one-block-out' | 'leave-one-group-out'
+  scheme: 'leave-one-block-out' | 'leave-one-group-out' | 'leave-one-record-out' | 'leave-one-haplotype-out' | 'leave-one-study-out'
   tested: number
   skipped: number
   groups: GroupScore[]
+  sites?: GroupSites[]
   /** Groups with no test at all, such as a group with one site. Absent from `groups`, which says nothing about them. */
   untestedGroups: string[]
   /** For leave-one-group-out: tests where a group was consistent even though the true group was absent. */
@@ -269,11 +299,11 @@ export type ValidationReport = {
 
 export type ValidationInput = BuildPanelInput
 
-/** Tests each block of records against a panel rebuilt without it, so a record never meets its own site. */
-export function leaveOneBlockOut(input: ValidationInput): ValidationReport {
+/** Tests each held-out set of records against a panel rebuilt without it. */
+export function holdOut(input: ValidationInput, keyOf: (m: PanelMember) => string, scheme: ValidationReport['scheme']): ValidationReport {
   const blocks = new Map<string, ValidationInput['members']>()
   for (const m of input.members) {
-    const key = m.block ?? `record:${m.record}`
+    const key = keyOf(m)
     const list = blocks.get(key)
     if (list) list.push(m)
     else blocks.set(key, [m])
@@ -284,11 +314,12 @@ export function leaveOneBlockOut(input: ValidationInput): ValidationReport {
     if (!s) { s = { group: g, tested: 0, includedTruth: 0, onlyTruth: 0, onlyTruthAllEvaluated: 0, excludedTruth: 0, inconclusive: 0, flagged: 0, notEvaluable: 0, meanConsistent: 0 }; scores.set(g, s) }
     return s
   }
+  const perSite = new Map<string, { group: string; site: string; records: number; right: number }>()
   let tested = 0
   let skipped = 0
   for (const [, held] of blocks) {
     const rest = input.members.filter((m) => !held.includes(m))
-    const bundle = buildPanel({ ...input, members: rest })
+    const bundle = unsealedBundle({ ...input, members: rest })
     for (const m of held.filter(locates)) {
       if (!rest.some((r) => r.group === m.group && locates(r))) { skipped++; continue }
       const result = evaluateQuery(m.aligned, bundle, { queryId: m.record, runId: 'validation' })
@@ -302,20 +333,42 @@ export function leaveOneBlockOut(input: ValidationInput): ValidationReport {
       else if (finding?.status === 'excluded_within_panel') s.excludedTruth++
       else if (finding?.status === 'inconclusive') s.inconclusive++
       if (result.novelty.flagged) s.flagged++
+      const siteKey = `${m.group}\u0000${m.block ?? ''}`
+      const site = perSite.get(siteKey) ?? { group: m.group, site: m.block ?? '', records: 0, right: 0 }
+      site.records++
       if (consistent.includes(m.group)) {
+        site.right++
         s.includedTruth++
         if (consistent.length === 1) {
           s.onlyTruth++
           if (!result.candidatesNotEvaluated.length) s.onlyTruthAllEvaluated++
         }
       }
+      perSite.set(siteKey, site)
     }
   }
   const groups = [...scores.values()].map((s) => ({ ...s, meanConsistent: s.tested ? s.meanConsistent / s.tested : 0 }))
-  const noSite = input.members.filter((m) => locates(m) && m.block === undefined).length
-  const diagnostics: Diagnostic[] = noSite ? [{ severity: 'warning', code: 'records-without-site', message: `${noSite} records have no site, so each was held out alone. They can be tested against records from their own site, which flatters these results` }] : []
+  const sites = groups.map((g): GroupSites => {
+    const own = [...perSite.values()].filter((p) => p.group === g.group && p.site)
+    const records = own.reduce((n, p) => n + p.records, 0)
+    const sitesRight = own.filter((p) => p.right === p.records).length
+    return { group: g.group, records, sites: own.length, largestSiteShare: records ? Math.max(...own.map((p) => p.records)) / records : 0, sitesRight, ...(own.length >= CLAIM_GATES.minSitesPerGroup ? { interval: clopperPearson(sitesRight, own.length) } : {}) }
+  })
+  const diagnostics: Diagnostic[] = []
+  for (const s of sites) {
+    if (s.sites < CLAIM_GATES.minSitesPerGroup) diagnostics.push({ severity: 'warning', code: 'too-few-blocks', message: `${s.group} has ${s.sites} sites, so this shows counts only`, ids: [s.group] })
+    if (s.largestSiteShare > 0.5) diagnostics.push({ severity: 'warning', code: 'single-block-dominates', message: `One site holds ${Math.round(s.largestSiteShare * 100)}% of ${s.group}'s records`, ids: [s.group] })
+  }
   diagnostics.push(...lineageOnlyNote(input))
-  return { scheme: 'leave-one-block-out', tested, skipped, groups, untestedGroups: input.settings.groups.map((g) => g.id).filter((g) => !scores.has(g)), diagnostics }
+  return { scheme, tested, skipped, groups, sites, untestedGroups: input.settings.groups.map((g) => g.id).filter((g) => !scores.has(g)), diagnostics }
+}
+
+/** Tests each sampling site against a panel rebuilt without it, so a record never meets its own site. */
+export function leaveOneBlockOut(input: ValidationInput): ValidationReport {
+  const report = holdOut(input, (m) => m.block ?? `record:${m.record}`, 'leave-one-block-out')
+  const noSite = input.members.filter((m) => locates(m) && m.block === undefined).length
+  if (noSite) report.diagnostics.unshift({ severity: 'warning', code: 'records-without-site', message: `${noSite} records have no site, so each was held out alone. They can be tested against records from their own site, which flatters these results` })
+  return report
 }
 
 /** A label given from a record's own sequence can't be test truth: scoring it would be circular. */
@@ -332,7 +385,7 @@ export function leaveOneGroupOut(input: ValidationInput): ValidationReport {
   for (const g of input.settings.groups) {
     const held = input.members.filter((m) => m.group === g.id)
     const settings = { ...input.settings, groups: input.settings.groups.filter((x) => x.id !== g.id) }
-    const bundle = buildPanel({ ...input, settings, members: input.members.filter((m) => m.group !== g.id) })
+    const bundle = unsealedBundle({ ...input, settings, members: input.members.filter((m) => m.group !== g.id) })
     const s: GroupScore = { group: g.id, tested: 0, includedTruth: 0, onlyTruth: 0, onlyTruthAllEvaluated: 0, excludedTruth: 0, inconclusive: 0, flagged: 0, notEvaluable: 0, meanConsistent: 0 }
     for (const m of held.filter(locates)) {
       const result = evaluateQuery(m.aligned, bundle, { queryId: m.record, runId: 'validation' })

@@ -1,4 +1,4 @@
-import type { Finding, FindingStatus, PairFinding, Panel, Result, RunEvent, ValidationReport } from '@captiveorigins/onephylogeny-core'
+import type { ClaimReport, Finding, FindingStatus, PairFinding, Panel, Result, RunEvent, ValidationReport } from '@captiveorigins/onephylogeny-core'
 
 export type Labels = Partial<Record<FindingStatus, string>>
 
@@ -170,21 +170,62 @@ export function PanelSummary({ panel }: { panel: Panel }) {
 
 const pct = (a: number, b: number) => (b ? `${a} of ${b}` : '–')
 
-export function ValidationView({ blocks, groups }: { blocks: ValidationReport; groups: ValidationReport }) {
+const SCHEME: Record<ValidationReport['scheme'], string> = {
+  'leave-one-record-out': 'Each record (leak check only)',
+  'leave-one-haplotype-out': 'Each exact haplotype',
+  'leave-one-block-out': 'Each site (the default claim)',
+  'leave-one-study-out': 'Each study',
+  'leave-one-group-out': 'Each whole group',
+}
+
+/** A claim is one pair of groups in one window. Every gate shows, so a failed claim says what stopped it. */
+export function ClaimsView({ claims, panel }: { claims: ClaimReport[]; panel?: Panel }) {
+  const label = (id: string) => (panel ? groupLabel(panel, id) : id)
+  const passed = claims.filter((c) => c.passed)
+  return (
+    <section>
+      <h4>Claims tested</h4>
+      <p>{passed.length} of {claims.length} passed every gate. All are exploratory until tested on data that didn't shape this method.</p>
+      <table className="ophy-table">
+        <thead><tr><th>Pair</th><th>Window</th><th>Sites</th><th>Result</th><th>Stopped by</th></tr></thead>
+        <tbody>
+          {claims.map((c) => {
+            const failed = c.gates.filter((g) => g.ran && !g.passed)
+            return <tr key={`${c.a}|${c.b}|${c.window}`}><th scope="row">{label(c.a)} / {label(c.b)}</th><td>{c.window}</td><td>{c.sites.a} and {c.sites.b}</td><td>{c.passed ? `Passed, ${c.minColumns}+ columns` : 'Not validated'}</td><td>{failed.map((g) => g.detail).join('. ') || '–'}</td></tr>
+          })}
+        </tbody>
+      </table>
+    </section>
+  )
+}
+
+export function ValidationView({ blocks, groups, ladder, claims, panel }: { blocks: ValidationReport; groups: ValidationReport; ladder?: ValidationReport[]; claims?: ClaimReport[]; panel?: Panel }) {
   const noEvidence = groups.groups.reduce((sum, g) => sum + g.notEvaluable, 0)
   return (
     <section>
       <h4>Holding out each sampling site</h4>
       <table className="ophy-table">
-        <thead><tr><th>Group</th><th>True group consistent</th><th>Only the true group</th><th>Only the true group, all others compared</th><th>True group excluded</th><th>Inconclusive</th><th>Not evaluable</th></tr></thead>
+        <thead><tr><th>Group</th><th>Sites</th><th>True group consistent</th><th>Only the true group</th><th>Only the true group, all others compared</th><th>True group excluded</th><th>Inconclusive</th><th>Not evaluable</th></tr></thead>
         <tbody>
-          {blocks.groups.map((g) => <tr key={g.group}><th scope="row">{g.group}</th><td>{pct(g.includedTruth, g.tested)}</td><td>{pct(g.onlyTruth, g.tested)}</td><td>{pct(g.onlyTruthAllEvaluated, g.tested)}</td><td>{pct(g.excludedTruth, g.tested)}</td><td>{pct(g.inconclusive, g.tested)}</td><td>{pct(g.notEvaluable, g.tested)}</td></tr>)}
+          {blocks.groups.map((g) => {
+            const s = blocks.sites?.find((x) => x.group === g.group)
+            return <tr key={g.group}><th scope="row">{g.group}</th><td>{s ? `${s.sitesRight} of ${s.sites} right${s.interval ? `, ${s.interval[0].toFixed(2)} to ${s.interval[1].toFixed(2)}` : ''}` : '–'}</td><td>{pct(g.includedTruth, g.tested)}</td><td>{pct(g.onlyTruth, g.tested)}</td><td>{pct(g.onlyTruthAllEvaluated, g.tested)}</td><td>{pct(g.excludedTruth, g.tested)}</td><td>{pct(g.inconclusive, g.tested)}</td><td>{pct(g.notEvaluable, g.tested)}</td></tr>
+          })}
         </tbody>
       </table>
       {blocks.untestedGroups.length > 0 && <p className="ophy-warning">Not tested, because all their records come from one site: {blocks.untestedGroups.join(', ')}.</p>}
       {blocks.diagnostics.map((d) => <p key={d.code} className="ophy-warning">{d.message}</p>)}
       <h4>Removing each whole group</h4>
       <p>{groups.falseConsistent ?? 0} of {groups.tested} records were wrongly called consistent with a remaining group. Lower is better, and this is how the panel behaves when a sample's true population is missing.{noEvidence > 0 ? ` ${noEvidence} of them couldn't be compared with any remaining group, so they say nothing either way.` : ''}</p>
+      {ladder && ladder.length > 0 && <>
+        <h4>What was held out</h4>
+        <p className="ophy-muted">Each row answers a different question, so these are never averaged.</p>
+        <table className="ophy-table">
+          <thead><tr><th>Held out</th><th>Tested</th><th>True group consistent</th><th>True group excluded</th><th>Not evaluable</th></tr></thead>
+          <tbody>{ladder.map((r) => <tr key={r.scheme}><th scope="row">{SCHEME[r.scheme]}</th><td>{r.tested}</td><td>{r.groups.reduce((n, g) => n + g.includedTruth, 0)}</td><td>{r.groups.reduce((n, g) => n + g.excludedTruth, 0)}</td><td>{r.groups.reduce((n, g) => n + g.notEvaluable, 0)}</td></tr>)}</tbody>
+        </table>
+      </>}
+      {claims && <ClaimsView claims={claims} {...(panel ? { panel } : {})} />}
       <p className="ophy-muted">These are simple counts on a small reference panel, and they aren't calibrated probabilities.</p>
     </section>
   )
