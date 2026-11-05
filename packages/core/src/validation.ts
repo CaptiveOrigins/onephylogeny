@@ -211,9 +211,10 @@ function testClaim(input: BuildPanelInput, a: Id, b: Id, window: PanelWindow, co
     return { study, tally }
   })
   const wrongAcross = studies.reduce((n, s) => n + s.tally.wrong, 0)
-  const testableStudies = studies.filter((s) => s.tally.tests > s.tally.notEvaluable).length
+  // Refusing to resolve isn't agreement. A study counts only if a panel without it actually reached an answer about it.
+  const testableStudies = studies.filter((s) => s.tally.right + s.tally.wrong > 0).length
   const acrossOk = names.length >= 2 && wrongAcross === 0 && testableStudies >= 1
-  gates.push({ gate: 'across-studies', passed: acrossOk, ran: true, detail: names.length < 2 ? `Only ${names.length} study` : `${wrongAcross} wrong across ${names.length} studies, ${testableStudies} of them testable` })
+  gates.push({ gate: 'across-studies', passed: acrossOk, ran: true, detail: names.length < 2 ? `Only ${names.length} study` : `${wrongAcross} wrong across ${names.length} studies, with an answer reached for ${testableStudies}: ${studies.map((s) => `${s.tally.right} right, ${s.tally.notResolved} not resolved`).join('; ')}` })
 
   // Whole sites move between the two groups. The score weighs each site equally, so one large site can't carry it.
   const score = (perSite: { share: number }[]) => perSite.reduce((n, s) => n + s.share, 0) / perSite.length

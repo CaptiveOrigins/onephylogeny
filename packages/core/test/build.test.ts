@@ -377,6 +377,13 @@ describe('claims', () => {
     const c = claimOf([...swapped('a', b, a), ...swapped('b', a, b)])
     expect(gate(c, 'across-studies').passed).toBe(false)
   })
+  it("doesn't count a refusal to resolve as agreement across studies", { timeout: 60000 }, () => {
+    // Each paper holds one site per group, so without it the other can't rule anything out: every test refuses.
+    const thin = (group: string, sites: number[], n: number, prefix: string, study: string) => Array.from({ length: n }, (_, i) => ({ ...member(group, sites, i, study), record: `${prefix}${group}${i}`, block: `${prefix}${group}-${i % 9}` }))
+    const c = fullValidation({ ...base(), settings: { ...base().settings, rules: { ...rules, minBlocksForExclusion: 10 } }, members: [...thin('a', a, 18, 'x', 'Paper 1'), ...thin('b', b, 18, 'y', 'Paper 2')] }).claims[0]!
+    expect(gate(c, 'across-studies').passed).toBe(false)
+    expect(gate(c, 'across-studies').detail).toContain('with an answer reached for 0')
+  })
   it('never takes a scope from the settings, only from claims', () => {
     const b2 = buildPanel({ ...base(), settings: { ...base().settings, validatedScope: ['anything at all'] }, members: [...many('a', a), ...many('b', b)] })
     expect(b2.panel.validatedScope).toEqual([])
