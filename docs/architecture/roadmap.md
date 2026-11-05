@@ -64,7 +64,7 @@ Everything later depends on this. It replaces fixed procedures with one model, n
 
 The techniques research changes what comes next, and the [analysis protocol](analysis-protocol.md) now governs every stage. The order is integrity, provenance, evaluation, validation, then reporting. Stage 2's format waits for schema version 2, because freezing today's one-group-versus-rest format would lock in the question the evaluator should stop asking. Parts of Stage 4 therefore run alongside it.
 
-1. **Integrity.** Close the record-check gaps, seal checks and sequences into panels, and verify on load. *Code done; the genome NUMT screen hasn't been run.*
+1. **Integrity.** Close the record-check gaps, seal checks and sequences into panels, and verify on load. *Code done. The genome NUMT screen has run once for the first species and flagged nothing, which clears no record. Shipping its library inside panels is still to do.*
 2. **Provenance.** Reported origins are labelled as reports, and records assigned by sequence no longer shape a panel. *Done.*
 3. **Evaluation.** Named windows, sites per pair of groups, depth rules, and a `not_resolved` state.
 4. **Validation.** Hold-out ladder, fragments, controls and intervals on sites. Validated scope comes from a report, not by hand.
