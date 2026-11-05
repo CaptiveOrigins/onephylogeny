@@ -104,7 +104,38 @@ The evaluator stops asking "which group is this?" as one question. It asks wheth
 
 **Reporting.** Hold-out results go in the deviation log whether or not they match these expectations, labeled exploratory. Nothing above becomes a confirmatory test, since these records shaped the method.
 
-## 9. Deviation log
+## 9. Validation harness
+
+A claim here is narrow: "this panel separates groups A and B in window W, for queries of at least N columns." The harness tests claims and fills `validatedScope` from what passes. Nobody types a scope by hand. These gates were committed before the harness ran on real data. Any later change goes in the deviation log.
+
+**Hold-out schemes, reported side by side and never averaged.** Each record's site, study and whole group are held out in turn, plus each exact haplotype. Leave-one-record-out appears only as a leak detector. Leave-one-site-out is the default claim: a new site in a sampled region.
+
+**Reporting by sites.** Every row gives sites beside records. Below 4 sites it shows counts only. From 4 sites it adds an exact Clopper-Pearson interval on sites, where a site counts as correct only if all its records are.
+
+**Gates. A claim passes only if all hold:**
+
+1. **Sites.** Each group has at least 4 sites holding records in the window.
+2. **No wrong answers.** Holding out each site, no test resolves the pair toward the wrong group.
+3. **Interval.** The lower 95% bound on correct sites, across both groups, is at least 0.8.
+4. **Across studies.** The records come from at least 2 studies, and a panel built without a study never resolves that study's records toward the wrong group.
+5. **Shuffled labels.** Moving whole sites between the two groups, the real score beats the shuffled ones at p <= 0.05, using 99 shuffles and (b+1)/(B+1).
+6. **No structure.** On simulated data from one population, keeping each record's coverage, site and group, at most 5% of tests resolve the pair at all, over 20 simulations. The simulation is a seeded coalescent, with its mutation rate set from the mean pairwise differences of the real pooled records.
+
+**Length.** A claim's minimum length is the shortest of 100, 150, 200, 300, 400 or 500 columns where no fragment resolves wrongly and at least 95% resolve. Fragments use 5 seeded random positions per record, on held-out sites. If none qualifies, the claim doesn't pass.
+
+Values 4, 0.8 and 5% are our proposals and aren't calibrated. **They aren't to be changed because a claim failed.**
+
+**Every claim stays labeled exploratory** until a test meeting section 2 runs. Passing these gates means a claim survived its controls on data that shaped the method, not that it's confirmed.
+
+**Expected before running** (panel `0.6.0`):
+
+- West/East in 3' passes.
+- West/East in 5' fails on sites, since West has 2 sites and East has 1.
+- West or East against Brazil east in 5' fails on sites, since Brazil east has 1.
+- Every pair with the Guianas or Chaco fails, since neither reaches the required depth.
+- West/East across studies is the check most likely to surprise. The two studies differ in coverage, lab and how they name groups, so a failure there would mean the split may be partly a study effect.
+
+## 10. Deviation log
 
 Each entry records the date, what changed, why, and which results it touches.
 
