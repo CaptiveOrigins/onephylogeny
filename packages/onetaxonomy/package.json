@@ -6,14 +6,14 @@
     "phylogenetics",
     "reference-panel"
   ],
-  "homepage": "https://github.com/mgilardi/onephylogeny#readme",
+  "homepage": "https://github.com/CaptiveOrigins/onephylogeny#readme",
   "bugs": {
-    "url": "https://github.com/mgilardi/onephylogeny/issues"
+    "url": "https://github.com/CaptiveOrigins/onephylogeny/issues"
   },
   "license": "PolyForm-Noncommercial-1.0.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mgilardi/onephylogeny.git",
+    "url": "git+https://github.com/CaptiveOrigins/onephylogeny.git",
     "directory": "packages/onetaxonomy"
   },
   "type": "module",

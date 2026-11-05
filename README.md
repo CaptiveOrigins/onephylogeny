@@ -8,8 +8,8 @@ OnePhylogeny is part of the [OneOrigin suite](docs/oneorigin/README.md): three i
 
 | Tool | Question it answers |
 | --- | --- |
-| [OneTaxonomy](https://github.com/mgilardi/onetaxonomy) | What do sources claim, and how do we browse those classifications and trees? |
-| [OnePedigree](https://github.com/mgilardi/onepedigree) | How is this individual related to known relatives? |
+| [OneTaxonomy](https://github.com/CaptiveOrigins/onetaxonomy) | What do sources claim, and how do we browse those classifications and trees? |
+| [OnePedigree](https://github.com/CaptiveOrigins/onepedigree) | How is this individual related to known relatives? |
 | **OnePhylogeny** | Given DNA, what does the evidence support, and where does this sample fit? |
 
 ## Principles

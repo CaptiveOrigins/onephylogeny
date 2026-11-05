@@ -1,6 +1,6 @@
 OnePhylogeny third-party notices
 
-packages/core/src/sha256.ts comes from OneTaxonomy (https://github.com/mgilardi/onetaxonomy), under:
+packages/core/src/sha256.ts comes from OneTaxonomy (https://github.com/CaptiveOrigins/onetaxonomy), under:
 
 MIT License
 

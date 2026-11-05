@@ -2,4 +2,4 @@
 
 OnePhylogeny command line: run profiles, build panels, test samples and suggest outgroups.
 
-See the [repository](https://github.com/mgilardi/onephylogeny) for documentation.
+See the [repository](https://github.com/CaptiveOrigins/onephylogeny) for documentation.

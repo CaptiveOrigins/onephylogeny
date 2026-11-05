@@ -6,9 +6,9 @@ OneOrigin is a suite of three independent tools from Captive Origins. Each does 
 
 | Tool | The question it answers |
 | --- | --- |
-| [OnePedigree](https://github.com/mgilardi/onepedigree) | How is this individual related to its known relatives? |
-| [OneTaxonomy](https://github.com/mgilardi/onetaxonomy) | What do sources claim about how life is organized, and how do we browse it? |
-| [OnePhylogeny](https://github.com/mgilardi/onephylogeny) | Given DNA, what does the evidence support, and where does this sample fit? |
+| [OnePedigree](https://github.com/CaptiveOrigins/onepedigree) | How is this individual related to its known relatives? |
+| [OneTaxonomy](https://github.com/CaptiveOrigins/onetaxonomy) | What do sources claim about how life is organized, and how do we browse it? |
+| [OnePhylogeny](https://github.com/CaptiveOrigins/onephylogeny) | Given DNA, what does the evidence support, and where does this sample fit? |
 
 ## Why this exists
 
