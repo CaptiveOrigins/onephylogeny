@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- A long record that doesn't annotate the marker, such as a whole mitochondrial genome, now has it cut out by similarity and then goes through the usual checks. It's refused if the marker looks present in more than one place. A record that was left whole used to skip the coverage check.
 - Compare any two built panel versions in the Study tab, or with `onephylogeny compare --a V --b V`: records, groups, every evidence field, settings and full claim reports. It reports differences and never recommends a version.
 - Duplicate a Study. A copy keeps the runs it came from, so later omissions in it are still labeled post hoc.
 - Studies with post hoc omissions offer a copy with them restored, and panels seal the Study state they came from, including those omissions.
