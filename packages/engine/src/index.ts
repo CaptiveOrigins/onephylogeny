@@ -3,10 +3,10 @@ import {
   evaluateQuery, toRecordSheet, toSequenceRecord, validatePanel, verifyBundle, validatedScopeFromReport, validateProfile, validateResult, writeFasta,
   type Alignment, type Curation, type Diagnostic, type GateSettings, type GenBankRecord, type Panel, type PanelBundle, type PanelMember, type Profile, type Result, type Run, type SequenceRecord, type Snapshot, type ValidationInput,
 } from '@captiveorigins/onephylogeny-core'
-import { NcbiClient, selectionQuery } from '@captiveorigins/onephylogeny-acquire'
+import { genomesHoldingMarkerQuery, NcbiClient, selectionQuery } from '@captiveorigins/onephylogeny-acquire'
 import { hashText, loadArtifact, type Artifact, type ArtifactRef } from './artifacts.js'
 import type { EngineContext, Store, ValidationReports } from './context.js'
-import { EngineError } from './errors.js'
+import { EngineError, isCancelled } from './errors.js'
 import { ENGINE, json, profilePaths, withRun, type RunScope } from './run.js'
 
 export * from './errors.js'
@@ -45,6 +45,17 @@ async function searchStep(scope: RunScope, profile: Profile, client: NcbiClient,
   scope.log('info', 'search', 'Searching NCBI', { term })
   const found = await client.searchAccessions(term)
   if (!found.length && !options.allowEmpty) throw new EngineError('empty-search', 'NCBI found no records for this taxon and marker', 'Check the taxon, gene names and organelle in Setup')
+  const genomes = genomesHoldingMarkerQuery(profile.selection)
+  if (genomes) {
+    // Only a report. These can't join a run yet, since each would need its marker cut out, and a failed lookup shouldn't stop a fetch.
+    try {
+      const missed = (await client.searchAccessions(genomes)).filter((a) => !found.includes(a))
+      if (missed.length) scope.log('warning', 'search', `${missed.length} mitochondrial genomes of these taxa aren't in this search, probably because they don't annotate the marker. They may hold it, and they aren't used: ${missed.join(', ')}`, { missed })
+    } catch (e) {
+      if (isCancelled(e)) throw e
+      scope.log('warning', 'search', `Couldn't check for mitochondrial genomes the search missed: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
   const extra = [profile.reference!.accession, ...profile.selection.outgroups.map((o) => o.accession).filter((a): a is string => Boolean(a))]
   const accessions = [...new Set([...found, ...extra])].sort()
   scope.log('info', 'search', `Found ${found.length} records, plus ${extra.length} named in the profile`, { found: found.length })

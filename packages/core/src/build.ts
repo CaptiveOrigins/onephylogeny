@@ -239,6 +239,7 @@ export function evaluateQuery(queryAligned: string, bundle: PanelBundle, options
   const caveats = [...(options.caveats ?? [])]
   for (const f of findings) if (f.status === 'not_evaluable') caveats.push(`${labelOf(f.group)} could not be evaluated, so this result says nothing about it`)
   if (panel.notCovered.length) caveats.push(`This panel does not cover: ${panel.notCovered.join(', ')}`)
+  caveats.push('A match means this sequence resembles the records in a group. It doesn\'t show the animal came from that group\'s region, because a lineage can reach beyond the places sampled so far')
   const outOfValidatedScope = [
     ...(panel.status === 'active' ? [] : [`This panel is ${panel.status}, not active`]),
     ...(panel.claims.length ? [] : ['This panel has no validated claims yet']),

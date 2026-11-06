@@ -134,6 +134,17 @@ const ncbiTaxa = (taxa: ExternalId[]) => {
   return ids
 }
 
+/**
+ * Mitochondrial genomes of the same taxa, whatever they annotate. A genome can hold the marker with no feature naming it,
+ * so the marker search can't see it. Only for a mitochondrial gene, where a whole genome would contain the marker.
+ */
+export function genomesHoldingMarkerQuery(selection: Selection): string | null {
+  const { marker } = selection
+  if (marker.kind !== 'gene' || marker.organelle !== 'mitochondrion') return null
+  const taxa = ncbiTaxa(selection.taxa).map((id) => `txid${id}[Organism:exp]`).join(' OR ')
+  return `(${taxa}) AND mitochondrion[Filter] AND 10000:25000[SLEN] NOT refseq[Filter]`
+}
+
 export function selectionQuery(selection: Selection): string {
   const taxa = ncbiTaxa(selection.taxa).map((id) => `txid${id}[Organism:exp]`).join(' OR ')
   return `(${taxa}) AND ${markerTerm(selection.marker)} NOT refseq[Filter]`
