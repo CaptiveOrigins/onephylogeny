@@ -1,5 +1,5 @@
 import {
-  ALIGNER, alignToReference, assessAlignment, buildPanel, canonicalJson, collapseHaplotypes, DEFAULT_GATES, extractLocation, findGeneFeatures, fullValidation, gatesForRecord, parseFasta, parseGenBank,
+  ALIGNER, alignToReference, assessAlignment, buildPanel, canonicalJson, checkNumts, collapseHaplotypes, DEFAULT_GATES, extractLocation, findGeneFeatures, fullValidation, gatesForRecord, parseFasta, parseGenBank,
   evaluateQuery, toRecordSheet, toSequenceRecord, validatePanel, verifyBundle, validatedScopeFromReport, validateProfile, validateResult, writeFasta,
   type Alignment, type Curation, type Diagnostic, type GateSettings, type GenBankRecord, type LinkedRecord, type Panel, type PanelBundle, type PanelMember, type Profile, type Result, type Run, type SequenceRecord, type Snapshot, type ValidationInput,
 } from '@captiveorigins/onephylogeny-core'
@@ -336,12 +336,16 @@ export async function buildPanelFromRun(ctx: EngineContext, profile: Profile, cu
     const memberIds = new Set(members.map((m) => m.record))
     const citations = new Map<string, { citation: string }>()
     for (const r of records) if (memberIds.has(r.version)) for (const p of r.publications) if (p.title) citations.set(p.title, { citation: [p.authors, p.title, p.journal].filter(Boolean).join('. ') })
+    // A screen's library, if one was saved for this profile. The screen runs outside the app, once per species.
+    const numtPath = `profiles/${profile.id}/numt-screen/numt-library.fasta`
+    const numtCopies = (await ctx.store.exists(numtPath)) ? parseFasta(await ctx.store.read(numtPath)).map((e) => ({ id: e.id, aligned: e.sequence })) : []
     const input = {
       settings, taxa: profile.selection.taxa, marker: profile.selection.marker,
       reference: { accession: reference.id, length: reference.sequence.length, ...(profile.reference?.codonStart !== undefined ? { codonStart: profile.reference.codonStart } : {}), ...(profile.reference?.geneticCode ? { geneticCode: profile.reference.geneticCode } : {}) },
       sources: [...citations.values()], builtBy: gated.manifest.key, referenceSequence: reference.sequence, builtWith: [ENGINE, ALIGNER],
       // The checks that actually ran on these records, even if the profile has changed since.
       gates: (gated.manifest.parameters as { gates: GateSettings }).gates,
+      ...(numtCopies.length ? { numtCopies } : {}),
     }
     if (settings.validatedScope.length) diagnostics.push({ severity: 'warning', code: 'hand-entered-scope-ignored', message: 'The scope written in the panel settings is ignored. A panel\'s scope now comes only from claims that pass validation', path: 'panel.validatedScope' })
     const draft = buildPanel({ ...input, members })
@@ -352,7 +356,7 @@ export async function buildPanelFromRun(ctx: EngineContext, profile: Profile, cu
     // Validation comes first, because a panel's scope is whatever passes it. The folds ignore scope, so nothing is circular.
     const fingerprint = hashText(canonicalJson({ settings: { ...settings, version: '', id: '' }, members: members.map(({ aligned, ...m }) => ({ ...m, aligned: hashText(aligned) })) }))
     const validationArtifact = await scope.step({
-      type: 'validation', step: { name: 'validate', version: 2 }, inputs: [ref(gated)], parameters: { fingerprint },
+      type: 'validation', step: { name: 'validate', version: 3 }, inputs: [ref(gated)], parameters: { fingerprint },
       run: async (put) => {
         const reports = await (ctx.compute?.validate ?? defaultValidate)({ ...input, members }, ctx.signal)
         await put('validation.json', json(reports))
@@ -404,9 +408,16 @@ export function testSample(sequence: string, queryId: string, bundle: PanelBundl
   // The panel's own checks. A frame problem in a sample warns rather than refuses: it's shown with the result, for a person to weigh.
   const diagnostics = assessAlignment(a, { ...bundle.panel.gates, frameErrors: false })
   if (!a || diagnostics.some((d) => d.severity === 'error')) return { result: null, diagnostics }
+  // The check runs before the result so a flag is part of what the result says about itself.
+  const numtCaveats: string[] = []
+  if (bundle.panel.numtCopies?.length) {
+    const numt = checkNumts(a.aligned, bundle.panel.numtCopies, bundle.referenceSequence)
+    for (const f of numt.flagged) diagnostics.push({ severity: 'warning', code: 'numt-flagged', message: `This sequence is closer to nuclear copy ${f.copy} than to the reference, over ${f.shared} columns (${(f.toCopy * 100).toFixed(1)}% against ${(f.toReference * 100).toFixed(1)}%). Review it. This doesn't prove it's a nuclear copy` })
+    numtCaveats.push(numt.flagged.length ? 'Flagged for review as possibly a nuclear copy of the marker' : `Compared with ${numt.tested} of ${bundle.panel.numtCopies.length} known nuclear copies with no flag. That doesn't clear it, since copies absent from the screened genome can't be seen`)
+  }
   const result = evaluateQuery(a.aligned, bundle, {
     queryId, runId: options.runId ?? 'sample', querySha256: hashText(sequence.toUpperCase()), producedBy: [ENGINE, ALIGNER],
-    caveats: ['Rules are configured values and these statuses are not probabilities', ...diagnostics.filter((d) => d.severity === 'warning').map((d) => d.message)],
+    caveats: ['Rules are configured values and these statuses are not probabilities', ...diagnostics.filter((d) => d.severity === 'warning').map((d) => d.message), ...numtCaveats],
   })
   diagnostics.push(...validateResult(result, bundle.panel))
   return { result, diagnostics, aligned: a.aligned, insertions: a.insertions.reduce((s, x) => s + x.length, 0), deletions: a.deletions.reduce((s, x) => s + x.length, 0), identity: a.identity, clipped: a.clipped }

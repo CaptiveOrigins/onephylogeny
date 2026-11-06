@@ -252,6 +252,8 @@ export type Panel = {
   rules: EvaluationRules
   /** The record checks its members passed, sealed so a sample is held to the same checks. */
   gates: GateSettings
+  /** Nuclear copies of the marker from a genome screen, so every sample is checked against the same ones. Absent if no screen ran. */
+  numtCopies?: { id: string; aligned: string }[]
   /** Hash of the aligned sequences and reference that travel beside this JSON, so the seal covers them too. */
   sequencesChecksum: string
   /** What made this panel. */
