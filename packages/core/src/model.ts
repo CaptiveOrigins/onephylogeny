@@ -59,6 +59,8 @@ export type Selection = {
   marker: { kind: 'gene' | 'mitogenome' | 'snp'; gene?: string; synonyms?: string[]; products?: string[]; organelle?: 'mitochondrion' | 'plastid' }
   outgroups: { accession?: string; taxon?: ExternalId; rationale?: string }[]
   exclude: { accession: string; reason: string }[]
+  /** Fetch exactly these accessions instead of searching, as chosen in a Study. Every record still goes through the same checks. */
+  include?: string[]
   filters: { minLength?: number; maxLength?: number; maxAmbiguous?: number; provenanceClasses?: ProvenanceClass[] }
 }
 
@@ -250,6 +252,8 @@ export type Panel = {
   rules: EvaluationRules
   /** The record checks its members passed, sealed so a sample is held to the same checks. */
   gates: GateSettings
+  /** Nuclear copies of the marker from a genome screen, so every sample is checked against the same ones. Absent if no screen ran. */
+  numtCopies?: { id: string; aligned: string }[]
   /** Hash of the aligned sequences and reference that travel beside this JSON, so the seal covers them too. */
   sequencesChecksum: string
   /** What made this panel. */

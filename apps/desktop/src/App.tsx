@@ -7,6 +7,7 @@ import { treeToPhylogeny } from '@captiveorigins/onephylogeny-onetaxonomy'
 import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Platform, Settings } from './platform'
 import { PREVIEW_SAMPLE } from './platform-preview'
+import { emptyStudySession, StudyTab, type StudySession } from './StudyTab'
 import { validateInWorker } from './validate'
 
 /** Without this, a crash in one tab leaves a blank window with nothing to report. */
@@ -36,8 +37,8 @@ const PROVENANCE: { value: ProvenanceClass; label: string }[] = [
   { value: 'origin-reported', label: 'Origin reported by a source' },
   { value: 'seized', label: 'Seized' }, { value: 'ex-situ', label: 'Ex-situ' }, { value: 'zoo', label: 'Zoo' },
 ]
-type Tab = 'setup' | 'records' | 'panel' | 'sample' | 'tree' | 'log'
-const TABS: { id: Tab; label: string }[] = [{ id: 'setup', label: 'Setup' }, { id: 'records', label: 'Records' }, { id: 'panel', label: 'Panel' }, { id: 'sample', label: 'Test a sample' }, { id: 'tree', label: 'Tree' }, { id: 'log', label: 'Log' }]
+type Tab = 'setup' | 'study' | 'records' | 'panel' | 'sample' | 'tree' | 'log'
+const TABS: { id: Tab; label: string }[] = [{ id: 'setup', label: 'Setup' }, { id: 'study', label: 'Study' }, { id: 'records', label: 'Records' }, { id: 'panel', label: 'Panel' }, { id: 'sample', label: 'Test a sample' }, { id: 'tree', label: 'Tree' }, { id: 'log', label: 'Log' }]
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'untitled'
 const emptyCuration: Curation = { schemaVersion: 1, records: {} }
 const lines = (s: string) => s.split(/[\n,]/).map((x) => x.trim()).filter(Boolean)
@@ -76,6 +77,7 @@ export function App({ platform }: { platform: Platform }) {
   const [records, setRecords] = useState<SequenceRecord[]>([])
   const [outcomes, setOutcomes] = useState<RecordOutcome[]>([])
   const [runId, setRunId] = useState<string | null>(null)
+  const [studySession, setStudySession] = useState<StudySession>(emptyStudySession)
   const [panelState, setPanelState] = useState<{ panel: Panel; diagnostics: Diagnostic[]; validation: any; unassigned: number } | null>(null)
 
   const [settings, setSettings] = useState<Settings>({ autoUpdate: false, appearance: 'auto' })
@@ -161,6 +163,7 @@ export function App({ platform }: { platform: Platform }) {
     setCuration((await platform.store.exists(paths.curation)) ? parseCuration(await platform.store.read(paths.curation)) : emptyCuration)
     setSaved(true)
     setTab('setup')
+    setStudySession(emptyStudySession)
     await loadRun(p)
   })
   const [creating, setCreating] = useState(false)
@@ -174,7 +177,7 @@ export function App({ platform }: { platform: Platform }) {
     const p = newProfile(title, id)
     await platform.store.write(profilePaths(id).profile, `${JSON.stringify(p, null, 2)}\n`)
     await refresh()
-    setProfile(p); setCuration(emptyCuration); setSaved(true); setTab('setup')
+    setProfile(p); setCuration(emptyCuration); setSaved(true); setTab('setup'); setStudySession(emptyStudySession)
     await loadRun(p)
   })
   const edit = (p: Profile) => { setProfile(p); setSaved(false) }
@@ -219,6 +222,7 @@ export function App({ platform }: { platform: Platform }) {
         {error && <div role="alert" className="error"><p>{error}</p>{action && <p className="next">What to do: {action}</p>}</div>}
         <TabBoundary key={`${profile.id}:${tab}`}>
         {tab === 'setup' && <Setup profile={profile} edit={edit} save={save} saved={saved} platform={platform} attempt={attempt} client={() => new NcbiClient(engine().ncbi)} />}
+        {tab === 'study' && <StudyTab profile={profile} platform={platform} session={studySession} setSession={setStudySession} attempt={attempt} context={engine} curation={curation} decide={decide} edit={edit} save={save} busy={Boolean(busy)} />}
         {tab === 'records' && <Records profile={profile} curation={curation} decide={decide} records={records} outcomes={outcomes} runId={runId} platform={platform} busy={Boolean(busy)} onFetch={() => attempt('Fetching records', async () => {
           await save()
           setEvents([])

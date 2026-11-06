@@ -97,7 +97,7 @@ function siteHoldOut(claim: Claim, members: PanelMember[]) {
   return { perSite, tally }
 }
 
-export type GateResult = { gate: 'sites' | 'no-wrong-answers' | 'interval' | 'across-studies' | 'shuffled-labels' | 'no-structure' | 'minimum-length'; passed: boolean; ran: boolean; detail: string }
+export type GateResult = { gate: 'sites' | 'no-wrong-answers' | 'interval' | 'across-studies' | 'shuffled-labels' | 'no-structure' | 'minimum-length' | 'nested-length'; passed: boolean; ran: boolean; detail: string }
 
 export type ClaimReport = {
   a: Id
@@ -114,6 +114,8 @@ export type ClaimReport = {
   shuffleP?: number
   noStructureResolved?: number
   fragments?: { length: number; tally: PairTally }[]
+  /** Each site scored at a length chosen without it. */
+  nestedLength?: { tally: PairTally; chosen: Record<string, number>; foldsWithNoLength: number }
   minColumns?: number
 }
 
@@ -189,7 +191,7 @@ function testClaim(input: BuildPanelInput, a: Id, b: Id, window: PanelWindow, co
   const enoughSites = sites.a >= CLAIM_GATES.minSitesPerGroup && sites.b >= CLAIM_GATES.minSitesPerGroup
   gates.push({ gate: 'sites', passed: enoughSites, ran: true, detail: `${sites.a} and ${sites.b} sites, and ${CLAIM_GATES.minSitesPerGroup} needed for each` })
   if (!enoughSites) {
-    notRun('no-wrong-answers', 'interval', 'across-studies', 'shuffled-labels', 'no-structure', 'minimum-length')
+    notRun('no-wrong-answers', 'interval', 'across-studies', 'shuffled-labels', 'no-structure', 'minimum-length', 'nested-length')
     return { ...base, passed: false, gates }
   }
 
@@ -249,34 +251,73 @@ function testClaim(input: BuildPanelInput, a: Id, b: Id, window: PanelWindow, co
   gates.push({ gate: 'no-structure', passed: noStructureResolved <= CLAIM_GATES.maxNoStructureResolved, ran: true, detail: `${sim.right + sim.wrong} of ${sim.tests} simulated tests resolved the pair (${sim.right} right, ${sim.wrong} wrong), and at most ${CLAIM_GATES.maxNoStructureResolved} allowed` })
 
   const fragments = fragmentLadder(claim, members, controls.seed)
-  const qualifying = fragments.find((f) => f.tally.tests > 0 && f.tally.wrong === 0 && f.tally.right / f.tally.tests >= CLAIM_GATES.minFragmentResolved)
+  const qualifying = qualifyingLength(fragments)
   gates.push({ gate: 'minimum-length', passed: Boolean(qualifying), ran: true, detail: qualifying ? `Shortest qualifying length is ${qualifying.length} columns` : 'No fragment length qualified' })
 
+  // The slowest step, so it only runs for a claim that has passed everything else.
+  if (!gates.every((g) => g.passed)) notRun('nested-length')
+  const nested = gates.every((g) => g.passed) ? nestedLength(claim, members, controls.seed) : undefined
+  if (nested) {
+    const { tally, chosen, foldsWithNoLength } = nested
+    const longest = Math.max(...Object.values(chosen), 0)
+    const ok = foldsWithNoLength === 0 && tally.tests > 0 && tally.wrong === 0 && tally.right / tally.tests >= CLAIM_GATES.minFragmentResolved
+    gates.push({ gate: 'nested-length', passed: ok, ran: true, detail: `Each site scored at a length chosen without it: ${tally.right} of ${tally.tests} right, ${tally.wrong} wrong, ${tally.notResolved} not resolved, and the longest length chosen was ${longest} columns${foldsWithNoLength ? `. ${foldsWithNoLength} sites left no qualifying length` : ''}` })
+  }
+
+  // The claim takes the longest length any fold chose, since the shortest overall was picked on the same data it was scored on.
+  const claimed = nested ? Math.max(...Object.values(nested.chosen), 0) : qualifying?.length
   return {
     ...base, passed: gates.every((g) => g.passed), gates, sitesRight, interval, studies, shuffleP, noStructureResolved, fragments,
-    ...(qualifying ? { minColumns: qualifying.length } : {}),
+    ...(nested ? { nestedLength: nested } : {}),
+    ...(claimed ? { minColumns: claimed } : {}),
   }
+}
+
+const qualifyingLength = (ladder: { length: number; tally: PairTally }[]) => ladder.find((f) => f.tally.tests > 0 && f.tally.wrong === 0 && f.tally.right / f.tally.tests >= CLAIM_GATES.minFragmentResolved)
+
+/** Fragments of a record at one length, at seeded random positions, against one panel. */
+function scoreFragments(claim: Claim, m: PanelMember, length: number, bundle: ReturnType<typeof panelFor>, random: () => number, tally: PairTally) {
+  const { start: wStart, end: wEnd } = claim.window
+  let first = wEnd
+  let last = wStart
+  for (let i = wStart; i < wEnd; i++) if (basesOf(m.aligned[i])) { if (i < first) first = i; last = i + 1 }
+  if (last - first < length) return
+  for (let k = 0; k < CLAIM_GATES.fragmentPositions; k++) {
+    const at = first + Math.floor(random() * (last - first - length + 1))
+    const p = pairOutcome(claim, mask(m.aligned, at, at + length), bundle)
+    addOutcome(tally, p.state, p.favors, m.group)
+  }
+}
+
+/**
+ * Chooses a length using every site but one, then scores that site at it. Choosing and scoring on the same sites flatters the
+ * shortest length, so this is what the claim rests on. A site is out of both the choice and the panel that scores it.
+ */
+function nestedLength(claim: Claim, members: PanelMember[], seed: number) {
+  const random = randomFrom(seed ^ 0xfade)
+  const tally = emptyTally()
+  const chosen: Record<string, number> = {}
+  let foldsWithNoLength = 0
+  for (const site of new Set(members.map((m) => m.block ?? `record:${m.record}`))) {
+    const held = members.filter((m) => (m.block ?? `record:${m.record}`) === site)
+    const rest = members.filter((m) => !held.includes(m))
+    const pick = qualifyingLength(fragmentLadder(claim, rest, seed))
+    if (!pick) { foldsWithNoLength++; continue }
+    chosen[site] = pick.length
+    const bundle = panelFor(claim, rest)
+    for (const m of held) scoreFragments(claim, m, pick.length, bundle, random, tally)
+  }
+  return { tally, chosen, foldsWithNoLength }
 }
 
 function fragmentLadder(claim: Claim, members: PanelMember[], seed: number) {
   const random = randomFrom(seed ^ 0x5eed)
-  const { start: wStart, end: wEnd } = claim.window
   const out = CLAIM_GATES.fragmentLengths.map((length) => ({ length, tally: emptyTally() }))
   for (const site of new Set(members.map((m) => m.block ?? `record:${m.record}`))) {
     const held = members.filter((m) => (m.block ?? `record:${m.record}`) === site)
     const bundle = panelFor(claim, members.filter((m) => !held.includes(m)))
     for (const m of held) {
-      let first = wEnd
-      let last = wStart
-      for (let i = wStart; i < wEnd; i++) if (basesOf(m.aligned[i])) { if (i < first) first = i; last = i + 1 }
-      for (const row of out) {
-        if (last - first < row.length) continue
-        for (let k = 0; k < CLAIM_GATES.fragmentPositions; k++) {
-          const at = first + Math.floor(random() * (last - first - row.length + 1))
-          const p = pairOutcome(claim, mask(m.aligned, at, at + row.length), bundle)
-          addOutcome(row.tally, p.state, p.favors, m.group)
-        }
-      }
+      for (const row of out) scoreFragments(claim, m, row.length, bundle, random, row.tally)
     }
   }
   return out

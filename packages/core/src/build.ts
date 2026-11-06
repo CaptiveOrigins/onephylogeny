@@ -22,6 +22,8 @@ export type BuildPanelInput = {
   builtWith?: { name: string; version: string }[]
   /** The record checks these members passed. */
   gates?: GateSettings
+  /** Nuclear copies from a genome screen, sealed into the panel. */
+  numtCopies?: { id: string; aligned: string }[]
   /** Claims that passed validation. Only these reach a panel's scope, whatever the settings say. */
   claims?: ValidatedClaim[]
 }
@@ -86,6 +88,7 @@ export function unsealedBundle(input: BuildPanelInput): PanelBundle {
     gates: input.gates ?? DEFAULT_GATES,
     sequencesChecksum: '',
     ...(input.builtWith ? { builtWith: input.builtWith } : {}),
+    ...(input.numtCopies?.length ? { numtCopies: input.numtCopies } : {}),
   }
   return { panel, sequences, ...(input.referenceSequence ? { referenceSequence: input.referenceSequence } : {}) }
 }

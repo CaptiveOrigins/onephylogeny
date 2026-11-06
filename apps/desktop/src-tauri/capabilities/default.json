@@ -36,6 +36,9 @@
       "allow": [
         {
           "url": "https://eutils.ncbi.nlm.nih.gov/*"
+        },
+        {
+          "url": "https://www.ebi.ac.uk/europepmc/*"
         }
       ]
     },
