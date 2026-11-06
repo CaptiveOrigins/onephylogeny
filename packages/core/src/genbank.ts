@@ -13,6 +13,8 @@ export type GenBankRecord = {
   references: Publication[]
   features: GenBankFeature[]
   sequence: string
+  /** The LOCUS line says circular. Absent means it doesn't, not that the molecule is linear. */
+  circular?: boolean
 }
 
 const unquote = (v: string) => v.replace(/^"/, '').replace(/"$/, '').replace(/""/g, '"')
@@ -41,6 +43,7 @@ function parseOne(block: string): GenBankRecord {
       sub = ''
       qualifier = null
       const rest = top[2]!.trim()
+      if (section === 'LOCUS' && /\bcircular\b/i.test(rest)) rec.circular = true
       if (section === 'DEFINITION') rec.definition = rest
       else if (section === 'ACCESSION') rec.accession = rest.split(/\s+/)[0] ?? ''
       else if (section === 'VERSION') rec.version = rest.split(/\s+/)[0] ?? ''

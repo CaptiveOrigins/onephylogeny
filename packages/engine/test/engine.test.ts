@@ -100,6 +100,28 @@ describe('panel and sample', () => {
     expect(sample.result?.findings.find((f) => f.group === 'a')?.status).toBe('consistent')
     expect(sample.result?.findings.find((f) => f.group === 'b')?.status).toBe('excluded_within_panel')
   })
+  it('cuts the marker out of an unannotated genome, then applies the usual checks', async () => {
+    const flankL = randomSeq(4000, 7), flankR = randomSeq(6000, 8)
+    const chosen: Profile = { ...profile, selection: { ...profile.selection, include: ['A1.1', 'G1.1', 'G2.1', 'G3.1', 'G4.1'], filters: { ...profile.selection.filters, maxLength: 2000 } } }
+    const ctx = makeContext()
+    const added = { 'G1.1': gb('G1', flankL + mutate([10, 200, 450]) + flankR, 'mitochondrion, complete genome'), 'G2.1': gb('G2', flankL + REF + randomSeq(3000, 9) + mutate([5, 400], 0, 600) + flankR, 'mitochondrion, complete genome'), 'G3.1': gb('G3', randomSeq(9000, 11), 'mitochondrion, complete genome'), 'G4.1': gb('G4', flankL + mutate([10, 200, 450]).slice(0, 150) + flankR, 'mitochondrion, complete genome') }
+    Object.assign(DB, added)
+    try {
+      const { outcomes } = await fetchAndAnchor(ctx, chosen)
+      const by = (r: string) => outcomes.find((o) => o.record === r)!
+      expect(by('G1.1')).toMatchObject({ status: 'passed', extractedFrom: 'located' })
+      expect(by('G1.1').diagnostics.find((d) => d.code === 'located-by-similarity')?.message).toMatch(/bases 3971 to 4630 on the given strand/)
+      expect(by('G1.1').columns).toBe(600)
+      expect(by('G1.1').diagnostics.map((d) => d.code)).not.toContain('clipped-ends')
+      // A similar annotated record gives the same alignment as the located one.
+      expect(by('G1.1').identity).toBe(by('A1.1').identity)
+      expect(by('G2.1')).toMatchObject({ status: 'excluded', extractedFrom: 'whole-record' })
+      expect(by('G2.1').diagnostics.map((d) => d.code)).toContain('marker-in-several-places')
+      expect(by('G3.1')).toMatchObject({ status: 'excluded', extractedFrom: 'whole-record' })
+      // Too little of the marker fails coverage once it's cut out. Left whole, it would have skipped that check.
+      expect(by('G4.1')).toMatchObject({ status: 'excluded' })
+    } finally { for (const k of Object.keys(added)) delete DB[k] }
+  })
   it('seals the Study behind a fetch into the panel, even if the profile moves on', async () => {
     const ctx = makeContext()
     const fromStudy = { id: 'study-1', title: 'Study 1', stateHash: 'sha256:abc', postHocOmitted: ['B9.1'] }
