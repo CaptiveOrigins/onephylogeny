@@ -1,13 +1,13 @@
-# Brand family
+# Brand
 
-OnePedigree, OneTaxonomy and OnePhylogeny are separate tools from one maker. Like a tool family, they share a backbone and keep their own character. This file is identical in both repositories; change it in both.
+OnePedigree, OneTaxonomy and OnePhylogeny are separate tools from one maker: the [OneOrigin suite](https://github.com/CaptiveOrigins/onephylogeny/blob/main/docs/oneorigin/README.md). Like a tool family, they share a backbone and keep their own character. This file is identical in all three repositories; change it in all three.
 
 ## App icon
 
 | | OnePedigree | OneTaxonomy | OnePhylogeny |
 | --- | --- | --- | --- |
 | Tile gradient (top → bottom) | `#f8dcc0` → `#eeb684` (pastel Captive Origins orange) | `#f8d6d7` → `#eda9ac` (pastel Captive Origins pink) | `#e6d6d2` → `#c9aca5` (pastel Captive Origins mauve) |
-| Glyph | Two parents joined above one offspring | A rooted tree read left to right | A sample placed on a branching tree |
+| Glyph | Two parents joined above one offspring | A rooted tree read left to right | A sample on a branching tree |
 
 Both use Captive Origins brown `#4c312c` as ink (connectors, UI structure). Owner's choice 2026-11-02 (option A of the palette study; the swap, option C, stays possible: exchange the two hues).
 
