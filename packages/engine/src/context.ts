@@ -21,7 +21,7 @@ export interface ToolRunner {
 export type ValidationReports = FullValidation
 
 /** Heavy pure calculations, which an app can run off its interface thread. */
-export type Compute = { validate?: (input: ValidationInput) => Promise<ValidationReports> }
+export type Compute = { validate?: (input: ValidationInput, signal?: AbortSignal) => Promise<ValidationReports> }
 
 export type EngineContext = {
   store: Store

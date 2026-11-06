@@ -4,10 +4,32 @@ import { buildPanelFromRun, buildTree, EngineError, fetchAndAnchor, isCancelled,
 import { EventLog, OutgroupLadderView, PanelSummary, ResultView, ValidationView } from '@captiveorigins/onephylogeny-react'
 import { TreeCanvas } from '@captiveorigins/onephylogeny-react/canvas'
 import { treeToPhylogeny } from '@captiveorigins/onephylogeny-onetaxonomy'
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Platform, Settings } from './platform'
 import { PREVIEW_SAMPLE } from './platform-preview'
 import { validateInWorker } from './validate'
+
+/** Without this, a crash in one tab leaves a blank window with nothing to report. */
+class TabBoundary extends Component<{ children: ReactNode }, { failure: Error | null }> {
+  override state = { failure: null as Error | null }
+  static getDerivedStateFromError(failure: Error) { return { failure } }
+  override render() {
+    const { failure } = this.state
+    if (!failure) return this.props.children
+    return <div role="alert" className="error"><p>This tab hit an error and couldn't show: {failure.message}</p><p className="next">What to do: send this text to whoever maintains the app, then try another tab. Your files weren't changed.</p><pre className="crash">{failure.stack}</pre></div>
+  }
+}
+
+/** A long job says it's still going and how long it's taken, right where it was started. */
+function Working({ label, since, hint }: { label: string; since: number; hint?: string }) {
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [])
+  const seconds = Math.max(0, Math.floor((now - since) / 1000))
+  return <span className="working">{label}… {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}{hint ? ` ${hint}` : ''}</span>
+}
 
 const PROVENANCE: { value: ProvenanceClass; label: string }[] = [
   { value: 'unknown', label: 'Unknown' }, { value: 'wild-documented', label: 'Wild, documented' }, { value: 'museum-documented', label: 'Museum, documented' },
@@ -46,6 +68,8 @@ export function App({ platform }: { platform: Platform }) {
   const [tab, setTab] = useState<Tab>('setup')
   const [events, setEvents] = useState<RunEvent[]>([])
   const [busy, setBusy] = useState<string | null>(null)
+  // Held here and not in a tab, so the clock keeps counting when you switch tabs. The job itself never stops for that.
+  const [busySince, setBusySince] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [action, setAction] = useState<string | null>(null)
   const [saved, setSaved] = useState(true)
@@ -71,15 +95,33 @@ export function App({ platform }: { platform: Platform }) {
   useEffect(() => { void refresh() }, [refresh, root])
 
   const controller = useRef<AbortController | null>(null)
+  const busyRef = useRef<string | null>(null)
   const engine = (): EngineContext => ({
     store: platform.store, ncbi: { fetch: platform.fetch, tool: 'onephylogeny-mac' }, ...(platform.tools ? { tools: platform.tools } : {}),
     ...(controller.current ? { signal: controller.current.signal } : {}),
     compute: { validate: validateInWorker },
     onEvent: (e) => { if (e.level !== 'debug') setEvents((x) => [...x, e]) },
   })
+  // Failures outside a render, such as a background worker dying, would otherwise vanish silently.
+  useEffect(() => {
+    const report = (e: ErrorEvent | PromiseRejectionEvent) => {
+      const reason = 'reason' in e ? e.reason : e.error ?? e.message
+      setError(reason instanceof Error ? reason.message : String(reason))
+    }
+    window.addEventListener('error', report)
+    window.addEventListener('unhandledrejection', report)
+    return () => { window.removeEventListener('error', report); window.removeEventListener('unhandledrejection', report) }
+  }, [])
   const attempt = async (label: string, work: () => Promise<void>) => {
+    // One job at a time. A second would take over the status and Cancel, and could put its result on the wrong profile.
+    if (controller.current) {
+      setError(`${busyRef.current ?? 'Another job'} is still running. Wait for it to finish or cancel it, then try again.`)
+      return
+    }
     controller.current = new AbortController()
+    busyRef.current = label
     setBusy(label)
+    setBusySince(Date.now())
     setError(null)
     setAction(null)
     try { await work() } catch (e) {
@@ -145,7 +187,7 @@ export function App({ platform }: { platform: Platform }) {
       {creating
         ? <form className="new-profile" onSubmit={(e) => { e.preventDefault(); if (newTitle.trim()) void create(newTitle.trim()) }}><Field label="Profile name"><input autoFocus value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Species and marker" /></Field><div className="actions"><button type="submit" className="primary" disabled={!newTitle.trim()}>Create</button><button type="button" onClick={() => setCreating(false)}>Cancel</button></div></form>
         : <button onClick={() => setCreating(true)} disabled={!root}>New profile</button>}
-      <nav aria-label="Profiles">{profiles.map((id) => <button key={id} className={profile?.id === id ? 'selected' : ''} onClick={() => open(id)}>{id}</button>)}</nav>
+      <nav aria-label="Profiles">{profiles.map((id) => <button key={id} className={profile?.id === id ? 'selected' : ''} disabled={Boolean(busy)} onClick={() => open(id)}>{id}</button>)}</nav>
       {!profiles.length && root && <p className="muted">Each profile is one species and marker, with its own records and panels.</p>}
       <div className="side-foot">
         {notice && <p role="status" className="muted">{notice}</p>}
@@ -172,9 +214,10 @@ export function App({ platform }: { platform: Platform }) {
         <header className="top">
           <h2>{profile.title}</h2>
           <div role="tablist" className="tabs">{TABS.map((t) => <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'selected' : ''} onClick={() => setTab(t.id)}>{t.label}</button>)}</div>
-          {busy && <span role="status" className="busy">{busy}… <button onClick={() => controller.current?.abort()}>Cancel</button></span>}
+          {busy && <span role="status" className="busy"><Working label={busy} since={busySince} /> <button onClick={() => controller.current?.abort()}>Cancel</button></span>}
         </header>
         {error && <div role="alert" className="error"><p>{error}</p>{action && <p className="next">What to do: {action}</p>}</div>}
+        <TabBoundary key={`${profile.id}:${tab}`}>
         {tab === 'setup' && <Setup profile={profile} edit={edit} save={save} saved={saved} platform={platform} attempt={attempt} client={() => new NcbiClient(engine().ncbi)} />}
         {tab === 'records' && <Records profile={profile} curation={curation} decide={decide} records={records} outcomes={outcomes} runId={runId} platform={platform} busy={Boolean(busy)} onFetch={() => attempt('Fetching records', async () => {
           await save()
@@ -182,7 +225,7 @@ export function App({ platform }: { platform: Platform }) {
           const out = await fetchAndAnchor(engine(), profile)
           setRecords(out.records); setOutcomes(out.outcomes); setRunId(out.run.id)
         })} />}
-        {tab === 'panel' && <PanelTab profile={profile} edit={edit} save={save} state={panelState} hasRun={Boolean(runId)} busy={Boolean(busy)} platform={platform} onBuild={() => attempt('Building panel', async () => {
+        {tab === 'panel' && <PanelTab profile={profile} edit={edit} save={save} state={panelState} hasRun={Boolean(runId)} busy={Boolean(busy)} busyLabel={busy} busySince={busySince} platform={platform} onBuild={() => attempt('Building panel', async () => {
           await save()
           const out = await buildPanelFromRun(engine(), profile, curation)
           setPanelState({ panel: out.bundle.panel, diagnostics: out.diagnostics, validation: out.validation, unassigned: out.unassigned })
@@ -190,6 +233,7 @@ export function App({ platform }: { platform: Platform }) {
         {tab === 'sample' && <SampleTab profile={profile} platform={platform} hasPanel={Boolean(panelState)} attempt={attempt} context={engine} />}
         {tab === 'tree' && <TreeTab profile={profile} edit={edit} platform={platform} records={records} attempt={attempt} run={(w) => buildTree(engine(), profile, { absoluteDir: platform.root()!, ...(w ? { window: w } : {}) })} hasRun={Boolean(runId)} />}
         {tab === 'log' && <section className="pane"><p className="muted">{runId ? `Run ${runId}` : 'No run yet'}</p><EventLog events={events} />{runId && P && <button onClick={() => platform.reveal(`${P.run(runId)}/run.json`)}>Show run files</button>}</section>}
+        </TabBoundary>
       </main>
     </div>
   )
@@ -268,6 +312,24 @@ function Records({ profile, curation, decide, records, outcomes, runId, platform
     for (const id of ids) next[id] = { ...next[id], ...change }
     return decide({ ...curation, records: next })
   }
+  const [bulk, setBulk] = useState<{ study: string; text: string; saving: boolean } | null>(null)
+  const setStudyProvenance = async (title: string, rs: SequenceRecord[], value: ProvenanceClass) => {
+    const label = PROVENANCE.find((p) => p.value === value)?.label ?? value
+    setBulk({ study: title, text: `Setting ${rs.length} records…`, saving: true })
+    // Lets the message appear before the table redraws, which is the slow part.
+    await new Promise((r) => setTimeout(r, 30))
+    try {
+      await set(rs.map((r) => r.version), { provenanceClass: value, ...(value === 'origin-reported' ? { originSource: title } : {}) })
+      setBulk({ study: title, text: `Saved: ${rs.length} records set to ${label}.`, saving: false })
+    } catch (e) {
+      setBulk({ study: title, text: `Not saved: ${e instanceof Error ? e.message : String(e)}`, saving: false })
+    }
+  }
+  const provenanceSummary = (rs: SequenceRecord[]) => {
+    const counts = new Map<string, number>()
+    for (const r of rs) counts.set(provOf(r), (counts.get(provOf(r)) ?? 0) + 1)
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([v, n]) => `${n} ${PROVENANCE.find((p) => p.value === v)?.label ?? v}`).join(', ')
+  }
   const shown = records.filter((r) => {
     const o = outcome.get(r.version)
     if (study && titleOf(r) !== study) return false
@@ -291,9 +353,10 @@ function Records({ profile, curation, decide, records, outcomes, runId, platform
         <h3>Review by study</h3>
         <p className="muted">Give records a site so validation can hold out whole sites. Without one, a record can be tested against others from its own site, which flatters the result.</p>
         <p className="muted">Sources rarely say whether an animal was wild or seized, so check the paper, then set the whole study at once. Only wild or museum records with documented origins count as evidence of location.</p>
-        <table className="ophy-table"><thead><tr><th>Study</th><th>Records</th><th>Set provenance for all</th></tr></thead><tbody>
-          {studies.map(([title, rs]) => <tr key={title}><th scope="row"><button className="link" onClick={() => setStudy(study === title ? null : title)}>{title}</button></th><td>{rs.length}</td><td><select aria-label={`Provenance for ${title}`} value="" onChange={(e) => e.target.value && set(rs.map((r) => r.version), { provenanceClass: e.target.value as ProvenanceClass, ...(e.target.value === 'origin-reported' ? { originSource: title } : {}) })}><option value="">Choose…</option>{PROVENANCE.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</select></td></tr>)}
+        <table className="ophy-table"><thead><tr><th>Study</th><th>Records</th><th>Provenance now</th><th>Set provenance for all</th></tr></thead><tbody>
+          {studies.map(([title, rs]) => <tr key={title}><th scope="row"><button className="link" onClick={() => setStudy(study === title ? null : title)}>{title}</button></th><td>{rs.length}</td><td>{provenanceSummary(rs)}</td><td><select aria-label={`Provenance for ${title}`} value="" disabled={bulk?.saving} onChange={(e) => e.target.value && void setStudyProvenance(title, rs, e.target.value as ProvenanceClass)}><option value="">Choose…</option>{PROVENANCE.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</select></td></tr>)}
         </tbody></table>
+        {bulk && <p role="status" className={bulk.saving ? 'working' : 'muted'}>{bulk.study}: {bulk.text}</p>}
         <h3>Records{study ? `: ${study}` : ''}</h3>
         <div className="actions"><Field label="Show"><select value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)}><option value="all">All</option><option value="undecided">Passed, not in a group</option><option value="passed">Passed checks</option><option value="excluded">Excluded</option></select></Field>{study && <button onClick={() => setStudy(null)}>Show all studies</button>}<span className="muted">{shown.length} shown</span></div>
         <div className="scroll"><table className="ophy-table records"><thead><tr><th>Accession</th><th>Organism</th><th>GenBank location</th><th>Checks</th><th>Provenance</th><th>Group</th><th>Site</th><th>Use in panel</th></tr></thead><tbody>
@@ -324,7 +387,7 @@ function Records({ profile, curation, decide, records, outcomes, runId, platform
   )
 }
 
-function PanelTab({ profile, edit, save, state, hasRun, busy, platform, onBuild }: { profile: Profile; edit: (p: Profile) => void; save: () => Promise<void>; state: { panel: Panel; diagnostics: Diagnostic[]; validation: any; unassigned: number } | null; hasRun: boolean; busy: boolean; platform: Platform; onBuild: () => void }) {
+function PanelTab({ profile, edit, save, state, hasRun, busy, busyLabel, busySince, platform, onBuild }: { profile: Profile; edit: (p: Profile) => void; save: () => Promise<void>; state: { panel: Panel; diagnostics: Diagnostic[]; validation: any; unassigned: number } | null; hasRun: boolean; busy: boolean; busyLabel: string | null; busySince: number; platform: Platform; onBuild: () => void }) {
   const panel = profile.panel!
   const setP = (x: Partial<typeof panel>) => edit({ ...profile, panel: { ...panel, ...x } })
   const th = panel.rules ?? DEFAULT_RULES
@@ -335,6 +398,7 @@ function PanelTab({ profile, edit, save, state, hasRun, busy, platform, onBuild 
   const [newGroup, setNewGroup] = useState('')
   return (
     <section className="pane form">
+      {busyLabel === 'Opening' && <p><Working label="Loading this profile's records and panel" since={busySince} /></p>}
       <h3>Groups</h3>
       <p className="muted">Groups are your working hypothesis. Assign records to them in the Records tab, and the validation below tests them.</p>
       <table className="ophy-table"><thead><tr><th>Name</th><th>Region</th><th /></tr></thead><tbody>
@@ -358,7 +422,7 @@ function PanelTab({ profile, edit, save, state, hasRun, busy, platform, onBuild 
       </tbody></table>}
       <div className="actions"><button onClick={() => setP({ windows: [...windows, { id: `window-${windows.length + 1}`, label: `Window ${windows.length + 1}`, start: 0, end: 1 }] })}>Add window</button></div>
       <Field label="What this panel doesn't cover" hint="Regions or populations with no samples, comma separated. Every report shows this"><input defaultValue={panel.notCovered.join(', ')} onBlur={(e) => setP({ notCovered: lines(e.target.value) })} /></Field>
-      <div className="actions"><button className="primary" disabled={busy || !hasRun || !panel.groups.length} onClick={onBuild}>Build and validate panel</button>{!hasRun && <span className="muted">Fetch records first.</span>}{state && <button onClick={() => platform.reveal(`${P.panel(state.panel.id, state.panel.version)}/panel.json`)}>Show exported files</button>}</div>
+      <div className="actions"><button className="primary" disabled={busy || !hasRun || !panel.groups.length} onClick={onBuild}>Build and validate panel</button>{busyLabel === 'Building panel' && <Working label="Building and validating" since={busySince} hint="Each testable pair of groups takes minutes, because its controls rebuild the panel many times. It keeps running if you switch tabs. Changes you make now apply to the next build." />}{!hasRun && <span className="muted">Fetch records first.</span>}{state && <button onClick={() => platform.reveal(`${P.panel(state.panel.id, state.panel.version)}/panel.json`)}>Show exported files</button>}</div>
       {state && <>
         <h3>{state.panel.id} version {state.panel.version}</h3>
         <Diagnostics items={state.diagnostics} />
