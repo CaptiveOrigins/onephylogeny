@@ -51,6 +51,9 @@ export type SequenceRecord = {
 }
 
 /** A saved, reusable choice of evidence. Holds no species knowledge in code: everything comes from configuration. */
+/** Which Study state a fetch or panel came from, and what that state left out after results were seen. */
+export type StudyLink = { id: Id; title: string; stateHash: string; postHocOmitted: string[] }
+
 export type Selection = {
   id: Id
   title: string
@@ -61,6 +64,8 @@ export type Selection = {
   exclude: { accession: string; reason: string }[]
   /** Fetch exactly these accessions instead of searching, as chosen in a Study. Every record still goes through the same checks. */
   include?: string[]
+  /** The Study that chose them. Doesn't affect what's fetched, so it stays out of artifact keys. */
+  fromStudy?: StudyLink
   filters: { minLength?: number; maxLength?: number; maxAmbiguous?: number; provenanceClasses?: ProvenanceClass[] }
 }
 
@@ -254,6 +259,8 @@ export type Panel = {
   gates: GateSettings
   /** Nuclear copies of the marker from a genome screen, so every sample is checked against the same ones. Absent if no screen ran. */
   numtCopies?: { id: string; aligned: string }[]
+  /** The Study state behind this panel, sealed so post hoc omissions travel with its results. */
+  study?: StudyLink
   /** Hash of the aligned sequences and reference that travel beside this JSON, so the seal covers them too. */
   sequencesChecksum: string
   /** What made this panel. */

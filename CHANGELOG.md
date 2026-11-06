@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Compare any two built panel versions in the Study tab, or with `onephylogeny compare --a V --b V`: records, groups, every evidence field, settings and full claim reports. It reports differences and never recommends a version.
+- Duplicate a Study. A copy keeps the runs it came from, so later omissions in it are still labeled post hoc.
+- Studies with post hoc omissions offer a copy with them restored, and panels seal the Study state they came from, including those omissions.
 - **Breaking for panels:** panels now seal their record checks and a hash of their sequences. Earlier panels load as outdated and need a new version.
 - Records assigned by their own sequence no longer shape a group's sites, spread, findings or validation. One such record could previously erase a fixed site and turn an exclusion into `consistent`.
 - New provenance class `origin-reported`, which must name its source.

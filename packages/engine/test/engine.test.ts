@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Curation, Profile } from '@captiveorigins/onephylogeny-core'
-import { buildPanelFromRun, EngineError, ENGINE_VERSION, fetchAndAnchor, loadArtifact, loadPanel, profilePaths, runSample, testSample, traceArtifact, type EngineContext, type Store } from '../src/index.js'
+import { buildPanelFromRun, comparePanelVersions, panelVersions, EngineError, ENGINE_VERSION, fetchAndAnchor, loadArtifact, loadPanel, profilePaths, runSample, testSample, traceArtifact, type EngineContext, type Store } from '../src/index.js'
 
 function randomSeq(n: number, seed: number): string {
   let a = seed >>> 0
@@ -99,6 +99,50 @@ describe('panel and sample', () => {
     const sample = testSample(mutate([10, 200, 450], 0, 500), 'sample-1', bundle)
     expect(sample.result?.findings.find((f) => f.group === 'a')?.status).toBe('consistent')
     expect(sample.result?.findings.find((f) => f.group === 'b')?.status).toBe('excluded_within_panel')
+  })
+  it('seals the Study behind a fetch into the panel, even if the profile moves on', async () => {
+    const ctx = makeContext()
+    const fromStudy = { id: 'study-1', title: 'Study 1', stateHash: 'sha256:abc', postHocOmitted: ['B9.1'] }
+    const chosen: Profile = { ...profile, selection: { ...profile.selection, fromStudy } }
+    await fetchAndAnchor(ctx, chosen)
+    // Today's profile no longer names the Study. The panel describes the fetch its records came from.
+    const out = await buildPanelFromRun(ctx, profile, curation)
+    expect(out.bundle.panel.study).toEqual(fromStudy)
+    const dir = profilePaths('demo').panel('p', '1')
+    const stored = JSON.parse(ctx.store.files.get(`${dir}/panel.json`)!)
+    stored.study.postHocOmitted = []
+    ctx.store.files.set(`${dir}/panel.json`, JSON.stringify(stored))
+    await expect(loadPanel(ctx.store, dir)).rejects.toThrow(/seal/)
+  })
+  it("doesn't change what's fetched or validated when a Study is named", async () => {
+    const plain = makeContext()
+    await fetchAndAnchor(plain, profile)
+    const a = await buildPanelFromRun(plain, profile, curation)
+    const named = makeContext()
+    await fetchAndAnchor(named, { ...profile, selection: { ...profile.selection, fromStudy: { id: 's', title: 'S', stateHash: 'h', postHocOmitted: [] } } })
+    const b = await buildPanelFromRun(named, profile, curation)
+    expect(b.bundle.panel.builtBy).toBe(a.bundle.panel.builtBy)
+    expect(b.bundle.panel.sequencesChecksum).toBe(a.bundle.panel.sequencesChecksum)
+    expect(b.validation).toEqual(a.validation)
+  })
+  it('compares two built versions, and refuses one that changed after sealing', async () => {
+    const ctx = makeContext()
+    await fetchAndAnchor(ctx, profile)
+    await buildPanelFromRun(ctx, profile, curation)
+    const next: Profile = { ...profile, panel: { ...profile.panel!, version: '2' } }
+    const moved = { schemaVersion: 1 as const, records: { ...curation.records, 'A2.1': { ...curation.records['A2.1']!, group: 'b' } } }
+    await buildPanelFromRun(ctx, next, moved)
+    const c = await comparePanelVersions(ctx.store, profile, '1', '2')
+    expect(c.records.changedGroup).toEqual([{ record: 'A2.1', a: 'a', b: 'b' }])
+    expect(c.a.hasValidation && c.b.hasValidation).toBe(true)
+    const dir = profilePaths('demo').panel('p', '2')
+    const stored = JSON.parse(ctx.store.files.get(`${dir}/panel.json`)!)
+    stored.notCovered = []
+    ctx.store.files.set(`${dir}/panel.json`, JSON.stringify(stored))
+    await expect(comparePanelVersions(ctx.store, profile, '1', '2')).rejects.toThrow(/seal/)
+  })
+  it('lists every version in order, and only this panel', () => {
+    expect(panelVersions(profile, ['p-0.10.0', 'p-0.2.0', 'p-0.9.1', 'other-1.0.0'])).toEqual(['0.2.0', '0.9.1', '0.10.0'])
   })
   it('refuses a panel whose files changed after sealing', async () => {
     const ctx = makeContext()

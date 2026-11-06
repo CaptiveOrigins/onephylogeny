@@ -244,6 +244,51 @@ describe('the Mac app, clicked through', () => {
       fireEvent.change(screen.getByLabelText('Reason'), { target: { value: 'Second thoughts' } })
       fireEvent.click(screen.getByRole('button', { name: 'Omit' }))
       expect(screen.getByText(/after a result \(post hoc\): Second thoughts/)).toBeTruthy()
+
+      // The omission has to be shown both ways. A copy restores it, keeps the runs, and leaves the original alone.
+      expect(screen.getByText(/1 record was omitted after a result was seen/)).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: 'Make a copy without post hoc omissions' }))
+      await screen.findByText(/post hoc omissions restored/)
+      expect(screen.queryByText(/after a result \(post hoc\): Second thoughts/)).toBeNull()
+      expect(screen.queryByText(/record was omitted after a result/)).toBeNull()
+      expect(screen.getByText('1 runs recorded')).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: 'Move N0.1 left' }))
+      expect(screen.getByText(/will be labeled post hoc/)).toBeTruthy()
     })
+
+    it('compares built versions, and names the Study and what changed', async () => {
+      const fromStudy = { id: 'first', title: 'First Study', stateHash: 'sha256:abc', postHocOmitted: ['N0.1'] }
+      await platform.store.write(`profiles/${ID}/profile.json`, JSON.stringify({ ...profile, selection: { ...profile.selection, fromStudy } }))
+      await openProfile()
+      tab('Study')
+      await screen.findByText('No panel versions are built yet.')
+      await fetchRecords()
+      tab('Panel')
+      fireEvent.click(screen.getByRole('button', { name: 'Build and validate panel' }))
+      await screen.findByRole('heading', { name: 'example-panel version 0.1.0' }, { timeout: 60_000 })
+      tab('Study')
+      await screen.findByText('One version is built. Build another to compare them.')
+
+      // Started from the Panel tab and finished while watching this one, the list still has to catch up.
+      tab('Panel')
+      fireEvent.change(screen.getByLabelText(/^Version/), { target: { value: '0.2.0' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Build and validate panel' }))
+      tab('Study')
+      await screen.findByText(/2 versions built for this profile: 0\.1\.0, 0\.2\.0/, undefined, { timeout: 60_000 })
+      fireEvent.click(screen.getByRole('button', { name: 'Compare' }))
+      const result = within(await screen.findByRole('region', { name: 'Comparison' }))
+      expect(result.getByText(/A: version 0\.1\.0\. From Study First Study, with 1 post hoc omissions/)).toBeTruthy()
+      expect(result.getByText(/0 only in A, 0 only in B, 0 changed group/)).toBeTruthy()
+      expect(result.getByText(/The sequences are identical/)).toBeTruthy()
+      expect(result.getAllByText(/left out 1 records after results were seen/).length).toBe(2)
+      expect(screen.queryByRole('alert')).toBeNull()
+
+      // A version whose files changed can't be compared.
+      const file = `profiles/${ID}/panels/example-panel-0.2.0/panel.json`
+      const stored = JSON.parse(await platform.store.read(file))
+      await platform.store.write(file, JSON.stringify({ ...stored, notCovered: ['Tampered'] }))
+      fireEvent.click(screen.getByRole('button', { name: 'Compare' }))
+      expect((await screen.findByRole('alert')).textContent).toMatch(/seal/)
+    }, 120_000)
   })
 })
