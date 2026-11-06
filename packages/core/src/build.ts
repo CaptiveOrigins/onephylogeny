@@ -2,7 +2,7 @@ import { basesOf, compareAligned, coverage } from './sequence.js'
 import { deriveEvaluation, wholeMarker } from './derive.js'
 import { DEFAULT_GATES, type GateSettings } from './gates.js'
 import { LOCATION_EVIDENCE, sealPanel, sequencesChecksum } from './panel.js'
-import type { Diagnostic, Finding, FindingReason, FindingWindow, Id, Novelty, PairFinding, PairReason, Panel, PanelGroup, PanelSettings, ProvenanceClass, Result, EvidenceUse, ValidatedClaim } from './model.js'
+import type { Diagnostic, Finding, FindingReason, FindingWindow, Id, Novelty, PairFinding, PairReason, Panel, PanelGroup, PanelSettings, ProvenanceClass, Result, EvidenceUse, ValidatedClaim, StudyLink } from './model.js'
 import { CLAIM_GATES, clopperPearson, describeClaim } from './validation.js'
 
 /** A panel and the aligned sequences its evidence names. Panels stay JSON; sequences travel in FASTA beside them. */
@@ -24,6 +24,7 @@ export type BuildPanelInput = {
   gates?: GateSettings
   /** Nuclear copies from a genome screen, sealed into the panel. */
   numtCopies?: { id: string; aligned: string }[]
+  study?: StudyLink
   /** Claims that passed validation. Only these reach a panel's scope, whatever the settings say. */
   claims?: ValidatedClaim[]
 }
@@ -89,6 +90,7 @@ export function unsealedBundle(input: BuildPanelInput): PanelBundle {
     sequencesChecksum: '',
     ...(input.builtWith ? { builtWith: input.builtWith } : {}),
     ...(input.numtCopies?.length ? { numtCopies: input.numtCopies } : {}),
+    ...(input.study ? { study: input.study } : {}),
   }
   return { panel, sequences, ...(input.referenceSequence ? { referenceSequence: input.referenceSequence } : {}) }
 }

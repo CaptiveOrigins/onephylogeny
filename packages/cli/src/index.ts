@@ -4,7 +4,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeF
 import { dirname, join, resolve } from 'node:path'
 import { parseCuration, parseFasta, parseProfile } from '@captiveorigins/onephylogeny-core'
 import { NcbiClient, suggestOutgroups } from '@captiveorigins/onephylogeny-acquire'
-import { buildPanelFromRun, buildTree, EngineError, fetchAndAnchor, isCancelled, profilePaths, runSample, traceArtifact, type ArtifactType, type EngineContext, type Store, type ToolRunner } from '@captiveorigins/onephylogeny-engine'
+import { buildPanelFromRun, comparePanelVersions, buildTree, EngineError, fetchAndAnchor, isCancelled, profilePaths, runSample, traceArtifact, type ArtifactType, type EngineContext, type Store, type ToolRunner } from '@captiveorigins/onephylogeny-engine'
 
 const USAGE = `onephylogeny <command> --workspace DIR --profile ID [options]
 
@@ -15,6 +15,7 @@ const USAGE = `onephylogeny <command> --workspace DIR --profile ID [options]
   test --fasta FILE        Test local sequences against the panel
   tree [--start N --end N] Build a tree from one window with IQ-TREE
   trace --type T --key K   Show everything that produced an artifact
+  compare --a V --b V      Compare two built panel versions
 
 Options: --events (print JSON Lines events). Set NCBI_API_KEY to fetch faster.`
 
@@ -96,6 +97,11 @@ async function main() {
     if (!file) throw new Error('--fasta is required')
     if (!profile.panel) throw new Error('The profile has no panel settings')
     for (const e of parseFasta(readFileSync(file, 'utf8'))) console.log(JSON.stringify(await runSample(ctx, profile, e.sequence, e.id), (k, v) => (k === 'aligned' || k === 'run' && typeof v === 'object' ? undefined : v), 2))
+  } else if (command === 'compare') {
+    const a = flag('a')
+    const b = flag('b')
+    if (!a || !b) throw new Error('--a and --b are required')
+    console.log(JSON.stringify(await comparePanelVersions(store, profile, a, b), null, 2))
   } else if (command === 'tree') {
     const start = flag('start')
     const end = flag('end')

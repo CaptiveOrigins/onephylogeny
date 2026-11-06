@@ -1,7 +1,7 @@
 import {
-  ALIGNER, alignToReference, assessAlignment, buildPanel, canonicalJson, checkNumts, collapseHaplotypes, DEFAULT_GATES, extractLocation, findGeneFeatures, fullValidation, gatesForRecord, parseFasta, parseGenBank,
+  ALIGNER, alignToReference, assessAlignment, buildPanel, canonicalJson, checkNumts, collapseHaplotypes, compareRuns, DEFAULT_GATES, extractLocation, findGeneFeatures, fullValidation, gatesForRecord, parseFasta, parseGenBank,
   evaluateQuery, toRecordSheet, toSequenceRecord, validatePanel, verifyBundle, validatedScopeFromReport, validateProfile, validateResult, writeFasta,
-  type Alignment, type Curation, type Diagnostic, type GateSettings, type GenBankRecord, type LinkedRecord, type Panel, type PanelBundle, type PanelMember, type Profile, type Result, type Run, type SequenceRecord, type Snapshot, type ValidationInput,
+  type Alignment, type Curation, type Diagnostic, type GateSettings, type GenBankRecord, type LinkedRecord, type Panel, type PanelBundle, type PanelMember, type Profile, type Result, type Run, type RunComparison, type SequenceRecord, type Snapshot, type ValidationInput,
 } from '@captiveorigins/onephylogeny-core'
 import { classifyAccessions, genomesHoldingMarkerQuery, linkedAccessions, NcbiClient, selectionQuery, studiesFromRecords, type FoundPaper } from '@captiveorigins/onephylogeny-acquire'
 import { hashText, loadArtifact, type Artifact, type ArtifactRef } from './artifacts.js'
@@ -346,6 +346,8 @@ export async function buildPanelFromRun(ctx: EngineContext, profile: Profile, cu
       // The checks that actually ran on these records, even if the profile has changed since.
       gates: (gated.manifest.parameters as { gates: GateSettings }).gates,
       ...(numtCopies.length ? { numtCopies } : {}),
+      // From the fetch these records came from, not today's profile, which may have moved to another Study.
+      ...(source.profile.selection.fromStudy ? { study: source.profile.selection.fromStudy } : {}),
     }
     if (settings.validatedScope.length) diagnostics.push({ severity: 'warning', code: 'hand-entered-scope-ignored', message: 'The scope written in the panel settings is ignored. A panel\'s scope now comes only from claims that pass validation', path: 'panel.validatedScope' })
     const draft = buildPanel({ ...input, members })
@@ -397,6 +399,28 @@ export async function loadPanel(store: Store, dir: string): Promise<PanelBundle>
   const problems = verifyBundle(bundle)
   if (problems.length) throw new EngineError('panel-changed', `Panel ${panel.id} version ${panel.version} doesn't match its seal: ${problems.map((p) => p.message).join('; ')}`, 'Restore it from its source, or build it again under a new version')
   return bundle
+}
+
+/** The versions built for a profile's panel, oldest first. Every one is listed, so no attempt can be left out. */
+export function panelVersions(profile: Profile, folders: string[]): string[] {
+  const prefix = `${profile.panel?.id ?? ''}-`
+  const parts = (v: string) => v.split('.').map(Number)
+  const order = (a: string, b: string) => { const x = parts(a), y = parts(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] ?? 0) - (y[i] ?? 0); if (d) return d } return a.localeCompare(b) }
+  return folders.filter((f) => f.startsWith(prefix)).map((f) => f.slice(prefix.length)).sort(order)
+}
+
+/** Compares two built versions. Both must still match their seals. */
+export async function comparePanelVersions(store: Store, profile: Profile, a: string, b: string): Promise<RunComparison> {
+  if (!profile.panel) throw new EngineError('invalid-profile', 'The profile has no panel settings', 'Add groups in the Panel tab')
+  const P = profilePaths(profile.id)
+  const load = async (version: string) => {
+    const dir = P.panel(profile.panel!.id, version)
+    const { panel } = await loadPanel(store, dir)
+    const report = (await store.exists(`${dir}/validation.json`)) ? (JSON.parse(await store.read(`${dir}/validation.json`)) as ValidationReports).claims : undefined
+    return { panel, report }
+  }
+  const [x, y] = [await load(a), await load(b)]
+  return compareRuns(x.panel, y.panel, x.report, y.report)
 }
 
 export type SampleOutcome = { result: Result; diagnostics: Diagnostic[]; aligned: string; insertions: number; deletions: number; identity: number; clipped: { start: number; end: number } } | { result: null; diagnostics: Diagnostic[] }
