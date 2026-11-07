@@ -8,7 +8,7 @@ Kept current. Nothing listed here is claimed as done.
 - Gate thresholds were set from this project's data and need calibrating on others. Real-indel handling has little real test data, and the genome NUMT screen has run once and can't see copies that arose after the two species split.
 - Gaps are treated as missing data. Real deletions are not modelled separately.
 - Known-answer distances use a fixture anchored outside this repo with MAFFT, and compare with a published 420 bp table on 433 columns, so agreement is close and not exact (tolerance 0.15 percentage points).
-- Nothing here is forensically validated. The project license and bundled tool licensing need legal review before a desktop release.
+- Nothing here is forensically validated. Releases so far are source-available for noncommercial use only, and haven't had a legal review. The license and bundled tool licensing get one before any commercial or wider launch.
 - The Mac app uses an installed IQ-TREE from Homebrew rather than bundling one, and isn't notarized yet, so macOS asks people to confirm the first launch. It can't update itself yet either: download the new DMG from GitHub releases.
 - The Mac app's Tree tab reads Newick for display only; the OneTaxonomy export is the checked form.
 - The Payload plugin stores results and controls release. It doesn't compute, and it has no admin review screen beyond Payload's own forms.
