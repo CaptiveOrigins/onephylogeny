@@ -75,7 +75,7 @@ A track across reference columns, with one band per Study paper in its color.
 
 ## Finding papers
 
-The search merges two lists, because most records have no PubMed link: 3 of 294 in our first species' cache. Whole mitochondrial genomes are included even when they don't annotate the marker, and records with no publication are listed as such rather than dropped. A source that fails or cuts its list short says so.
+The search merges two lists, because most records have no PubMed link: 3 of 294 in our first species' cache. Whole mitochondrial genomes are included even when they don't annotate the marker, and a fetch cuts the marker out by similarity. A very distant relative can have too few shared seeds, and is then reported as not found rather than guessed at. Records with no publication are listed as such rather than dropped. A source that fails or cuts its list short says so.
 
 1. Papers from PubMed and Europe PMC, by species or free text.
 2. Studies built from the titles and authors on GenBank records.
