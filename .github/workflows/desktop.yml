@@ -1,7 +1,7 @@
 # OnePhylogeny for Mac: on a desktop-v* tag, build a universal app and publish a GitHub release.
 # To ship signed updates, add the TAURI_SIGNING_PRIVATE_KEY secret and set bundle.createUpdaterArtifacts in
 # tauri.conf.json. Apple notarization (APPLE_* secrets) can be added later; until then macOS asks people to
-# confirm the first launch (right-click > Open). IQ-TREE is optional and not bundled.
+# confirm the first launch (Open Anyway in Privacy & Security, or xattr on that one app). IQ-TREE is optional and not bundled.
 name: Desktop app
 
 on:
@@ -36,7 +36,17 @@ jobs:
           projectPath: apps/desktop
           tagName: ${{ github.ref_name }}
           releaseName: 'OnePhylogeny for Mac ${{ github.ref_name }}'
-          releaseBody: 'Download the .dmg below. macOS asks you to confirm the first launch: right-click the app, then choose Open. Early alpha: results are not forensically validated.'
+          releaseBody: |
+            Download the .dmg below and drag OnePhylogeny to Applications.
+
+            The app isn't notarized, so macOS blocks the first launch. Use either way past the warning:
+
+            - **System Settings:** try to open the app once, then go to System Settings > Privacy & Security, scroll down, click **Open Anyway**, and click **Open** when the warning comes back. Apple says to do this only for an app you trust.
+            - **Terminal:** `xattr -dr com.apple.quarantine "/Applications/OnePhylogeny.app"`
+
+            The app can't update itself yet. To update, download the newest .dmg from this repository's Releases page.
+
+            Early alpha: results are not forensically validated. A person hasn't yet worked through this build in the Mac app; only its automated tests have run. See CHANGELOG.md for what changed.
           releaseDraft: false
           prerelease: false
           args: --target universal-apple-darwin

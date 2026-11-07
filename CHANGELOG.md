@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## Mac app 0.2.0
+
+The Mac app ships everything in this section. The npm packages aren't published yet.
 
 - The Mac app no longer offers update checks. Releases have no signing key yet, so there is nothing to check; download the new DMG instead. Signed updates can return in a later release.
 - A long record that doesn't annotate the marker, such as a whole mitochondrial genome, now has it cut out by similarity and then goes through the usual checks. It's refused if the marker looks present in more than one place. A record that was left whole used to skip the coverage check.
