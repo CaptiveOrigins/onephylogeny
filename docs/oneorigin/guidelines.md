@@ -85,8 +85,8 @@ The system font stack in every tool, with monospace only for sequences, logs and
 
 Every Mac app must have:
 
-- **Settings** with Appearance (Auto, Light, Dark) and "Check for updates automatically", plus a manual check.
-- **Updates** from signed GitHub releases, asking before installing. People can turn automatic checks off.
+- **Settings** with Appearance (Auto, Light, Dark) and, once a tool has signed updates, "Check for updates automatically" plus a manual check.
+- **Updates** from signed GitHub releases, asking before installing. People can turn automatic checks off. OneTaxonomy and OnePhylogeny don't have this yet (see the status table).
 - **A status area** for messages, with details available on demand.
 - **An empty state** that says what to do first, and what the tool is for.
 
@@ -183,7 +183,7 @@ Each decision with alternatives gets an ADR. Limitations are kept current, and n
 
 ### Mac app
 
-- Tag `desktop-vx.y.z` builds a universal app and publishes a GitHub release with a DMG and `latest.json`.
+- Tag `desktop-vx.y.z` builds a universal app and publishes a GitHub release with a DMG, plus `latest.json` once the tool has a signing key.
 - Each tool has **its own** updater key in `~/.tauri/<tool>.key`, stored as the repo secret `TAURI_SIGNING_PRIVATE_KEY`. Keys are never shared between tools or committed.
 - App identifiers are `org.captiveorigins.<tool>`.
 - Notarization is a shared goal, and when one tool adds it, the other apps follow.
@@ -203,8 +203,8 @@ From a review of the three repos on 2026-11-04, updated after that day's suite p
 | --- | --- | --- | --- |
 | Mac app | Yes | First version, on PR #3 | Yes |
 | Published DMG | Yes, `desktop-v0.2.0` | **None yet** | Yes, `desktop-v0.1.1` |
-| Signed auto-updates | Yes | **Key made; secret not added** | **Key made; secret not added**, so releases aren't signed for updating yet |
-| Settings: appearance, updates | Yes | Yes, on PR #3 | Yes |
+| Signed auto-updates | Yes | **Not yet.** Key made, secret not added; people download the new DMG | **Not yet.** Key made, secret not added; people download the new DMG |
+| Settings: appearance, updates | Yes | Appearance only, until signed updates | Appearance only, until signed updates |
 | Notarization | **No** | **No** | **No** |
 | Playground | Yes | Yes | Yes |
 | Shared `icons.tsx` | Yes | Yes | Yes |

@@ -9,7 +9,7 @@ Kept current. Nothing listed here is claimed as done.
 - Gaps are treated as missing data. Real deletions are not modelled separately.
 - Known-answer distances use a fixture anchored outside this repo with MAFFT, and compare with a published 420 bp table on 433 columns, so agreement is close and not exact (tolerance 0.15 percentage points).
 - Nothing here is forensically validated. Releases so far are source-available for noncommercial use only, and haven't had a legal review. The license and bundled tool licensing get one before any commercial or wider launch.
-- The Mac app uses an installed IQ-TREE from Homebrew rather than bundling one, and isn't notarized or auto-updating yet, so macOS asks people to confirm the first launch.
+- The Mac app uses an installed IQ-TREE from Homebrew rather than bundling one, and isn't notarized yet, so macOS asks people to confirm the first launch. It can't update itself yet either: download the new DMG from GitHub releases.
 - The Mac app's Tree tab reads Newick for display only; the OneTaxonomy export is the checked form.
 - The Payload plugin stores results and controls release. It doesn't compute, and it has no admin review screen beyond Payload's own forms.
 - OneTaxonomy export writes a phylogeny record, which OneTaxonomy can't yet open as a file in a Mac app because its Studio isn't built.

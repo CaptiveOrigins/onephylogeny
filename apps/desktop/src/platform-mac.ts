@@ -5,7 +5,7 @@ import { fetch as nativeFetch } from '@tauri-apps/plugin-http'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { load } from '@tauri-apps/plugin-store'
 import type { Platform } from './platform'
-import { checkForUpdates, loadSettings, saveSettings } from './updates'
+import { loadSettings, saveSettings } from './updates'
 
 const settings = () => load('settings.json', { autoSave: true, defaults: {} })
 
@@ -17,7 +17,8 @@ export async function createMacPlatform(): Promise<Platform> {
   }
   return {
     kind: 'mac',
-    settings: { load: loadSettings, save: saveSettings, checkForUpdates },
+    // No signing key yet, so releases have no update file. Add checkForUpdates back with the key.
+    settings: { load: loadSettings, save: saveSettings },
     root: () => root,
     chooseWorkspace: async () => {
       const picked = await open({ directory: true, title: 'Choose a workspace folder' })
