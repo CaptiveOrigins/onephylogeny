@@ -129,7 +129,7 @@ Informed by the techniques research.
 ## Stage 7: Ship it
 
 1. First npm publish, with trusted publishing and release workflow.
-2. Signed, notarized Mac app with updates, and IQ-TREE bundled if licensing review allows.
+2. Mac app with signed in-app updates once the signing key is added, and IQ-TREE bundled if licensing review allows. No notarization for now, so the README and every release's notes must give both ways past macOS's warning, Open Anyway in Privacy & Security and `xattr -dr com.apple.quarantine` on that one app.
 3. Documentation: a tutorial with an example dataset, and concept pages for newcomers.
 4. Zenodo DOI for citation, and a legal review of licensing.
 
