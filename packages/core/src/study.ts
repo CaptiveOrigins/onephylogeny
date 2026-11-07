@@ -1,5 +1,6 @@
 import { canonicalJson } from './panel.js'
 import { sha256Hex } from './sha256.js'
+import type { StudyLink } from './model.js'
 
 /**
  * A Study: papers gathered for an analysis, with their records sorted into ingroup and outgroup.
@@ -54,7 +55,8 @@ export type StudyRecord = LinkedRecord & {
 
 export type StudyEvent = { at: string; action: string; item?: string; detail?: string }
 export type StudySearch = { at: string; query: string; sources: string[]; counts: Record<string, number>; failed?: string[] }
-export type StudyRun = { id: string; at: string; stateHash: string; profileVersion?: string }
+/** `inheritedFrom` marks a run a duplicated Study carried over: its results were seen, even though this copy didn't produce them. */
+export type StudyRun = { id: string; at: string; stateHash: string; profileVersion?: string; inheritedFrom?: string }
 
 export type Study = {
   schemaVersion: 1
@@ -67,6 +69,7 @@ export type Study = {
   searches: StudySearch[]
   runs: StudyRun[]
   log: StudyEvent[]
+  duplicatedFrom?: { id: string; title: string; stateHash: string; at: string }
 }
 
 export type StudyItem = { kind: 'result'; paper: StudyPaper } | { kind: 'paper'; id: string } | { kind: 'record'; accession: string }
@@ -237,6 +240,7 @@ export type StudyUse = {
   studyOf: Record<string, string>
   stateHash: string
   blocked: string[]
+  link: StudyLink
 }
 
 /** What a run would use. It refuses unconfirmed outgroups, so a proposal can't quietly root a tree. */
@@ -251,13 +255,36 @@ export function studyUse(s: Study): StudyUse {
   const proposed = live.filter((r) => r.proposed).length
   if (!include.length) blocked.push('The Study has no ingroup records')
   if (proposed) blocked.push(`${proposed} proposed outgroups need confirming or omitting`)
-  return { include, outgroups, studyOf, stateHash: studyStateHash(s), blocked }
+  return { include, outgroups, studyOf, stateHash: studyStateHash(s), blocked, link: studyLink(s) }
 }
 
 /** Identifies what a run depends on. Autosave, notes and the log don't change it. */
 export function studyStateHash(s: Study): string {
   const records = Object.values(s.records).map(({ accession, column, proposed, omitted, papers }) => ({ accession, column, proposed: Boolean(proposed), omitted: omitted?.reason ?? null, papers: [...papers].sort() })).sort((a, b) => a.accession.localeCompare(b.accession))
   return `sha256:${sha256Hex(canonicalJson({ papers: s.papers.map((p) => p.id).sort(), records }))}`
+}
+
+/** Records left out after a result was seen. */
+export function postHocOmissions(s: Study): string[] {
+  return Object.values(s.records).filter((r) => r.omitted?.timing === 'after-result').map((r) => r.accession).sort()
+}
+
+export function studyLink(s: Study): StudyLink {
+  return { id: s.id, title: s.title, stateHash: studyStateHash(s), postHocOmitted: postHocOmissions(s) }
+}
+
+/**
+ * Copies a Study to run it another way. Its runs come along, because their results have been seen:
+ * a fresh list would label the copy's later omissions as made before any result.
+ */
+export function duplicateStudy(s: Study, id: string, title: string, at: string): Study {
+  const runs = s.runs.map((r) => (r.inheritedFrom ? r : { ...r, inheritedFrom: s.id }))
+  return logged({ ...s, id, title, createdAt: at, runs, duplicatedFrom: { id: s.id, title: s.title, stateHash: studyStateHash(s), at } }, { at, action: 'duplicated-from', item: s.id })
+}
+
+/** A copy with post hoc omissions restored, so results can be shown both ways. Other omissions stay. */
+export function withoutPostHoc(s: Study, id: string, title: string, at: string): Study {
+  return postHocOmissions(s).reduce((copy, accession) => restoreOmitted(copy, accession, at), duplicateStudy(s, id, title, at))
 }
 
 /** Records a run, so nobody can present the third attempt as the only one. Omissions after this are labeled post hoc. */
@@ -277,7 +304,7 @@ export function parseStudy(text: string): Study {
 export function studyMethods(s: Study): string {
   const live = Object.values(s.records).filter((r) => !r.omitted)
   const omitted = Object.values(s.records).filter((r) => r.omitted)
-  const out = [`# ${s.title}`, '', '## Searches', '']
+  const out = [`# ${s.title}`, '', ...(s.duplicatedFrom ? [`Duplicated from Study ${s.duplicatedFrom.title} (state ${s.duplicatedFrom.stateHash}) on ${s.duplicatedFrom.at}.`, ''] : []), '## Searches', '']
   for (const q of s.searches) out.push(`- ${q.at}: "${q.query}" in ${q.sources.join(', ')}. ${Object.entries(q.counts).map(([k, n]) => `${k}: ${n}`).join(', ')}.${q.failed?.length ? ` Failed: ${q.failed.join(', ')}.` : ''}`)
   if (!s.searches.length) out.push('- None logged.')
   out.push('', '## Papers', '')
@@ -289,7 +316,7 @@ export function studyMethods(s: Study): string {
   for (const r of omitted) out.push(`- ${r.accession}, ${r.omitted!.timing === 'after-result' ? 'post hoc, after a result was seen' : 'before any result'}: ${r.omitted!.reason}`)
   if (!omitted.length) out.push('- None.')
   out.push('', '## Runs', '')
-  for (const r of s.runs) out.push(`- ${r.id}, ${r.at}, state ${r.stateHash}`)
+  for (const r of s.runs) out.push(`- ${r.id}, ${r.at}, state ${r.stateHash}${r.inheritedFrom ? `, carried over from Study ${r.inheritedFrom}` : ''}`)
   if (!s.runs.length) out.push('- None.')
   return `${out.join('\n')}\n`
 }

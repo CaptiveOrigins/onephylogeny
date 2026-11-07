@@ -2,13 +2,13 @@
 
 Design for finding papers, gathering their records and running comparable analyses. It lives in OnePhylogeny.
 
-**Built:** search across PubMed, Europe PMC and GenBank record studies, the five columns, `+`, `−` and dragging through one set of rules, linked highlighting, inline save and add prompts, autosave with restorable history, omissions with reasons and post hoc labels, the gene region view, the search log, a methods export, and using a Study for the next fetch.
+**Built:** search across PubMed, Europe PMC and GenBank record studies, the five columns, `+`, `−` and dragging through one set of rules, linked highlighting, inline save and add prompts, autosave with restorable history, omissions with reasons and post hoc labels, the gene region view, the search log, a methods export, using a Study for the next fetch, duplicating a Study, and comparing built versions.
 
 **Not built yet:**
 
-- **Run comparison:** duplicating a Study and comparing runs side by side. This includes showing results with and without post hoc omissions. They're labeled post hoc now, but that comparison has to be run by hand.
 - **Filters:** raw reads available, and wild, seized or captive status.
 - **Also planned:** everything in that list below except the methods export and search log.
+- **Showing both ways automatically:** results with and without post hoc omissions take two builds. The app offers the copy and keeps warning, but it doesn't build both for you.
 - **Sources:** PopSet and BioProject aren't searched.
 
 **Not tested in the real app:** the click-through tests use a simulated browser. Dragging in particular needs checking in the Mac app, which now sets `dragDropEnabled: false`.
@@ -75,7 +75,7 @@ A track across reference columns, with one band per Study paper in its color.
 
 ## Finding papers
 
-The search merges two lists, because most records have no PubMed link: 3 of 294 in our first species' cache. Whole mitochondrial genomes are included even when they don't annotate the marker, and records with no publication are listed as such rather than dropped. A source that fails or cuts its list short says so.
+The search merges two lists, because most records have no PubMed link: 3 of 294 in our first species' cache. Whole mitochondrial genomes are included even when they don't annotate the marker, and a fetch cuts the marker out by similarity. A very distant relative can have too few shared seeds, and is then reported as not found rather than guessed at. Records with no publication are listed as such rather than dropped. A source that fails or cuts its list short says so.
 
 1. Papers from PubMed and Europe PMC, by species or free text.
 2. Studies built from the titles and authors on GenBank records.
@@ -92,8 +92,18 @@ Species, gene, gene region, year, country, number of records, records new to thi
 
 - Autosave keeps an append-only history, so a Study can be restored to any point.
 - A run freezes the exact Study state it used, so autosave can't change what an old result means.
-- Duplicate a Study to run it another way, then compare runs side by side, including which records changed group.
-- Every run stays listed, so nobody can present the third attempt as the only one.
+- Duplicate a Study to run it another way, then compare built versions side by side.
+- Every built version stays listed, so nobody can present the third attempt as the only one.
+
+### What a comparison promises
+
+A comparison reports differences and never picks a winner. "Same" means the whole validation report is the same, not just the outcome: a claim that passes both times on different evidence is shown as changed. Every evidence field and panel field is compared, and a panel field with no friendly name is still reported under its own name.
+
+A panel seals the Study state behind the fetch its records came from, including what that state left out after results were seen. So a post hoc omission can't be separated from its results, and comparing such a version warns until the other side has those records.
+
+Duplicating carries the runs over, marked as carried over. Their results have been seen, so an omission in the copy is still post hoc.
+
+"Software" compares the recorded engine version, which doesn't change on every commit. Changed gates and reports show most code changes, but identical software labels don't prove identical code.
 
 ## Also planned
 

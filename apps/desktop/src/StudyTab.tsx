@@ -1,5 +1,6 @@
 import { type FoundPaper, NcbiClient, searchPapers } from '@captiveorigins/onephylogeny-acquire'
-import { confirmOutgroup, coverageTrack, dropOn, moveItem, newStudy, parseStudy, recordRun, restoreOmitted, studyMethods, studyUse, type Curation, type MoveResult, type PanelWindow, type Profile, type Study, type StudyColumn, type StudyItem, type StudyPaper, type StudyRecord } from '@captiveorigins/onephylogeny-core'
+import { CompareRuns } from './CompareRuns'
+import { confirmOutgroup, coverageTrack, dropOn, moveItem, newStudy, parseStudy, postHocOmissions, recordRun, restoreOmitted, studyMethods, studyUse, duplicateStudy, withoutPostHoc, type Curation, type MoveResult, type PanelWindow, type Profile, type Study, type StudyColumn, type StudyItem, type StudyPaper, type StudyRecord } from '@captiveorigins/onephylogeny-core'
 import { findPaperRecords, findRecordStudies, isCancelled, profilePaths, type EngineContext } from '@captiveorigins/onephylogeny-engine'
 import { useEffect, useMemo, useState, type DragEvent, type ReactNode } from 'react'
 import type { Platform } from './platform'
@@ -260,7 +261,7 @@ export function StudyTab({ profile, platform, session, setSession, attempt, cont
     // Keeps the outgroups the profile already had, unless the Study puts one in the ingroup.
     const chosen = new Set([...use.include, ...use.outgroups.map((o) => o.accession)])
     const kept = profile.selection.outgroups.filter((o) => !o.accession || !chosen.has(o.accession))
-    const nextProfile: Profile = { ...profile, selection: { ...profile.selection, include: use.include, outgroups: [...kept, ...use.outgroups] } }
+    const nextProfile: Profile = { ...profile, selection: { ...profile.selection, include: use.include, fromStudy: use.link, outgroups: [...kept, ...use.outgroups] } }
     edit(nextProfile)
     await save(nextProfile)
     const recs = { ...curation.records }
@@ -270,6 +271,16 @@ export function StudyTab({ profile, platform, session, setSession, attempt, cont
     setSession((x) => ({ ...x, study: next, saved: true }))
     setMessage('Set. Open Records and fetch, then build a panel with a new version number. Records still pass every check. Omissions from here on are labeled post hoc.')
   })
+
+  // A copy gets its own id, so the original and its frozen runs stay exactly as they were.
+  const copyWith = (make: (s: Study, id: string, title: string, at: string) => Study, suffix: string, note: string) => attempt('Copying the Study', async () => {
+    if (!study) return
+    const copy = make(study, `${study.id}-${slug(suffix)}-${Date.now()}`, `${study.title} (${suffix})`, now())
+    await write(copy)
+    setSession((x) => ({ ...x, study: copy, saved: true, saveDeclined: false, selected: null }))
+    setMessage(note)
+  })
+  const postHoc = study ? postHocOmissions(study) : []
 
   const firstPrompt = study && study.papers.length > 0 && !session.saved && !session.saveDeclined
   const promptPaper = session.promptRecordsFor ? paperOf(session.promptRecordsFor) : null
@@ -410,10 +421,18 @@ export function StudyTab({ profile, platform, session, setSession, attempt, cont
 
       {study && columns && study.papers.length > 0 && <GeneRegion study={study} columns={columns} windows={profile.panel?.windows ?? []} />}
 
+      {study && postHoc.length > 0 && <div className="inline-prompt" role="status">
+        <strong>{postHoc.length} {postHoc.length === 1 ? 'record was' : 'records were'} omitted after a result was seen.</strong> Show the results both ways: make a copy with them restored, use it for a fetch, build a new version, then compare the two below.
+        <div className="actions"><button onClick={() => copyWith(withoutPostHoc, 'without post hoc omissions', 'This copy has the post hoc omissions restored. The original is unchanged.')}>Make a copy without post hoc omissions</button></div>
+      </div>}
+
       {study && use && <div className="actions study-use">
         <button className="primary" disabled={busy || use.blocked.length > 0} onClick={useStudy}>Use this Study for the next fetch</button>
         <span className="muted">{use.blocked.length ? use.blocked.join('. ') : `${use.include.length} ingroup and ${use.outgroups.length} outgroup records. The profile will fetch exactly these, and they'll pass the same checks as any record.`}</span>
+        <button disabled={busy} onClick={() => copyWith(duplicateStudy, 'copy', 'This is a copy, with the runs it came from still listed. Omissions in it are labeled post hoc too, because those results were seen.')}>Duplicate this Study</button>
       </div>}
+
+      <CompareRuns profile={profile} platform={platform} attempt={attempt} busy={busy} />
     </div>
   )
 }

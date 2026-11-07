@@ -1,7 +1,7 @@
 import {
-  ALIGNER, alignToReference, assessAlignment, buildPanel, canonicalJson, checkNumts, collapseHaplotypes, DEFAULT_GATES, extractLocation, findGeneFeatures, fullValidation, gatesForRecord, parseFasta, parseGenBank,
+  ALIGNER, alignToReference, LOCATE_FLANK, locateMarker, assessAlignment, buildPanel, canonicalJson, checkNumts, collapseHaplotypes, compareRuns, DEFAULT_GATES, extractLocation, findGeneFeatures, fullValidation, gatesForRecord, parseFasta, parseGenBank,
   evaluateQuery, toRecordSheet, toSequenceRecord, validatePanel, verifyBundle, validatedScopeFromReport, validateProfile, validateResult, writeFasta,
-  type Alignment, type Curation, type Diagnostic, type GateSettings, type GenBankRecord, type LinkedRecord, type Panel, type PanelBundle, type PanelMember, type Profile, type Result, type Run, type SequenceRecord, type Snapshot, type ValidationInput,
+  type Alignment, type Curation, type Diagnostic, type GateSettings, type GenBankRecord, type LinkedRecord, type MarkerPlace, type Panel, type PanelBundle, type PanelMember, type Profile, type Result, type Run, type RunComparison, type SequenceRecord, type Snapshot, type ValidationInput,
 } from '@captiveorigins/onephylogeny-core'
 import { classifyAccessions, genomesHoldingMarkerQuery, linkedAccessions, NcbiClient, selectionQuery, studiesFromRecords, type FoundPaper } from '@captiveorigins/onephylogeny-acquire'
 import { hashText, loadArtifact, type Artifact, type ArtifactRef } from './artifacts.js'
@@ -19,11 +19,11 @@ const cachePath = (version: string) => `cache/genbank/${version.replace(/[^A-Za-
 const ref = (a: Artifact): ArtifactRef => ({ type: a.manifest.type, key: a.manifest.key })
 const artifactOf = (run: Run, type: ArtifactRef['type']) => run.artifacts.find((a) => a.type === type)
 
-export type RecordOutcome = { record: string; organism?: string; status: 'passed' | 'excluded'; diagnostics: Diagnostic[]; columns: number; identity: number; extractedFrom: 'annotation' | 'whole-record' }
+export type RecordOutcome = { record: string; organism?: string; status: 'passed' | 'excluded'; diagnostics: Diagnostic[]; columns: number; identity: number; extractedFrom: 'annotation' | 'located' | 'whole-record' }
 
 export type FetchOutcome = { run: Run; records: SequenceRecord[]; outcomes: RecordOutcome[] }
 
-type Anchored = { record: string; organism?: string; alignment: Alignment | null; extractedFrom: RecordOutcome['extractedFrom']; length: number; ambiguous: number; unverified: boolean }
+type Anchored = { record: string; organism?: string; alignment: Alignment | null; extractedFrom: RecordOutcome['extractedFrom']; length: number; ambiguous: number; unverified: boolean; located?: MarkerPlace; manyPlaces?: MarkerPlace[] }
 
 function geneSequence(rec: GenBankRecord, profile: Profile): { sequence: string; from: RecordOutcome['extractedFrom'] } {
   const marker = profile.selection.marker
@@ -39,6 +39,18 @@ function geneSequence(rec: GenBankRecord, profile: Profile): { sequence: string;
   return { sequence: rec.sequence, from: 'whole-record' }
 }
 
+const where = (p: MarkerPlace) => `bases ${p.start + 1} to ${p.end} on the ${p.strand === '+' ? 'given' : 'reverse'} strand${p.wrapsOrigin ? ', across the origin' : ''}`
+
+/** A long record with no annotation for the marker has it cut out by similarity, so the usual length and coverage checks apply to the marker. */
+function locatedSequence(rec: GenBankRecord, reference: string, profile: Profile, found: { sequence: string; from: RecordOutcome['extractedFrom'] }): { sequence: string; from: RecordOutcome['extractedFrom']; located?: MarkerPlace; manyPlaces?: MarkerPlace[] } {
+  const factor = panelGates(profile).containerRecordFactor ?? Infinity
+  if (found.from !== 'whole-record' || profile.selection.marker.kind !== 'gene' || found.sequence.length < factor * reference.length) return found
+  const location = locateMarker(found.sequence, reference, { ...(rec.circular ? { circular: true } : {}) })
+  if (location.status === 'located') return { sequence: location.sequence, from: 'located', located: location.place }
+  if (location.status === 'multiple') return { ...found, manyPlaces: location.places }
+  return found
+}
+
 /** Step: the list of what to fetch. Always asks the source; reuse downstream depends on the answer being the same. */
 async function searchStep(scope: RunScope, profile: Profile, client: NcbiClient, options: { allowEmpty?: boolean }) {
   const include = profile.selection.include
@@ -48,10 +60,10 @@ async function searchStep(scope: RunScope, profile: Profile, client: NcbiClient,
   if (!found.length && !options.allowEmpty) throw new EngineError('empty-search', 'NCBI found no records for this taxon and marker', 'Check the taxon, gene names and organelle in Setup')
   const genomes = include?.length ? null : genomesHoldingMarkerQuery(profile.selection)
   if (genomes) {
-    // Only a report. These can't join a run yet, since each would need its marker cut out, and a failed lookup shouldn't stop a fetch.
+    // Only a report. Adding them would change what a search means, and a failed lookup shouldn't stop a fetch.
     try {
       const missed = (await client.searchAccessions(genomes)).filter((a) => !found.includes(a))
-      if (missed.length) scope.log('warning', 'search', `${missed.length} mitochondrial genomes of these taxa aren't in this search, probably because they don't annotate the marker. They may hold it, and they aren't used: ${missed.join(', ')}`, { missed })
+      if (missed.length) scope.log('warning', 'search', `${missed.length} mitochondrial genomes of these taxa aren't in this search, probably because they don't annotate the marker. They may hold it, and they aren't used unless chosen in a Study, which cuts the marker out by similarity: ${missed.join(', ')}`, { missed })
     } catch (e) {
       if (isCancelled(e)) throw e
       scope.log('warning', 'search', `Couldn't check for mitochondrial genomes the search missed: ${e instanceof Error ? e.message : String(e)}`)
@@ -107,7 +119,7 @@ const markerParameters = (profile: Profile) => ({ marker: profile.selection.mark
 function anchorStep(scope: RunScope, profile: Profile, raw: Artifact) {
   const { store } = scope.ctx
   return scope.step({
-    type: 'anchored-records', step: { name: 'anchor', version: 1 }, inputs: [ref(raw)], parameters: markerParameters(profile), tools: [ALIGNER],
+    type: 'anchored-records', step: { name: 'anchor', version: 2 }, inputs: [ref(raw)], parameters: markerParameters(profile), tools: [ALIGNER],
     run: async (put) => {
       const index = JSON.parse(await raw.read('index.json')) as Record<string, string>
       const parsed = new Map<string, GenBankRecord>()
@@ -128,8 +140,9 @@ function anchorStep(scope: RunScope, profile: Profile, raw: Artifact) {
       let done = 0
       for (const [version, rec] of parsed) {
         await scope.breathe()
-        const { sequence, from } = geneSequence(rec, profile)
+        const { sequence, from, located, manyPlaces } = locatedSequence(rec, reference, profile, geneSequence(rec, profile))
         anchored.push({
+          ...(located ? { located } : {}), ...(manyPlaces ? { manyPlaces } : {}),
           record: rec.version || version, ...(rec.organism ? { organism: rec.organism } : {}), alignment: alignToReference(sequence, reference), extractedFrom: from, length: sequence.length,
           ambiguous: (sequence.match(/[^ACGTacgt]/g) ?? []).length, unverified: rec.definition.startsWith('UNVERIFIED'),
         })
@@ -160,7 +173,10 @@ function gateStep(scope: RunScope, profile: Profile, anchoredArtifact: Artifact)
       const outcomes: RecordOutcome[] = []
       const aligned: { id: string; sequence: string }[] = []
       for (const a of anchored) {
-        const diagnostics = assessAlignment(a.alignment, gatesForRecord(gates, { wholeRecord: a.extractedFrom === 'whole-record', length: a.length, referenceLength: a.alignment?.aligned.length ?? 0 }))
+        const assessed = assessAlignment(a.alignment, gatesForRecord(gates, { wholeRecord: a.extractedFrom === 'whole-record', length: a.length, referenceLength: a.alignment?.aligned.length ?? 0 }))
+        // The flank kept when cutting a marker out always clips. Clipping beyond it is still reported.
+        const onlyFlank = a.located && a.alignment && a.alignment.clipped.start <= LOCATE_FLANK && a.alignment.clipped.end <= LOCATE_FLANK
+        const diagnostics = onlyFlank ? assessed.filter((d) => d.code !== 'clipped-ends') : assessed
         const fail = (code: string, message: string) => diagnostics.push({ severity: 'error', code, message })
         const reason = excluded.get(a.record) ?? excluded.get(a.record.split('.')[0]!)
         if (reason) fail('excluded-by-profile', reason)
@@ -168,6 +184,8 @@ function gateStep(scope: RunScope, profile: Profile, anchoredArtifact: Artifact)
         if (filters.maxLength !== undefined && a.length > filters.maxLength) fail('too-long', `${a.length} bp is over the maximum of ${filters.maxLength}`)
         if (filters.maxAmbiguous !== undefined && a.ambiguous > filters.maxAmbiguous) fail('too-ambiguous', `${a.ambiguous} ambiguous bases is over the maximum of ${filters.maxAmbiguous}`)
         if (a.unverified) fail('unverified', 'NCBI marks this record UNVERIFIED')
+        if (a.located) diagnostics.push({ severity: 'info', code: 'located-by-similarity', message: `The record doesn't annotate this marker, so it was cut out by similarity: ${where(a.located)}. ${a.located.seedHits} shared seeds` })
+        if (a.manyPlaces) fail('marker-in-several-places', `The marker looks present in ${a.manyPlaces.length} places, so none was chosen: ${a.manyPlaces.map(where).join('; ')}`)
         const passed = !diagnostics.some((d) => d.severity === 'error')
         outcomes.push({ record: a.record, ...(a.organism ? { organism: a.organism } : {}), status: passed ? 'passed' : 'excluded', diagnostics, columns: a.alignment ? a.alignment.matches + a.alignment.mismatches : 0, identity: a.alignment?.identity ?? 0, extractedFrom: a.extractedFrom })
         if (a.alignment && passed) aligned.push({ id: a.record, sequence: a.alignment.aligned })
@@ -346,6 +364,8 @@ export async function buildPanelFromRun(ctx: EngineContext, profile: Profile, cu
       // The checks that actually ran on these records, even if the profile has changed since.
       gates: (gated.manifest.parameters as { gates: GateSettings }).gates,
       ...(numtCopies.length ? { numtCopies } : {}),
+      // From the fetch these records came from, not today's profile, which may have moved to another Study.
+      ...(source.profile.selection.fromStudy ? { study: source.profile.selection.fromStudy } : {}),
     }
     if (settings.validatedScope.length) diagnostics.push({ severity: 'warning', code: 'hand-entered-scope-ignored', message: 'The scope written in the panel settings is ignored. A panel\'s scope now comes only from claims that pass validation', path: 'panel.validatedScope' })
     const draft = buildPanel({ ...input, members })
@@ -397,6 +417,28 @@ export async function loadPanel(store: Store, dir: string): Promise<PanelBundle>
   const problems = verifyBundle(bundle)
   if (problems.length) throw new EngineError('panel-changed', `Panel ${panel.id} version ${panel.version} doesn't match its seal: ${problems.map((p) => p.message).join('; ')}`, 'Restore it from its source, or build it again under a new version')
   return bundle
+}
+
+/** The versions built for a profile's panel, oldest first. Every one is listed, so no attempt can be left out. */
+export function panelVersions(profile: Profile, folders: string[]): string[] {
+  const prefix = `${profile.panel?.id ?? ''}-`
+  const parts = (v: string) => v.split('.').map(Number)
+  const order = (a: string, b: string) => { const x = parts(a), y = parts(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] ?? 0) - (y[i] ?? 0); if (d) return d } return a.localeCompare(b) }
+  return folders.filter((f) => f.startsWith(prefix)).map((f) => f.slice(prefix.length)).sort(order)
+}
+
+/** Compares two built versions. Both must still match their seals. */
+export async function comparePanelVersions(store: Store, profile: Profile, a: string, b: string): Promise<RunComparison> {
+  if (!profile.panel) throw new EngineError('invalid-profile', 'The profile has no panel settings', 'Add groups in the Panel tab')
+  const P = profilePaths(profile.id)
+  const load = async (version: string) => {
+    const dir = P.panel(profile.panel!.id, version)
+    const { panel } = await loadPanel(store, dir)
+    const report = (await store.exists(`${dir}/validation.json`)) ? (JSON.parse(await store.read(`${dir}/validation.json`)) as ValidationReports).claims : undefined
+    return { panel, report }
+  }
+  const [x, y] = [await load(a), await load(b)]
+  return compareRuns(x.panel, y.panel, x.report, y.report)
 }
 
 export type SampleOutcome = { result: Result; diagnostics: Diagnostic[]; aligned: string; insertions: number; deletions: number; identity: number; clipped: { start: number; end: number } } | { result: null; diagnostics: Diagnostic[] }

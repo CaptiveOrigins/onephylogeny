@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Curation, Profile } from '@captiveorigins/onephylogeny-core'
-import { buildPanelFromRun, EngineError, ENGINE_VERSION, fetchAndAnchor, loadArtifact, loadPanel, profilePaths, runSample, testSample, traceArtifact, type EngineContext, type Store } from '../src/index.js'
+import { buildPanelFromRun, comparePanelVersions, panelVersions, EngineError, ENGINE_VERSION, fetchAndAnchor, loadArtifact, loadPanel, profilePaths, runSample, testSample, traceArtifact, type EngineContext, type Store } from '../src/index.js'
 
 function randomSeq(n: number, seed: number): string {
   let a = seed >>> 0
@@ -99,6 +99,72 @@ describe('panel and sample', () => {
     const sample = testSample(mutate([10, 200, 450], 0, 500), 'sample-1', bundle)
     expect(sample.result?.findings.find((f) => f.group === 'a')?.status).toBe('consistent')
     expect(sample.result?.findings.find((f) => f.group === 'b')?.status).toBe('excluded_within_panel')
+  })
+  it('cuts the marker out of an unannotated genome, then applies the usual checks', async () => {
+    const flankL = randomSeq(4000, 7), flankR = randomSeq(6000, 8)
+    const chosen: Profile = { ...profile, selection: { ...profile.selection, include: ['A1.1', 'G1.1', 'G2.1', 'G3.1', 'G4.1'], filters: { ...profile.selection.filters, maxLength: 2000 } } }
+    const ctx = makeContext()
+    const added = { 'G1.1': gb('G1', flankL + mutate([10, 200, 450]) + flankR, 'mitochondrion, complete genome'), 'G2.1': gb('G2', flankL + REF + randomSeq(3000, 9) + mutate([5, 400], 0, 600) + flankR, 'mitochondrion, complete genome'), 'G3.1': gb('G3', randomSeq(9000, 11), 'mitochondrion, complete genome'), 'G4.1': gb('G4', flankL + mutate([10, 200, 450]).slice(0, 150) + flankR, 'mitochondrion, complete genome') }
+    Object.assign(DB, added)
+    try {
+      const { outcomes } = await fetchAndAnchor(ctx, chosen)
+      const by = (r: string) => outcomes.find((o) => o.record === r)!
+      expect(by('G1.1')).toMatchObject({ status: 'passed', extractedFrom: 'located' })
+      expect(by('G1.1').diagnostics.find((d) => d.code === 'located-by-similarity')?.message).toMatch(/bases 3971 to 4630 on the given strand/)
+      expect(by('G1.1').columns).toBe(600)
+      expect(by('G1.1').diagnostics.map((d) => d.code)).not.toContain('clipped-ends')
+      // A similar annotated record gives the same alignment as the located one.
+      expect(by('G1.1').identity).toBe(by('A1.1').identity)
+      expect(by('G2.1')).toMatchObject({ status: 'excluded', extractedFrom: 'whole-record' })
+      expect(by('G2.1').diagnostics.map((d) => d.code)).toContain('marker-in-several-places')
+      expect(by('G3.1')).toMatchObject({ status: 'excluded', extractedFrom: 'whole-record' })
+      // Too little of the marker fails coverage once it's cut out. Left whole, it would have skipped that check.
+      expect(by('G4.1')).toMatchObject({ status: 'excluded' })
+    } finally { for (const k of Object.keys(added)) delete DB[k] }
+  })
+  it('seals the Study behind a fetch into the panel, even if the profile moves on', async () => {
+    const ctx = makeContext()
+    const fromStudy = { id: 'study-1', title: 'Study 1', stateHash: 'sha256:abc', postHocOmitted: ['B9.1'] }
+    const chosen: Profile = { ...profile, selection: { ...profile.selection, fromStudy } }
+    await fetchAndAnchor(ctx, chosen)
+    // Today's profile no longer names the Study. The panel describes the fetch its records came from.
+    const out = await buildPanelFromRun(ctx, profile, curation)
+    expect(out.bundle.panel.study).toEqual(fromStudy)
+    const dir = profilePaths('demo').panel('p', '1')
+    const stored = JSON.parse(ctx.store.files.get(`${dir}/panel.json`)!)
+    stored.study.postHocOmitted = []
+    ctx.store.files.set(`${dir}/panel.json`, JSON.stringify(stored))
+    await expect(loadPanel(ctx.store, dir)).rejects.toThrow(/seal/)
+  })
+  it("doesn't change what's fetched or validated when a Study is named", async () => {
+    const plain = makeContext()
+    await fetchAndAnchor(plain, profile)
+    const a = await buildPanelFromRun(plain, profile, curation)
+    const named = makeContext()
+    await fetchAndAnchor(named, { ...profile, selection: { ...profile.selection, fromStudy: { id: 's', title: 'S', stateHash: 'h', postHocOmitted: [] } } })
+    const b = await buildPanelFromRun(named, profile, curation)
+    expect(b.bundle.panel.builtBy).toBe(a.bundle.panel.builtBy)
+    expect(b.bundle.panel.sequencesChecksum).toBe(a.bundle.panel.sequencesChecksum)
+    expect(b.validation).toEqual(a.validation)
+  })
+  it('compares two built versions, and refuses one that changed after sealing', async () => {
+    const ctx = makeContext()
+    await fetchAndAnchor(ctx, profile)
+    await buildPanelFromRun(ctx, profile, curation)
+    const next: Profile = { ...profile, panel: { ...profile.panel!, version: '2' } }
+    const moved = { schemaVersion: 1 as const, records: { ...curation.records, 'A2.1': { ...curation.records['A2.1']!, group: 'b' } } }
+    await buildPanelFromRun(ctx, next, moved)
+    const c = await comparePanelVersions(ctx.store, profile, '1', '2')
+    expect(c.records.changedGroup).toEqual([{ record: 'A2.1', a: 'a', b: 'b' }])
+    expect(c.a.hasValidation && c.b.hasValidation).toBe(true)
+    const dir = profilePaths('demo').panel('p', '2')
+    const stored = JSON.parse(ctx.store.files.get(`${dir}/panel.json`)!)
+    stored.notCovered = []
+    ctx.store.files.set(`${dir}/panel.json`, JSON.stringify(stored))
+    await expect(comparePanelVersions(ctx.store, profile, '1', '2')).rejects.toThrow(/seal/)
+  })
+  it('lists every version in order, and only this panel', () => {
+    expect(panelVersions(profile, ['p-0.10.0', 'p-0.2.0', 'p-0.9.1', 'other-1.0.0'])).toEqual(['0.2.0', '0.9.1', '0.10.0'])
   })
   it('refuses a panel whose files changed after sealing', async () => {
     const ctx = makeContext()
