@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.0-alpha.3
+
+- **Payload, fixes access:** an access rule that returns a query, such as "results on this reviewer's own site", was read as "everything" when it decided who sees pending results, panels, samples and sequences. Rules are now joined with "or" (`either`, `anyOf`, both exported), so a reviewer of one site sees and approves only that site's results. Tested with reviewers on two made-up sites.
+- Payload: a result's links (animal, sequence, panel, import run) are checked when it is made and not again on review, since they can't change. A site's reviewer who can't read a private animal can still approve its result.
+
 ## 0.1.0-alpha.2
 
 - Payload: optional `samples` and `sequences` collections (`records` option). `registerSequence` records one lab file as a sample and a sequence. It checks the file's text against its SHA-256 and refuses, in plain words, a file that isn't exactly one usable DNA sequence for its marker. One sample per kit; the same file again changes nothing, and a different file for the same kit is a second sequence on the same sample. `assignWaiting` tests waiting sequences against the panel for their marker and species and records results pending review, stamped with the panel's status. Tested with made-up data in an in-memory database.

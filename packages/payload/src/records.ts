@@ -1,3 +1,4 @@
+import { anyOf } from './access.js'
 import { parseFasta, sha256Hex, type Result } from '@captiveorigins/onephylogeny-core'
 import { APIError, type Access, type CollectionBeforeChangeHook, type CollectionConfig, type Field, type Payload, type PayloadRequest, type Where } from 'payload'
 
@@ -47,7 +48,7 @@ export function recordCollections(o: RecordsOptions, base: { panels: string; ass
   const samples = o.slugs?.samples ?? 'samples'
   const sequences = o.slugs?.sequences ?? 'sequences'
   const manage = base.manage
-  const read: Access = async (args) => (await manage(args)) || (o.readAccess ? o.readAccess(args) : false)
+  const read: Access = anyOf(manage, o.readAccess)
   const access = { read, create: manage, update: manage, delete: () => false }
 
   const sampleCollection: CollectionConfig = {

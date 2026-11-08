@@ -1,4 +1,6 @@
 import { validateResult, type Result } from '@captiveorigins/onephylogeny-core'
+import { relationship as validateRelationship } from 'payload/shared'
+import { either } from './access.js'
 import { recordCollections, type RecordsOptions } from './records.js'
 import { APIError, type Access, type CollectionBeforeChangeHook, type CollectionAfterChangeHook, type CollectionConfig, type Config, type Endpoint, type Field, type Plugin, type Where } from 'payload'
 
@@ -27,6 +29,7 @@ export type OnePhylogenyPluginOptions = {
   records?: RecordsOptions
 }
 
+export { either, anyOf } from './access.js'
 export { registerSequence, assignWaiting, readSingleSequence, summarize, type RecordsOptions, type RegisterSequenceInput, type Evaluate } from './records.js'
 
 const PANEL_TRANSITIONS: Record<string, string[]> = { candidate: ['active', 'withdrawn'], active: ['superseded', 'withdrawn'], superseded: ['withdrawn'], withdrawn: [] }
@@ -134,6 +137,12 @@ const relation = (name: string, relationTo: string | undefined, extra: Partial<F
   relationTo ? [{ name, type: 'relationship', relationTo, index: true, ...extra } as Field] : []
 
 /**
+ * A result's links are checked when it is made and can't change afterwards (the hook refuses it). Checking them again on
+ * review would ask whether the reviewer may read the animal, which a site's reviewer often can't, and isn't the question.
+ */
+const checkedWhenMade = { validate: (value: unknown, options: { operation?: string }) => (options.operation === 'update' ? true : validateRelationship(value as never, options as never)) } as Partial<Field>
+
+/**
  * OnePhylogeny for Payload. Adds immutable panels and reviewed results, relating to whatever collections a site already
  * has. It holds no species knowledge. Compute happens elsewhere: this stores what was computed and controls release.
  */
@@ -156,9 +165,9 @@ export const onePhylogeny = (options: OnePhylogenyPluginOptions = {}): Plugin =>
     admin: { group, useAsTitle: 'key', defaultColumns: ['key', 'version', 'status', 'marker'] },
     access: {
       read: async (args) => {
-        if (await manage(args)) return true
         const published: Where = { status: { in: ['active', 'superseded'] } }
-        return againstShown ? { or: [published, { and: [{ status: { equals: 'candidate' } }, { shownAsExploratory: { equals: true } }] }] } : published
+        const shown: Where = { and: [{ status: { equals: 'candidate' } }, { shownAsExploratory: { equals: true } }] }
+        return either(await manage(args), published, againstShown ? shown : false)
       },
       create: manage, update: manage, delete: () => false,
     },
@@ -186,24 +195,23 @@ export const onePhylogeny = (options: OnePhylogenyPluginOptions = {}): Plugin =>
     labels: { singular: 'Lineage result', plural: 'Lineage results' },
     admin: { group, useAsTitle: 'summary', defaultColumns: ['summary', 'panel', 'reviewStatus', 'releasedAt'] },
     access: {
+      // Managers and reviewers see what their own rules allow, including pending results; everyone else only released ones.
       read: async (args) => {
-        if ((await manage(args)) || (await review(args))) return true
-        const allowed = await readReleased(args)
-        if (!allowed) return false
         const released: Where = { reviewStatus: { equals: 'approved' } }
-        return allowed === true ? released : { and: [released, allowed] }
+        const allowed = await readReleased(args)
+        return either(await manage(args), await review(args), allowed === true ? released : allowed ? { and: [released, allowed] } : false)
       },
       create: manage,
       update: review,
       delete: () => false,
     },
     fields: [
-      ...relation('subject', r.subject),
-      ...relation('sequence', r.sequence),
-      { name: 'panel', type: 'relationship', relationTo: panels, required: true, index: true },
+      ...relation('subject', r.subject, checkedWhenMade),
+      ...relation('sequence', r.sequence, checkedWhenMade),
+      { name: 'panel', type: 'relationship', relationTo: panels, required: true, index: true, ...checkedWhenMade } as Field,
       { name: 'summary', type: 'text', required: true },
       { name: 'result', type: 'json', required: true, admin: { description: 'The OnePhylogeny result, stored exactly as computed.' } },
-      ...relation('importRun', r.importRuns),
+      ...relation('importRun', r.importRuns, checkedWhenMade),
       { name: 'reviewStatus', type: 'select', required: true, defaultValue: 'pending', index: true, options: ['pending', 'approved', 'rejected', 'withdrawn'] },
       { name: 'reviewer', type: 'text', admin: { readOnly: true } },
       { name: 'releasedAt', type: 'date', admin: { readOnly: true } },

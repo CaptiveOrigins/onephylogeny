@@ -1,6 +1,6 @@
 {
   "name": "@captiveorigins/onephylogeny-engine",
-  "version": "0.1.0-alpha.2",
+  "version": "0.1.0-alpha.3",
   "description": "OnePhylogeny engine: runs profiles end to end with immutable run records and structured logs: fetch, anchor, gate, build panels, validate, test samples and build trees through replaceable ports.",
   "keywords": [
     "phylogenetics",
