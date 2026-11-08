@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { regionCard, REGION_CARD_LABELS, type Panel, type Result } from '../src/index.js'
+import { regionCard, REGION_CARD_LABELS, type Panel, type PanelGroup, type Result } from '../src/index.js'
 
 // Invented panel and result: only the fields regionCard reads.
 const located = { record: 'r1', use: 'lineage-and-location' as const, provenanceClass: 'wild-documented' as const }
 const assigned = { record: 'r2', use: 'lineage-only' as const, provenanceClass: 'unknown' as const }
 const claim = { a: 'a', b: 'b', window: 'w', minColumns: 100, sites: { a: 3, b: 3 }, basis: 'exploratory' as const }
-const panelOf = (over: Partial<Panel> = {}): Panel => ({
-  id: 'p', version: '1', checksum: 'sha256:x', status: 'active', claims: [claim],
-  groups: [{ id: 'a', label: 'A', region: 'Northern Region', coverage: [], evidence: [located, assigned] }, { id: 'b', label: 'B', region: 'Southern Region', coverage: [], evidence: [located] }],
-  ...over,
-} as Panel)
+const groupA: PanelGroup = { id: 'a', label: 'A', region: 'Northern Region', coverage: [], evidence: [located, assigned] }
+const groupB: PanelGroup = { id: 'b', label: 'B', region: 'Southern Region', coverage: [], evidence: [located] }
+const panelOf = (over: Partial<Panel> = {}): Panel => ({ id: 'p', version: '1', checksum: 'sha256:x', status: 'active', claims: [claim], groups: [groupA, groupB], ...over } as Panel)
+/** The panel with group A changed. */
+const withA = (a: Partial<PanelGroup>) => panelOf({ groups: [{ ...groupA, ...a }, groupB] })
 const finding = (group: string, status: string) => ({ group, status, reasonCode: 'within-spread', reason: '', overlap: 500, informativeSites: 3, windows: [], evidence: [] })
 const resultOf = (p: Panel, over: Partial<Result> = {}): Result => ({
   schemaVersion: 2, query: 'q', run: 'r', overlap: 500, pairs: [], candidatesNotEvaluated: [], caveats: [],
@@ -58,17 +58,17 @@ describe('region cards (P30)', () => {
 
   it('never show coordinates, only region names', () => {
     for (const region of ['3.4651, -62.2159', '3°27\'N 62°13\'W', '4 N', 'lat 3.4']) {
-      const p = panelOf({ groups: [{ ...panelOf().groups[0], region }, panelOf().groups[1]] })
+      const p = withA({ region })
       expect(regionCard(p, resultOf(p), keeper)).toEqual({ show: false, reason: 'region-looks-like-coordinates' })
     }
   })
 
   it('use only records that can show where a group occurs, never assigned ones (P12)', () => {
-    const p = panelOf({ groups: [{ ...panelOf().groups[0], evidence: [assigned] }, panelOf().groups[1]] })
+    const p = withA({ evidence: [assigned] })
     expect(regionCard(p, resultOf(p), keeper)).toEqual({ show: false, reason: 'no-located-records' })
-    const lineageOnly = panelOf({ groups: [{ ...panelOf().groups[0], evidence: [{ ...located, use: 'lineage-only' }] }, panelOf().groups[1]] })
+    const lineageOnly = withA({ evidence: [{ ...located, use: 'lineage-only' }] })
     expect(regionCard(lineageOnly, resultOf(lineageOnly), keeper)).toEqual({ show: false, reason: 'no-located-records' })
-    const unsourced = panelOf({ groups: [{ ...panelOf().groups[0], evidence: [{ ...located, provenanceClass: 'origin-reported' }] }, panelOf().groups[1]] })
+    const unsourced = withA({ evidence: [{ ...located, provenanceClass: 'origin-reported' }] })
     expect(regionCard(unsourced, resultOf(unsourced), keeper)).toEqual({ show: false, reason: 'no-located-records' })
   })
 
