@@ -5,7 +5,7 @@ import type { EngineContext } from './context.js'
 import { EngineError } from './errors.js'
 
 /** Bump with each engine release. Recorded in every run, panel and result. */
-export const ENGINE_VERSION = '0.1.0-alpha.2'
+export const ENGINE_VERSION = '0.1.0-alpha.3'
 export const ENGINE: ToolIdentity = { name: 'onephylogeny-engine', version: ENGINE_VERSION }
 
 export const profilePaths = (profileId: string) => ({
