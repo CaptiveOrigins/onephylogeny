@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-alpha.1
 
 - Hold-out reports add `byStatus`, how many findings had each status and how many concerned the true group, and `singleMatch`, how often one clear match was right, by tests and by sites, with an interval from 4 sites. No probabilities.
 - Invariant P30 and `regionCard`: a result may name the region where the matched group's located records were sampled, and the regions it was found closer than, as a hypothesis about the maternal line. Draft card text, waiting for the owner's exact words: "Closer to the maternal line sampled in <regions> than to those sampled in <others>. Other regions are unsampled or untested. Not proof of where this animal was collected." `<others>` names only groups a validated comparison resolved against the match; a comparison favoring another group, or none resolved, shows nothing. It also shows nothing for an ambiguous, novel or out-of-scope match, or for records assigned by sequence. Regions are names, never coordinates. Public display needs the keeper's opt-in. A `candidate` panel shows regions only if a maintainer chose to show it, and `madeAgainst` keeps a result made against a candidate labeled exploratory. Hosts pass translated text and a `locale`, and region lists read naturally in that language ("A, B and C"). The card also comes back in `parts` (label, match, caveat), so a page can show the label as a badge and the caveat on its own line.
