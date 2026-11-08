@@ -13,8 +13,6 @@ export type RegionCardLabels = {
   match: string
   /** Also goes in every export of the card, such as JSON. */
   caveat: string
-  /** Joins region names. */
-  separator: string
 }
 
 export const REGION_CARD_LABELS: RegionCardLabels = {
@@ -24,7 +22,6 @@ export const REGION_CARD_LABELS: RegionCardLabels = {
   // Draft, waiting for the owner's confirmation of the exact words.
   match: 'Closer to the maternal line sampled in {regions} than to those sampled in {others}. Other regions are unsampled or untested.',
   caveat: 'Not proof of where this animal was collected.',
-  separator: ', ',
 }
 
 export type RegionCardOptions = {
@@ -39,6 +36,8 @@ export type RegionCardOptions = {
    * exploratory label after the panel becomes active. Defaults to the panel's current status.
    */
   madeAgainst?: PanelStatus
+  /** Language for joining region names, such as "A, B and C". Pass the one the labels are in. Default `en`. */
+  locale?: string
   labels?: Partial<RegionCardLabels>
 }
 
@@ -51,7 +50,14 @@ export type RegionCardRefusal =
 
 export type RegionCard =
   /** `others` are the regions of groups this result resolved against the match, and only those. */
-  | { show: true; group: Id; regions: string[]; others: string[]; label: RegionCardLabel; text: string; caveat: string }
+  | {
+    show: true; group: Id; regions: string[]; others: string[]; label: RegionCardLabel
+    /** The same words in parts, so a page can show the label as its own badge and the caveat as its own line. `label` is empty when there's no prefix. */
+    parts: { label: string; match: string; caveat: string }
+    /** The parts as one sentence run, for plain-text uses such as exports. */
+    text: string
+    caveat: string
+  }
   | { show: false; reason: RegionCardRefusal }
 
 // Decimal degrees, degrees-minutes-seconds or a lat/lon pair. A region is a name, never a position.
@@ -101,6 +107,8 @@ export function regionCard(panel: Panel, result: Result, options: RegionCardOpti
   if (!others.length) return no('no-resolved-comparison')
   const label: RegionCardLabel = madeAgainst === 'candidate' ? 'exploratory' : panel.claims.every((c) => c.basis === 'confirmatory') ? 'reviewed' : 'reviewed-exploratory'
   const prefix = { exploratory: labels.exploratory, 'reviewed-exploratory': labels.reviewedExploratory, reviewed: labels.reviewed }[label]
-  const text = [prefix, labels.match.replace('{regions}', regions.join(labels.separator)).replace('{others}', others.join(labels.separator)), labels.caveat].filter(Boolean).join(' ')
-  return { show: true, group: group.id, regions, others, label, text, caveat: labels.caveat }
+  const list = new Intl.ListFormat(options.locale ?? 'en', { type: 'conjunction' })
+  const parts = { label: prefix, match: labels.match.replace('{regions}', list.format(regions)).replace('{others}', list.format(others)), caveat: labels.caveat }
+  const text = [parts.label, parts.match, parts.caveat].filter(Boolean).join(' ')
+  return { show: true, group: group.id, regions, others, label, parts, text, caveat: labels.caveat }
 }
