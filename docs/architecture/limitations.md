@@ -3,7 +3,7 @@
 Kept current. Nothing listed here is claimed as done.
 
 - Sources: NCBI nucleotide only. SNP data can't be fetched by species yet.
-- Evaluation rules are configured values, not calibrated probabilities. Validation reports hold-out and missing-group results, not calibration, and small single-site groups can't be held out.
+- Evaluation rules are configured values, not calibrated probabilities. Validation reports hold-out and missing-group results, and counts how often each reported status and each single match was right, but never a probability. These counts haven't run on real data yet, and small single-site groups can't be held out.
 - `alignToReference` drops insertions from reference coordinates, though it reports them. Terminal tails of 5 bases or fewer are placed without an identity check, so a junk tail that short can add a few false differences.
 - Gate thresholds were set from this project's data and need calibrating on others. Real-indel handling has little real test data, and the genome NUMT screen has run once and can't see copies that arose after the two species split.
 - Gaps are treated as missing data. Real deletions are not modelled separately.

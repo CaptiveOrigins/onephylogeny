@@ -129,6 +129,10 @@ A claim here is narrow: "this panel separates groups A and B in window W, for qu
 
 **Expected before running** (first species, West/East in 3', using the records of panel `0.6.1`): the gate passes, and the minimum length stays at 150 or rises to 200, since at 150 the fixed-position results showed none wrong. A rise wouldn't be a failure. It would mean 150 was somewhat flattered. Frozen panel `0.6.1` keeps its stated 150 either way, because its checksum is what the preregistered test names.
 
+**Calibration, as counts.** At these site counts no probability can be honest, so the harness reports none. Each hold-out scheme also reports, for every status the panel gave (`consistent`, `inconclusive`, `excluded_within_panel`, `not_evaluable`), how many findings had it and how many of those concerned the held-out record's true group. It reports single matches separately: tests where exactly one group was consistent and the query wasn't novel, which is the only case that may name a region (P30). Those are counted by tests and by sites. A site is right only if every single match from it was right, records without a site count as tests but not sites, and the exact interval appears from 4 sites. Committed before this first ran on real data.
+
+**Expected before running** (first species, leave-one-site-out, records of panel `0.6.1`): no `excluded_within_panel` finding concerns the true group, as in the fragment tests. No prediction is made for single-match accuracy.
+
 Values 4, 0.8 and 5% are our proposals and aren't calibrated. **They aren't to be changed because a claim failed.**
 
 **Every claim stays labeled exploratory** until a test meeting section 2 runs. Passing these gates means a claim survived its controls on data that shaped the method, not that it's confirmed.
