@@ -40,7 +40,7 @@ No tool needs another. Connections are optional, and they use plain files or a s
 | **OnePhylogeny + OnePedigree** | Check DNA results against recorded maternal lines, and report conflicts for review | Check package works; not yet in either app |
 | **OnePedigree + OneTaxonomy** | Pedigrees tied to a curated species list | Planned |
 | **All three** | From a species, to its lineages, to a named animal's family and DNA | Planned |
-| **Any of them on a website** | Payload plugins and React views on your own site | OnePedigree published; OnePhylogeny built but unpublished; OneTaxonomy planned |
+| **Any of them on a website** | Payload plugins and React views on your own site | OnePedigree and OnePhylogeny published as alphas; OneTaxonomy planned |
 
 ## One suite, each its own
 
