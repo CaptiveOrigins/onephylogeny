@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- The region card uses the owner's confirmed wording: "Closer to the maternal line population sampled in <regions> than those in <others>. Other regions are unsampled or untested. Not proof of where this animal was collected."
+
 ## 0.1.0-alpha.1
 
 - Hold-out reports add `byStatus`, how many findings had each status and how many concerned the true group, and `singleMatch`, how often one clear match was right, by tests and by sites, with an interval from 4 sites. No probabilities.
