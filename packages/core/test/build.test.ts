@@ -421,6 +421,22 @@ describe('claims', () => {
     const lopsided = many('a', a).map((m, i) => ({ ...m, block: i < 12 ? 'big' : m.block }))
     expect(leaveOneBlockOut({ ...base(), members: [...lopsided, ...many('b', b)] }).diagnostics.map((d) => d.code)).toContain('single-block-dominates')
   })
+  it('tallies each reported status against the truth, and scores single matches by site', () => {
+    const r = leaveOneBlockOut({ ...base(), members: [...many('a', a), ...many('b', b)] })
+    const total = (k: 'findings' | 'aboutTruth') => r.byStatus!.reduce((n, t) => n + t[k], 0)
+    expect(total('findings')).toBe(r.tested * 2)
+    expect(total('aboutTruth')).toBe(r.tested)
+    expect(r.byStatus!.find((t) => t.status === 'excluded_within_panel')!.aboutTruth).toBe(0)
+    expect(r.singleMatch).toMatchObject({ tests: r.tested, right: r.tested, sites: 18, sitesRight: 18 })
+    expect(r.singleMatch!.interval![0]).toBeGreaterThan(0.8)
+  })
+  it('counts a wrong single match against its whole site', () => {
+    // One record labeled a carries b's sequence, at a site of its own beside one correct a record.
+    const odd = { ...member('b', b, 40, 'Paper 1'), record: 'odd', group: 'a', block: 'a-mixed' }
+    const r = leaveOneBlockOut({ ...base(), members: [...many('a', a), ...many('b', b), { ...member('a', a, 41, 'Paper 1'), block: 'a-mixed' }, odd] })
+    expect(r.singleMatch!.right).toBe(r.singleMatch!.tests - 1)
+    expect(r.singleMatch!.sites - r.singleMatch!.sitesRight).toBe(1)
+  })
   it('is repeatable from its seed', () => {
     const members = [...many('a', a), ...many('b', b)]
     expect(claimOf(members)).toEqual(claimOf(members))

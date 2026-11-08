@@ -2,7 +2,7 @@ import { basesOf, compareAligned, coverage } from './sequence.js'
 import { deriveEvaluation, wholeMarker } from './derive.js'
 import { DEFAULT_GATES, type GateSettings } from './gates.js'
 import { LOCATION_EVIDENCE, sealPanel, sequencesChecksum } from './panel.js'
-import type { Diagnostic, Finding, FindingReason, FindingWindow, Id, Novelty, PairFinding, PairReason, Panel, PanelGroup, PanelSettings, PanelStatus, ProvenanceClass, Result, EvidenceUse, ValidatedClaim, StudyLink } from './model.js'
+import type { Diagnostic, Finding, FindingReason, FindingStatus, FindingWindow, Id, Novelty, PairFinding, PairReason, Panel, PanelGroup, PanelSettings, PanelStatus, ProvenanceClass, Result, EvidenceUse, ValidatedClaim, StudyLink } from './model.js'
 import { CLAIM_GATES, clopperPearson, describeClaim } from './validation.js'
 
 /** A panel and the aligned sequences its evidence names. Panels stay JSON; sequences travel in FASTA beside them. */
@@ -293,6 +293,15 @@ export type GroupScore = { group: string; tested: number; includedTruth: number;
  */
 export type GroupSites = { group: string; records: number; sites: number; largestSiteShare: number; sitesRight: number; interval?: [number, number] }
 
+/** Every finding a hold-out produced, by the status it reported, and how many of those were about the record's true group. */
+export type StatusTally = { status: FindingStatus; findings: number; aboutTruth: number }
+
+/**
+ * Tests where exactly one group was consistent and the query wasn't novel: the only case that may name a region (P30).
+ * A site counts as right only if every such test from it was right. `interval` needs 4 sites, as elsewhere.
+ */
+export type SingleMatchScore = { tests: number; right: number; sites: number; sitesRight: number; interval?: [number, number] }
+
 export type ValidationReport = {
   scheme: 'leave-one-block-out' | 'leave-one-group-out' | 'leave-one-record-out' | 'leave-one-haplotype-out' | 'leave-one-study-out'
   tested: number
@@ -303,6 +312,10 @@ export type ValidationReport = {
   untestedGroups: string[]
   /** For leave-one-group-out: tests where a group was consistent even though the true group was absent. */
   falseConsistent?: number
+  /** When the panel reports a status, how often it concerns the truth. Hold-out schemes only. */
+  byStatus?: StatusTally[]
+  /** How often a single clear match is right. Hold-out schemes only. */
+  singleMatch?: SingleMatchScore
   diagnostics: Diagnostic[]
 }
 
@@ -324,6 +337,10 @@ export function holdOut(input: ValidationInput, keyOf: (m: PanelMember) => strin
     return s
   }
   const perSite = new Map<string, { group: string; site: string; records: number; right: number }>()
+  const STATUSES: FindingStatus[] = ['consistent', 'inconclusive', 'excluded_within_panel', 'not_evaluable']
+  const byStatus = new Map(STATUSES.map((status) => [status, { status, findings: 0, aboutTruth: 0 }]))
+  const single = { tests: 0, right: 0 }
+  const singleSites = new Map<string, boolean>()
   let tested = 0
   let skipped = 0
   for (const [, held] of blocks) {
@@ -342,6 +359,21 @@ export function holdOut(input: ValidationInput, keyOf: (m: PanelMember) => strin
       else if (finding?.status === 'excluded_within_panel') s.excludedTruth++
       else if (finding?.status === 'inconclusive') s.inconclusive++
       if (result.novelty.flagged) s.flagged++
+      for (const f of result.findings) {
+        const t = byStatus.get(f.status)!
+        t.findings++
+        if (f.group === m.group) t.aboutTruth++
+      }
+      if (consistent.length === 1 && !result.novelty.flagged) {
+        const right = consistent[0] === m.group
+        single.tests++
+        if (right) single.right++
+        // As in the site counts above, records with no site count as tests but not as sites.
+        if (m.block !== undefined) {
+          const key = `${m.group}\u0000${m.block}`
+          singleSites.set(key, (singleSites.get(key) ?? true) && right)
+        }
+      }
       const siteKey = `${m.group}\u0000${m.block ?? ''}`
       const site = perSite.get(siteKey) ?? { group: m.group, site: m.block ?? '', records: 0, right: 0 }
       site.records++
@@ -369,7 +401,9 @@ export function holdOut(input: ValidationInput, keyOf: (m: PanelMember) => strin
     if (s.largestSiteShare > 0.5) diagnostics.push({ severity: 'warning', code: 'single-block-dominates', message: `One site holds ${Math.round(s.largestSiteShare * 100)}% of ${s.group}'s records`, ids: [s.group] })
   }
   diagnostics.push(...lineageOnlyNote(input))
-  return { scheme, tested, skipped, groups, sites, untestedGroups: input.settings.groups.map((g) => g.id).filter((g) => !scores.has(g)), diagnostics }
+  const sitesRight = [...singleSites.values()].filter(Boolean).length
+  const singleMatch: SingleMatchScore = { ...single, sites: singleSites.size, sitesRight, ...(singleSites.size >= CLAIM_GATES.minSitesPerGroup ? { interval: clopperPearson(sitesRight, singleSites.size) } : {}) }
+  return { scheme, tested, skipped, groups, sites, byStatus: [...byStatus.values()], singleMatch, untestedGroups: input.settings.groups.map((g) => g.id).filter((g) => !scores.has(g)), diagnostics }
 }
 
 /** Tests each sampling site against a panel rebuilt without it, so a record never meets its own site. */

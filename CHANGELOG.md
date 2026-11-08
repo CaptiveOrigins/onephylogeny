@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Hold-out reports add `byStatus`, how many findings had each status and how many concerned the true group, and `singleMatch`, how often one clear match was right, by tests and by sites, with an interval from 4 sites. No probabilities.
 - Invariant P30 and `regionCard`: a result may name the region where the matched group's located records were sampled, as a hypothesis about the maternal line, with the card text "Matches a maternal line sampled in <regions>. Other regions are unsampled or untested. Not proof of where this animal was collected." It shows nothing for an ambiguous, novel or out-of-scope match, or for records assigned by sequence. Regions are names, never coordinates. Public display needs the keeper's opt-in. A `candidate` panel shows regions only if a maintainer chose to show it, with the exploratory label. Hosts pass translated text.
 - **Payload, breaking for scripts that activate panels:** activating a panel needs a signed-in user, and the panel records who (`activatedBy`, their user ID) and when (`activatedAt`). Both are read-only and can't be set or changed any other way. A script without a user can still create candidates, but a person activates them. This records who pressed Activate, not who reviewed the panel's science.
 
