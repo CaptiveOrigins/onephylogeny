@@ -1,6 +1,6 @@
 {
   "name": "@captiveorigins/payload-plugin-onephylogeny",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.2",
   "description": "OnePhylogeny for Payload: immutable reference panels and released results on your own collections, with server-enforced review, safe endpoints and no coordinates.",
   "keywords": [
     "phylogenetics",
