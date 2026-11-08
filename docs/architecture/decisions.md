@@ -4,7 +4,8 @@ Decisions the owner made about OnePhylogeny, newest first, each with its date. T
 
 | Date | Decision | Where it lives |
 | --- | --- | --- |
-| 2026-11-07 | A region card says the animal's maternal line is closer to one sampled population than to the others it was compared with: "an indication their genetics more closely match this population compared to X, Y, Z", never proof of origin. **The exact card wording is a draft until the owner confirms it.** Relayed. | `regionCard`, P30 |
+| 2026-11-07 | Card wording, in the owner's words: "Closer to the maternal line population sampled in <regions> than those in <others>. Other regions are unsampled or untested. Not proof of where this animal was collected." Relayed. | `REGION_CARD_LABELS` |
+| 2026-11-07 | A region card says the animal's maternal line is closer to one sampled population than to the others it was compared with: "an indication their genetics more closely match this population compared to X, Y, Z", never proof of origin. Relayed. | `regionCard`, P30 |
 | 2026-11-07 | Keepers may get results before the outside expert review, always labeled exploratory, and private unless they opt in per animal. Relayed. | Payload `resultsAgainst`, `shownAsExploratory` |
 | 2026-11-07 | P30 approved as written, with P12 unchanged, plus the card's safeguards: public display opt-in per animal, the caveat in the JSON export, and no regions in CSV exports. Regions may also show for exploratory panels, clearly labeled. Relayed. | [Invariants](scientific-invariants.md) P30 |
 | 2026-11-07 | Lineage to climate: pursue it as soon as it makes sense. It isn't blocked until a confirmatory test. Nothing built yet. Relayed. | Platform plan |

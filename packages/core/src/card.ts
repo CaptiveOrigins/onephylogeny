@@ -19,8 +19,8 @@ export const REGION_CARD_LABELS: RegionCardLabels = {
   exploratory: 'Exploratory: not yet reviewed. Built from records that also shaped the method, and not yet tested on independent data.',
   reviewedExploratory: 'Reviewed. Claims are exploratory until tested on independent data.',
   reviewed: '',
-  // Draft, waiting for the owner's confirmation of the exact words.
-  match: 'Closer to the maternal line sampled in {regions} than to those sampled in {others}. Other regions are unsampled or untested.',
+  // The owner's words, 2026-11-07.
+  match: 'Closer to the maternal line population sampled in {regions} than those in {others}. Other regions are unsampled or untested.',
   caveat: 'Not proof of where this animal was collected.',
 }
 
