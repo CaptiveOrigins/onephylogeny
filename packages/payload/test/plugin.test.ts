@@ -17,7 +17,11 @@ beforeAll(async () => {
     secret: 'test-secret-not-for-production', telemetry: false, typescript: { autoGenerate: false },
     db: mongooseAdapter({ url: mongo.getUri('onephylogeny'), ensureIndexes: true }),
     collections: [{ slug: 'users', auth: true, fields: [{ name: 'role', type: 'text' }] }, { slug: 'animals', fields: [{ name: 'name', type: 'text' }] }],
-    plugins: [onePhylogeny({ relations: { subject: 'animals' }, manageAccess: isAdmin as never })],
+    plugins: [
+      onePhylogeny({ relations: { subject: 'animals' }, manageAccess: isAdmin as never }),
+      // A second install, as a site that shows candidates as exploratory would configure it.
+      onePhylogeny({ slugs: { panels: 'xpanels', assignments: 'xresults' }, relations: { subject: 'animals' }, manageAccess: isAdmin as never, resultsAgainst: 'activeOrShown' }),
+    ],
   }) })
   animal = (await payload.create({ collection: 'animals', data: { name: 'A' } })).id
 }, 120000)
@@ -112,6 +116,47 @@ describe('results', () => {
     const p = await activate((await createPanel()).id)
     const a = await assign(p)
     await expect(payload.update({ collection: 'assignments' as never, id: a.id, data: { reviewer: 'someone' } as never, user: admin })).rejects.toThrow(/set by approving/)
+  })
+})
+
+describe('exploratory candidates', () => {
+  const xpanel = (over = {}) => payload.create({ collection: 'xpanels' as never, data: panelData(over) as never }) as unknown as Promise<any>
+  const xupdate = (id: unknown, data: object) => payload.update({ collection: 'xpanels' as never, id: id as string, data: data as never, user: admin }) as unknown as Promise<any>
+  const xassign = (p: any) => payload.create({ collection: 'xresults' as never, data: { subject: animal, panel: p.id, summary: 'S', result: resultFor(p) } as never }) as unknown as Promise<any>
+
+  it('are refused by default, even when shown', async () => {
+    const p = await createPanel()
+    const shown = await payload.update({ collection: 'panels' as never, id: p.id, data: { shownAsExploratory: true } as never, user: admin }) as any
+    expect(shown.shownAsExploratory).toBe(true)
+    await expect(assign(shown)).rejects.toThrow(/active panel/)
+  })
+  it('take results only once shown, and stamp what the result was made against', async () => {
+    const p = await xpanel()
+    await expect(xassign(p)).rejects.toThrow(/shown as exploratory/)
+    const shown = await xupdate(p.id, { shownAsExploratory: true })
+    const r = await xassign(shown)
+    expect(r).toMatchObject({ panelStatus: 'candidate', panelShownAsExploratory: true })
+    const active = await xupdate(p.id, { status: 'active' })
+    expect(active.shownAsExploratory).toBe(false)
+    expect(((await payload.findByID({ collection: 'xresults' as never, id: r.id })) as any).panelStatus).toBe('candidate')
+    expect(await xassign(active)).toMatchObject({ panelStatus: 'active', panelShownAsExploratory: false })
+  })
+  it('keep the stamp fixed, and the flag on candidates only', async () => {
+    const shown = await xupdate((await xpanel()).id, { shownAsExploratory: true })
+    const r = await xassign(shown)
+    await expect(payload.update({ collection: 'xresults' as never, id: r.id, data: { panelStatus: 'active' } as never, user: admin })).rejects.toThrow(/set when it is made/)
+    const active = await xupdate((await xpanel()).id, { status: 'active' })
+    await expect(xupdate(active.id, { shownAsExploratory: true })).rejects.toThrow(/Only a candidate/)
+    const withdrawn = await xupdate(shown.id, { status: 'withdrawn' })
+    expect(withdrawn.shownAsExploratory).toBe(false)
+  })
+  it('let readers see shown candidates only where the site allows them', async () => {
+    const hidden = await xpanel()
+    const shown = await xupdate((await xpanel()).id, { shownAsExploratory: true })
+    await expect(payload.findByID({ collection: 'xpanels' as never, id: shown.id, overrideAccess: false, user: viewer })).resolves.toBeTruthy()
+    await expect(payload.findByID({ collection: 'xpanels' as never, id: hidden.id, overrideAccess: false, user: viewer })).rejects.toThrow()
+    const plain = await payload.update({ collection: 'panels' as never, id: (await createPanel()).id, data: { shownAsExploratory: true } as never, user: admin }) as any
+    await expect(payload.findByID({ collection: 'panels' as never, id: plain.id, overrideAccess: false, user: viewer })).rejects.toThrow()
   })
 })
 
