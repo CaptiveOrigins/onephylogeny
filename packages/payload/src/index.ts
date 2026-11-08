@@ -14,6 +14,11 @@ export type OnePhylogenyPluginOptions = {
   readReleasedAccess?: Access
   /** Field added to assignments for multi-tenant hosts' isolation plugins to find. */
   group?: string
+  /**
+   * Which panels results may be made against. `activeOrShown` also allows a `candidate` a maintainer ticked "shown as
+   * exploratory", and lets readers see such candidates. Default: `active`.
+   */
+  resultsAgainst?: 'active' | 'activeOrShown'
 }
 
 const PANEL_TRANSITIONS: Record<string, string[]> = { candidate: ['active', 'withdrawn'], active: ['superseded', 'withdrawn'], superseded: ['withdrawn'], withdrawn: [] }
@@ -36,6 +41,12 @@ const stamp = (v: unknown) => (v == null || v === '' ? '' : v instanceof Date ? 
 const ACTIVATION_FIELDS = ['activatedBy', 'activatedAt']
 
 const panelBeforeChange: CollectionBeforeChangeHook = ({ data, originalDoc, operation, req }) => {
+  // Only a candidate can be shown as exploratory; leaving candidate clears it.
+  const leaving = operation === 'update' && String(data.status ?? originalDoc.status) !== 'candidate'
+  if (leaving) {
+    if (data.shownAsExploratory === true && String(originalDoc.status) !== 'candidate') fail('Only a candidate panel can be shown as exploratory.')
+    data.shownAsExploratory = false
+  }
   if (hasCoordinates(data.groups)) fail('Panels use generalized regions and never hold coordinates.')
   if (operation === 'create') {
     if ((data.status ?? 'candidate') !== 'candidate') fail('A new panel starts as a candidate.')
@@ -70,11 +81,15 @@ const supersedeOthers = (panels: string): CollectionAfterChangeHook => async ({ 
   return doc
 }
 
-const assignmentBeforeChange = (panels: string): CollectionBeforeChangeHook => async ({ data, originalDoc, operation, req }) => {
+const assignmentBeforeChange = (panels: string, againstShown: boolean): CollectionBeforeChangeHook => async ({ data, originalDoc, operation, req }) => {
   if (operation === 'create') {
     if ((data.reviewStatus ?? 'pending') !== 'pending') fail('A new result starts as pending review.')
-    const panel = await req.payload.findByID({ collection: panels as never, id: idOf(data.panel)!, depth: 0, req, overrideAccess: true }) as unknown as { key: string; version: string; checksum: string; status: string; groups?: { groupId: string }[] }
-    if (panel.status !== 'active') fail('Results can only be made against an active panel.')
+    const panel = await req.payload.findByID({ collection: panels as never, id: idOf(data.panel)!, depth: 0, req, overrideAccess: true }) as unknown as { key: string; version: string; checksum: string; status: string; shownAsExploratory?: boolean; groups?: { groupId: string }[] }
+    const shown = panel.status === 'candidate' && panel.shownAsExploratory === true
+    if (panel.status !== 'active' && !(againstShown && shown)) fail(againstShown ? 'Results can only be made against an active panel, or a candidate shown as exploratory.' : 'Results can only be made against an active panel.')
+    // Stamped, so a result made against a candidate is never later read as reviewed.
+    data.panelStatus = panel.status
+    data.panelShownAsExploratory = shown
     const result = data.result as Result
     const problems = validateResult(result).filter((d) => d.severity === 'error')
     if (problems.length) fail(problems.map((p) => p.message).join('; '))
@@ -89,6 +104,9 @@ const assignmentBeforeChange = (panels: string): CollectionBeforeChangeHook => a
   const to = String(data.reviewStatus ?? from)
   for (const f of ['result', 'panel', 'sequence', 'subject', 'summary', 'importRun']) {
     if (f in data && (f === 'result' || f === 'summary' ? !same(data[f], originalDoc[f]) : idOf(data[f]) !== idOf(originalDoc[f]))) fail("A result can't be edited. Make a new one instead.")
+  }
+  for (const f of ['panelStatus', 'panelShownAsExploratory']) {
+    if (f in data && !same(data[f], originalDoc[f])) fail('The panel status a result was made against is set when it is made.')
   }
   if (to !== from) {
     if (!REVIEW_TRANSITIONS[from]?.includes(to)) fail(`A result can't go from ${from} to ${to}.`)
@@ -119,6 +137,7 @@ export const onePhylogeny = (options: OnePhylogenyPluginOptions = {}): Plugin =>
   const manage: Access = options.manageAccess ?? (() => false)
   const review: Access = options.reviewAccess ?? manage
   const readReleased: Access = options.readReleasedAccess ?? (({ req }) => Boolean(req.user))
+  const againstShown = options.resultsAgainst === 'activeOrShown'
 
   const panelCollection: CollectionConfig = {
     slug: panels,
@@ -127,7 +146,8 @@ export const onePhylogeny = (options: OnePhylogenyPluginOptions = {}): Plugin =>
     access: {
       read: async (args) => {
         if (await manage(args)) return true
-        return { status: { in: ['active', 'superseded'] } }
+        const published: Where = { status: { in: ['active', 'superseded'] } }
+        return againstShown ? { or: [published, { and: [{ status: { equals: 'candidate' } }, { shownAsExploratory: { equals: true } }] }] } : published
       },
       create: manage, update: manage, delete: () => false,
     },
@@ -135,6 +155,7 @@ export const onePhylogeny = (options: OnePhylogenyPluginOptions = {}): Plugin =>
       { name: 'key', type: 'text', required: true, index: true, admin: { description: 'Stays the same across versions of one panel.' } },
       { name: 'version', type: 'text', required: true },
       { name: 'status', type: 'select', required: true, defaultValue: 'candidate', index: true, options: ['candidate', 'active', 'superseded', 'withdrawn'] },
+      { name: 'shownAsExploratory', type: 'checkbox', defaultValue: false, index: true, admin: { description: 'Show this candidate as exploratory, before review. Only candidates; cleared when it moves on.' } },
       { name: 'marker', type: 'text', required: true },
       { name: 'checksum', type: 'text', required: true, index: true },
       ...relation('taxa', r.taxa, { hasMany: true } as Partial<Field>),
@@ -175,8 +196,10 @@ export const onePhylogeny = (options: OnePhylogenyPluginOptions = {}): Plugin =>
       { name: 'reviewStatus', type: 'select', required: true, defaultValue: 'pending', index: true, options: ['pending', 'approved', 'rejected', 'withdrawn'] },
       { name: 'reviewer', type: 'text', admin: { readOnly: true } },
       { name: 'releasedAt', type: 'date', admin: { readOnly: true } },
+      { name: 'panelStatus', type: 'text', admin: { readOnly: true, description: 'The panel\'s status when this result was made.' } },
+      { name: 'panelShownAsExploratory', type: 'checkbox', admin: { readOnly: true } },
     ],
-    hooks: { beforeChange: [assignmentBeforeChange(panels)] },
+    hooks: { beforeChange: [assignmentBeforeChange(panels, againstShown)] },
   }
 
   const released: Endpoint = {
