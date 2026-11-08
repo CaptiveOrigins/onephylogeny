@@ -26,7 +26,7 @@ afterAll(async () => { await payload?.destroy(); await mongo?.stop() })
 let version = 0
 const panelData = (over = {}) => ({ key: 'p', version: String(++version), marker: 'gene', checksum: `sha256:${version}`, validatedScope: ['a vs b in w, 100+ columns (exploratory)'], groups: [{ groupId: 'a', label: 'A', regionName: 'North' }, { groupId: 'b', label: 'B' }], ...over })
 const createPanel = (over = {}) => payload.create({ collection: 'panels' as never, data: panelData(over) as never }) as unknown as Promise<any>
-const activate = (id: unknown) => payload.update({ collection: 'panels' as never, id: id as string, data: { status: 'active' } as never }) as unknown as Promise<any>
+const activate = (id: unknown) => payload.update({ collection: 'panels' as never, id: id as string, data: { status: 'active' } as never, user: admin }) as unknown as Promise<any>
 const resultFor = (p: any, over = {}) => ({ schemaVersion: 2, query: 'q', run: 'r', overlap: 500, caveats: [], pairs: [], candidatesNotEvaluated: ['b'], novelty: { flagged: false, reasons: [], neitherSideSites: 0 }, outOfValidatedScope: [], panel: { id: p.key, version: p.version, checksum: p.checksum },
   findings: [{ group: 'a', status: 'consistent', reasonCode: 'within-spread', reason: 'Close', overlap: 500, informativeSites: 3, windows: [], evidence: ['x'] }, { group: 'b', status: 'not_evaluable', reasonCode: 'too-few-shared-columns', reason: 'No shared sites', overlap: 0, informativeSites: 0, windows: [], evidence: [] }], ...over })
 const assign = (p: any, result: unknown = resultFor(p)) => payload.create({ collection: 'assignments' as never, data: { subject: animal, panel: p.id, summary: 'Consistent with A', result } as never }) as unknown as Promise<any>
@@ -47,6 +47,24 @@ describe('panels', () => {
     const p = await activate((await createPanel()).id)
     await expect(payload.update({ collection: 'panels' as never, id: p.id, data: { checksum: 'changed' } as never })).rejects.toThrow(/can't be edited/)
     await expect(payload.update({ collection: 'panels' as never, id: p.id, data: { status: 'candidate' } as never })).rejects.toThrow(/can't go from/)
+  })
+  it('record who activated them and when', async () => {
+    const before = Date.now()
+    const p = await activate((await createPanel()).id)
+    expect(p.activatedBy).toBe('a1')
+    expect(new Date(p.activatedAt).getTime()).toBeGreaterThanOrEqual(before - 1000)
+    const c = await createPanel()
+    await expect(payload.update({ collection: 'panels' as never, id: c.id, data: { status: 'active' } as never })).rejects.toThrow(/signed-in person/)
+    await expect(payload.update({ collection: 'panels' as never, id: c.id, data: { status: 'active' } as never, overrideAccess: false, user: viewer })).rejects.toThrow()
+  })
+  it('refuse a faked activator or date', async () => {
+    await expect(createPanel({ activatedBy: 'someone' })).rejects.toThrow(/set by activating/)
+    const c = await createPanel()
+    await expect(payload.update({ collection: 'panels' as never, id: c.id, data: { activatedAt: new Date().toISOString() } as never, user: admin })).rejects.toThrow(/set by activating/)
+    const p = await activate((await createPanel()).id)
+    await expect(payload.update({ collection: 'panels' as never, id: p.id, data: { activatedBy: 'someone' } as never, user: admin })).rejects.toThrow(/set by activating/)
+    const withdrawn: any = await payload.update({ collection: 'panels' as never, id: p.id, data: { status: 'withdrawn' } as never, user: admin })
+    expect(withdrawn.activatedBy).toBe('a1')
   })
   it('hide candidates from readers and refuse outside writes', async () => {
     const c = await createPanel()
