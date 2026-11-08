@@ -2,7 +2,7 @@ import { basesOf, compareAligned, coverage } from './sequence.js'
 import { deriveEvaluation, wholeMarker } from './derive.js'
 import { DEFAULT_GATES, type GateSettings } from './gates.js'
 import { LOCATION_EVIDENCE, sealPanel, sequencesChecksum } from './panel.js'
-import type { Diagnostic, Finding, FindingReason, FindingWindow, Id, Novelty, PairFinding, PairReason, Panel, PanelGroup, PanelSettings, ProvenanceClass, Result, EvidenceUse, ValidatedClaim, StudyLink } from './model.js'
+import type { Diagnostic, Finding, FindingReason, FindingWindow, Id, Novelty, PairFinding, PairReason, Panel, PanelGroup, PanelSettings, PanelStatus, ProvenanceClass, Result, EvidenceUse, ValidatedClaim, StudyLink } from './model.js'
 import { CLAIM_GATES, clopperPearson, describeClaim } from './validation.js'
 
 /** A panel and the aligned sequences its evidence names. Panels stay JSON; sequences travel in FASTA beside them. */
@@ -28,6 +28,9 @@ export type BuildPanelInput = {
   /** Claims that passed validation. Only these reach a panel's scope, whatever the settings say. */
   claims?: ValidatedClaim[]
 }
+
+/** The scope line every result against a panel that isn't active carries. */
+export const notActiveScope = (status: PanelStatus) => `This panel is ${status}, not active`
 
 export const useOf = (m: Pick<PanelMember, 'use' | 'provenanceClass'>): EvidenceUse => m.use ?? (LOCATION_EVIDENCE.includes(m.provenanceClass) ? 'lineage-and-location' : 'lineage-only')
 export const locates = (m: Pick<PanelMember, 'use' | 'provenanceClass'>) => useOf(m) === 'lineage-and-location'
@@ -246,7 +249,7 @@ export function evaluateQuery(queryAligned: string, bundle: PanelBundle, options
   if (panel.notCovered.length) caveats.push(`This panel does not cover: ${panel.notCovered.join(', ')}`)
   caveats.push('A match means this sequence resembles the records in a group. It doesn\'t show the animal came from that group\'s region, because a lineage can reach beyond the places sampled so far')
   const outOfValidatedScope = [
-    ...(panel.status === 'active' ? [] : [`This panel is ${panel.status}, not active`]),
+    ...(panel.status === 'active' ? [] : [notActiveScope(panel.status)]),
     ...(panel.claims.length ? [] : ['This panel has no validated claims yet']),
   ]
   if (panel.claims.length) {

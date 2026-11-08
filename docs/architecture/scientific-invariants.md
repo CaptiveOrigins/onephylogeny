@@ -33,5 +33,6 @@ Every package keeps these rules. A rule without a passing test is pending, and i
 | P28 | **A panel's scope comes only from claims that pass validation.** Written scope is ignored, and passing stays labeled exploratory. | `build.test.ts` (claims) |
 | P29 | **A refusal isn't agreement.** A study counts toward cross-study checks only if an answer was reached about it. | `build.test.ts` (claims) |
 | P27 | **A panel's sites follow from its data.** Loading derives them again and refuses a mismatch. | `build.test.ts` (evaluator version 2) |
+| P30 | **A result may name the generalized regions where records of known provenance (P9) in the matched group were sampled,** as a hypothesis about the maternal line; never as evidence of where the animal was collected, of legal origin, or of an individual's history. `regionCard` shows them only for one clear match inside validated scope, from records that can show location (never assigned ones, P12), as names and never coordinates. Others see them only if the keeper opts in. A `candidate` panel shows them only if a maintainer chose to show it, labeled exploratory. | `card.test.ts` (region cards) |
 
 What these results can claim, and which rules are fixed before a test, is set out in the [analysis protocol](analysis-protocol.md).
