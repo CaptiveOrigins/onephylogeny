@@ -33,6 +33,19 @@ describe('region cards (P30)', () => {
     if (!card.show) throw new Error('expected a card')
     expect(card.text).toBe('Reviewed. Claims are exploratory until tested on independent data. Closer to the maternal line sampled in Northern Region than to those sampled in Southern Region. Other regions are unsampled or untested. Not proof of where this animal was collected.')
     expect(card.text).not.toContain('Eastern Region')
+    expect(card.parts).toEqual({ label: REGION_CARD_LABELS.reviewedExploratory, match: 'Closer to the maternal line sampled in Northern Region than to those sampled in Southern Region. Other regions are unsampled or untested.', caveat: REGION_CARD_LABELS.caveat })
+  })
+
+  it('list several regions the way the reader\'s language does', () => {
+    const resolvedAll = { pairs: [pair('a', 'b', 'resolved', 'a'), pair('a', 'c', 'resolved', 'a')] } as never
+    const p = panelOf()
+    const en = regionCard(p, resultOf(p, resolvedAll), keeper)
+    expect(en).toMatchObject({ show: true, others: ['Southern Region', 'Eastern Region'] })
+    if (!en.show) throw new Error('expected a card')
+    expect(en.parts.match).toContain('than to those sampled in Southern Region and Eastern Region.')
+    const es = regionCard(p, resultOf(p, resolvedAll), { ...keeper, locale: 'es', labels: { match: '{regions} / {others}' } })
+    if (!es.show) throw new Error('expected a card')
+    expect(es.parts.match).toBe('Northern Region / Southern Region y Eastern Region')
   })
 
   it('stay off when no comparison resolved, or one favored another group', () => {
