@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Payload, breaking for scripts that activate panels:** activating a panel needs a signed-in user, and the panel records who (`activatedBy`, their user ID) and when (`activatedAt`). Both are read-only and can't be set or changed any other way. A script without a user can still create candidates, but a person activates them. This records who pressed Activate, not who reviewed the panel's science.
+
 ## Mac app 0.2.0
 
 The Mac app ships everything in this section. The npm packages aren't published yet.

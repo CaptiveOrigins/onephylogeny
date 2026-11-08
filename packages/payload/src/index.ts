@@ -6,7 +6,7 @@ export type OnePhylogenyPluginOptions = {
   slugs?: { panels?: string; assignments?: string }
   /** Host collections to relate to. Leave one out and its field isn't added, so the plugin works in any site. */
   relations?: { subject?: string; sequence?: string; taxa?: string; files?: string; importRuns?: string }
-  /** Who may create panels and results, and activate panels. Default: nobody but trusted local scripts. */
+  /** Who may create panels and results, and activate panels. Default: nobody but trusted local scripts. Activating also needs a signed-in user, who is recorded. */
   manageAccess?: Access
   /** Who may approve or reject results. Default: same as manageAccess. */
   reviewAccess?: Access
@@ -32,16 +32,27 @@ const idOf = (v: unknown) => (v && typeof v === 'object' ? String((v as { id: un
 const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
 const stripIds = (rows: unknown) => (Array.isArray(rows) ? rows.map((r) => { const { id: _id, ...rest } = r as Record<string, unknown>; return rest }) : rows)
 
-const panelBeforeChange: CollectionBeforeChangeHook = ({ data, originalDoc, operation }) => {
+const stamp = (v: unknown) => (v == null || v === '' ? '' : v instanceof Date ? v.toISOString() : String(v))
+const ACTIVATION_FIELDS = ['activatedBy', 'activatedAt']
+
+const panelBeforeChange: CollectionBeforeChangeHook = ({ data, originalDoc, operation, req }) => {
   if (hasCoordinates(data.groups)) fail('Panels use generalized regions and never hold coordinates.')
   if (operation === 'create') {
     if ((data.status ?? 'candidate') !== 'candidate') fail('A new panel starts as a candidate.')
+    if (ACTIVATION_FIELDS.some((f) => stamp(data[f]))) fail('Who activated a panel, and when, are set by activating.')
     return data
   }
   const from = String(originalDoc.status)
   const to = String(data.status ?? from)
   if (to !== from && !PANEL_TRANSITIONS[from]?.includes(to)) fail(`A panel can't go from ${from} to ${to}.`)
-  if (from === 'candidate' && to === 'active' && !((data.validatedScope ?? originalDoc.validatedScope) as unknown[] | undefined)?.length) fail('A panel with no validated claims can\'t become active.')
+  if (from === 'candidate' && to === 'active') {
+    if (!((data.validatedScope ?? originalDoc.validatedScope) as unknown[] | undefined)?.length) fail('A panel with no validated claims can\'t become active.')
+    if (!req.user) fail('Activating a panel needs a signed-in person, who is recorded.')
+    data.activatedBy = String(req.user!.id)
+    data.activatedAt = new Date().toISOString()
+  } else if (ACTIVATION_FIELDS.some((f) => f in data && stamp(data[f]) !== stamp(originalDoc[f]))) {
+    fail('Who activated a panel, and when, are set by activating.')
+  }
   if (from !== 'candidate') {
     for (const f of LOCKED_PANEL_FIELDS) {
       if (!(f in data)) continue
@@ -132,6 +143,8 @@ export const onePhylogeny = (options: OnePhylogenyPluginOptions = {}): Plugin =>
       { name: 'validatedScope', type: 'text', hasMany: true, admin: { description: 'The claims this panel is validated for. Pages show only these.' } },
       { name: 'notCovered', type: 'text', hasMany: true },
       { name: 'groups', type: 'array', fields: [{ name: 'groupId', type: 'text', required: true }, { name: 'label', type: 'text', required: true }, { name: 'regionName', type: 'text', admin: { description: 'A general region, never coordinates.' } }] },
+      { name: 'activatedBy', type: 'text', admin: { readOnly: true, description: 'The signed-in user who activated this panel. Set by activating.' } },
+      { name: 'activatedAt', type: 'date', admin: { readOnly: true } },
     ],
     hooks: { beforeChange: [panelBeforeChange], afterChange: [supersedeOthers(panels)] },
   }
