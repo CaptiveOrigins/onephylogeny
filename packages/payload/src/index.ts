@@ -1,4 +1,5 @@
 import { validateResult, type Result } from '@captiveorigins/onephylogeny-core'
+import { recordCollections, type RecordsOptions } from './records.js'
 import { APIError, type Access, type CollectionBeforeChangeHook, type CollectionAfterChangeHook, type CollectionConfig, type Config, type Endpoint, type Field, type Plugin, type Where } from 'payload'
 
 export type OnePhylogenyPluginOptions = {
@@ -19,7 +20,14 @@ export type OnePhylogenyPluginOptions = {
    * exploratory", and lets readers see such candidates. Default: `active`.
    */
   resultsAgainst?: 'active' | 'activeOrShown'
+  /**
+   * Adds `samples` and `sequences`, with `registerSequence` to record a lab's file and `assignWaiting` to test waiting
+   * sequences. Left out, neither collection is added. Results then relate to these sequences.
+   */
+  records?: RecordsOptions
 }
+
+export { registerSequence, assignWaiting, readSingleSequence, summarize, type RecordsOptions, type RegisterSequenceInput, type Evaluate } from './records.js'
 
 const PANEL_TRANSITIONS: Record<string, string[]> = { candidate: ['active', 'withdrawn'], active: ['superseded', 'withdrawn'], superseded: ['withdrawn'], withdrawn: [] }
 const LOCKED_PANEL_FIELDS = ['key', 'version', 'marker', 'checksum', 'artifact', 'importRun', 'taxa', 'groups', 'notCovered', 'validatedScope']
@@ -132,7 +140,10 @@ const relation = (name: string, relationTo: string | undefined, extra: Partial<F
 export const onePhylogeny = (options: OnePhylogenyPluginOptions = {}): Plugin => (config: Config): Config => {
   const panels = options.slugs?.panels ?? 'panels'
   const assignments = options.slugs?.assignments ?? 'assignments'
-  const r = options.relations ?? {}
+  const records = options.records
+    ? recordCollections(options.records, { panels, assignments, subject: options.relations?.subject, taxa: options.relations?.taxa, files: options.relations?.files, manage: options.manageAccess ?? (() => false), againstShown: options.resultsAgainst === 'activeOrShown' })
+    : undefined
+  const r = { ...options.relations, ...(records && !options.relations?.sequence ? { sequence: records.config.sequences } : {}) }
   const group = options.group ?? 'Genetics'
   const manage: Access = options.manageAccess ?? (() => false)
   const review: Access = options.reviewAccess ?? manage
@@ -214,5 +225,10 @@ export const onePhylogeny = (options: OnePhylogenyPluginOptions = {}): Plugin =>
     },
   }
 
-  return { ...config, collections: [...(config.collections ?? []), panelCollection, assignmentCollection], endpoints: [...(config.endpoints ?? []), released] }
+  return {
+    ...config,
+    collections: [...(config.collections ?? []), ...(records?.collections ?? []), panelCollection, assignmentCollection],
+    endpoints: [...(config.endpoints ?? []), released],
+    ...(records ? { custom: { ...config.custom, [records.customKey]: records.config } } : {}),
+  }
 }
