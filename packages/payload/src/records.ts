@@ -50,6 +50,7 @@ export function recordCollections(o: RecordsOptions, base: { panels: string; ass
   const manage = base.manage
   const read: Access = anyOf(manage, o.readAccess)
   const access = { read, create: manage, update: manage, delete: () => false }
+  const tenantField = o.tenantField ?? 'tenant'
 
   const sampleCollection: CollectionConfig = {
     slug: samples,
@@ -65,7 +66,7 @@ export function recordCollections(o: RecordsOptions, base: { panels: string; ass
       { name: 'collectedAt', type: 'date' },
       { name: 'consent', type: 'text', admin: { description: 'The keeper\'s consent, as recorded with the kit or upload.' } },
     ],
-    hooks: { beforeChange: [locked(['subject', 'kit', 'source'], 'A sample\'s animal, kit and source can\'t change. Record a new sample instead.')] },
+    hooks: { beforeChange: [locked(['subject', 'kit', 'source', tenantField], 'A sample\'s animal, kit, source and site can\'t change. Record a new sample instead.')] },
   }
 
   const sequenceCollection: CollectionConfig = {
@@ -85,11 +86,11 @@ export function recordCollections(o: RecordsOptions, base: { panels: string; ass
       { name: 'status', type: 'select', required: true, defaultValue: 'received', index: true, options: ['received', 'assigned', 'not-assessable'] },
       { name: 'statusReason', type: 'text', admin: { description: 'Why it couldn\'t be assessed, in plain words.' } },
     ],
-    hooks: { beforeChange: [locked(['sample', 'marker', 'file', 'sha256', 'residues', 'recordId', 'length'], 'A sequence can\'t be edited. Register the corrected file instead.')] },
+    hooks: { beforeChange: [locked(['sample', 'marker', 'file', 'sha256', 'residues', 'recordId', 'length', tenantField], 'A sequence can\'t be edited. Register the corrected file instead.')] },
   }
 
   const config: RecordsConfig = {
-    samples, sequences, panels: base.panels, assignments: base.assignments, tenantField: o.tenantField ?? 'tenant', markers: o.markers,
+    samples, sequences, panels: base.panels, assignments: base.assignments, tenantField, markers: o.markers,
     subject: base.subject, hasTaxa: Boolean(base.taxa), hasKit: Boolean(o.relations?.kit), hasLab: Boolean(o.relations?.lab), hasFiles: Boolean(base.files), againstShown: base.againstShown,
   }
   return { collections: [sampleCollection, sequenceCollection], config, customKey: CUSTOM_KEY }

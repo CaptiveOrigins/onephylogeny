@@ -27,6 +27,11 @@ export type OnePhylogenyPluginOptions = {
    * sequences. Left out, neither collection is added. Results then relate to these sequences.
    */
   records?: RecordsOptions
+  /**
+   * The host's tenant (site) field on results, if it has one, such as a multi-tenant plugin adds. A result's site is set
+   * when it is made and can't change, so a reviewer can't move it to a site whose people would then see it. Default `tenant`.
+   */
+  tenantField?: string
 }
 
 export { either, anyOf } from './access.js'
@@ -92,7 +97,7 @@ const supersedeOthers = (panels: string): CollectionAfterChangeHook => async ({ 
   return doc
 }
 
-const assignmentBeforeChange = (panels: string, againstShown: boolean): CollectionBeforeChangeHook => async ({ data, originalDoc, operation, req }) => {
+const assignmentBeforeChange = (panels: string, againstShown: boolean, tenantField: string): CollectionBeforeChangeHook => async ({ data, originalDoc, operation, req }) => {
   if (operation === 'create') {
     if ((data.reviewStatus ?? 'pending') !== 'pending') fail('A new result starts as pending review.')
     const panel = await req.payload.findByID({ collection: panels as never, id: idOf(data.panel)!, depth: 0, req, overrideAccess: true }) as unknown as { key: string; version: string; checksum: string; status: string; shownAsExploratory?: boolean; groups?: { groupId: string }[] }
@@ -116,6 +121,7 @@ const assignmentBeforeChange = (panels: string, againstShown: boolean): Collecti
   for (const f of ['result', 'panel', 'sequence', 'subject', 'summary', 'importRun']) {
     if (f in data && (f === 'result' || f === 'summary' ? !same(data[f], originalDoc[f]) : idOf(data[f]) !== idOf(originalDoc[f]))) fail("A result can't be edited. Make a new one instead.")
   }
+  if (tenantField in data && idOf(data[tenantField]) !== idOf(originalDoc[tenantField])) fail('A result stays on the site it was made for.')
   for (const f of ['panelStatus', 'panelShownAsExploratory']) {
     if (f in data && !same(data[f], originalDoc[f])) fail('The panel status a result was made against is set when it is made.')
   }
@@ -149,8 +155,9 @@ const checkedWhenMade = { validate: (value: unknown, options: { operation?: stri
 export const onePhylogeny = (options: OnePhylogenyPluginOptions = {}): Plugin => (config: Config): Config => {
   const panels = options.slugs?.panels ?? 'panels'
   const assignments = options.slugs?.assignments ?? 'assignments'
+  const tenantField = options.tenantField ?? options.records?.tenantField ?? 'tenant'
   const records = options.records
-    ? recordCollections(options.records, { panels, assignments, subject: options.relations?.subject, taxa: options.relations?.taxa, files: options.relations?.files, manage: options.manageAccess ?? (() => false), againstShown: options.resultsAgainst === 'activeOrShown' })
+    ? recordCollections({ tenantField, ...options.records }, { panels, assignments, subject: options.relations?.subject, taxa: options.relations?.taxa, files: options.relations?.files, manage: options.manageAccess ?? (() => false), againstShown: options.resultsAgainst === 'activeOrShown' })
     : undefined
   const r = { ...options.relations, ...(records && !options.relations?.sequence ? { sequence: records.config.sequences } : {}) }
   const group = options.group ?? 'Genetics'
@@ -218,7 +225,7 @@ export const onePhylogeny = (options: OnePhylogenyPluginOptions = {}): Plugin =>
       { name: 'panelStatus', type: 'text', admin: { readOnly: true, description: 'The panel\'s status when this result was made.' } },
       { name: 'panelShownAsExploratory', type: 'checkbox', admin: { readOnly: true } },
     ],
-    hooks: { beforeChange: [assignmentBeforeChange(panels, againstShown)] },
+    hooks: { beforeChange: [assignmentBeforeChange(panels, againstShown, tenantField)] },
   }
 
   const released: Endpoint = {

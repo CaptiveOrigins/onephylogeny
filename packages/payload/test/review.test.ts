@@ -28,6 +28,7 @@ beforeAll(async () => {
         manageAccess: (({ req }: any) => me(req)?.role === 'admin') as never,
         reviewAccess: (({ req }: any) => (me(req)?.role === 'admin' ? true : me(req)?.role === 'genealogist' ? { site: { equals: me(req)!.site } } : false)) as never,
         readReleasedAccess: (({ req }: any) => (me(req) ? { site: { equals: me(req)!.site } } : false)) as never,
+        tenantField: 'site',
       }),
       (config) => ({ ...config, collections: config.collections!.map((c) => (c.slug === 'assignments' ? { ...c, fields: [...c.fields, { name: 'site', type: 'text' }] } : c)) }),
     ],
@@ -70,5 +71,22 @@ describe('reviewers of one site', () => {
     await expect(approve(memberA, onA.id)).rejects.toThrow()
     await approve(admin, onA.id)
     expect(await sees(memberA, onA.id)).toBe(true)
+  })
+  it('can\'t move a result to another site, before or after approving it', async () => {
+    const onA = await pendingOn('A')
+    await expect(approve(reviewerA, onA.id).then(() => payload.update({ collection: 'assignments' as never, id: onA.id, data: { site: 'B' } as never, user: reviewerA, overrideAccess: false }))).rejects.toThrow(/stays on the site/)
+    const other = await pendingOn('A')
+    await expect(payload.update({ collection: 'assignments' as never, id: other.id, data: { site: 'B' } as never, user: admin })).rejects.toThrow(/stays on the site/)
+    expect(((await payload.findByID({ collection: 'assignments' as never, id: onA.id })) as any).site).toBe('A')
+  })
+  it('can\'t make results; only maintainers and the sweep can', async () => {
+    await expect(payload.create({ collection: 'assignments' as never, data: { subject: animal, panel: panel.id, summary: 'S', result: resultFor(), site: 'A' } as never, user: reviewerA, overrideAccess: false })).rejects.toThrow()
+  })
+  it('approving in bulk reaches only their own site', async () => {
+    const onA = await pendingOn('A')
+    const onB = await pendingOn('B')
+    await payload.update({ collection: 'assignments' as never, where: { id: { in: [onA.id, onB.id] } } as never, data: { reviewStatus: 'approved' } as never, user: reviewerA, overrideAccess: false })
+    expect(((await payload.findByID({ collection: 'assignments' as never, id: onA.id })) as any).reviewStatus).toBe('approved')
+    expect(((await payload.findByID({ collection: 'assignments' as never, id: onB.id })) as any).reviewStatus).toBe('pending')
   })
 })

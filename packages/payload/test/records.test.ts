@@ -9,6 +9,7 @@ let payload: Payload
 let mongo: MongoMemoryReplSet
 const admin = { id: 'a1', collection: 'users', role: 'admin' } as never
 const viewer = { id: 'v1', collection: 'users', role: 'viewer' } as never
+const staffOf = (site: string) => ({ id: `s-${site}`, collection: 'users', role: 'staff', site }) as never
 const isAdmin = ({ req }: { req: { user?: unknown } }) => (req.user as { role?: string } | null)?.role === 'admin'
 let taxon: string, otherTaxon: string, animal: string, bare: string, lab: string
 
@@ -33,7 +34,7 @@ beforeAll(async () => {
       { slug: 'labs', fields: [{ name: 'name', type: 'text' }] },
     ],
     plugins: [
-      onePhylogeny({ relations: { subject: 'animals', taxa: 'taxa' }, manageAccess: isAdmin as never, resultsAgainst: 'activeOrShown', records: { relations: { kit: 'kits', lab: 'labs' }, markers: { cytb: { minLength: 100, maxLength: 1200 } } } }),
+      onePhylogeny({ relations: { subject: 'animals', taxa: 'taxa' }, manageAccess: isAdmin as never, resultsAgainst: 'activeOrShown', records: { relations: { kit: 'kits', lab: 'labs' }, readAccess: (({ req }: any) => (req.user?.site ? { tenant: { equals: req.user.site } } : false)) as never, markers: { cytb: { minLength: 100, maxLength: 1200 } } } }),
       // A host's tenant field, as a multi-tenant plugin would add it.
       (config) => ({ ...config, collections: config.collections!.map((c) => ['samples', 'sequences', 'assignments'].includes(c.slug) ? { ...c, fields: [...c.fields, { name: 'tenant', type: 'text' }] } : c) }),
     ],
@@ -96,6 +97,17 @@ describe('registerSequence', () => {
     await expect(payload.update({ collection: 'sequences' as never, id: sequence.id as never, data: { residues: 'ACGT' } as never })).rejects.toThrow(/can't be edited/)
     await expect(payload.update({ collection: 'samples' as never, id: sample.id as never, data: { subject: bare } as never })).rejects.toThrow(/can't change/)
     await expect(payload.delete({ collection: 'sequences' as never, id: sequence.id as never, user: admin, overrideAccess: false })).rejects.toThrow()
+  })
+  it('shows a site\'s staff only that site\'s samples and sequences, and none can be moved to another site', async () => {
+    const { sample, sequence } = await register({ tenant: 'site-2' })
+    const seen = async (u: unknown, collection: string, id: unknown) => (await payload.find({ collection: collection as never, where: { id: { equals: id } } as never, user: u as never, overrideAccess: false })).docs.length
+    expect(await seen(staffOf('site-2'), 'sequences', sequence.id)).toBe(1)
+    expect(await seen(staffOf('site-2'), 'samples', sample.id)).toBe(1)
+    expect(await seen(staffOf('site-1'), 'sequences', sequence.id)).toBe(0)
+    expect(await seen(staffOf('site-1'), 'samples', sample.id)).toBe(0)
+    await expect(payload.update({ collection: 'sequences' as never, id: sequence.id as never, data: { status: 'assigned' } as never, user: staffOf('site-2'), overrideAccess: false })).rejects.toThrow()
+    await expect(payload.update({ collection: 'sequences' as never, id: sequence.id as never, data: { tenant: 'site-1' } as never })).rejects.toThrow(/can't be edited/)
+    await expect(payload.update({ collection: 'samples' as never, id: sample.id as never, data: { tenant: 'site-1' } as never })).rejects.toThrow(/can't change/)
   })
 })
 

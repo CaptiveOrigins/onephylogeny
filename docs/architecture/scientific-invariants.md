@@ -17,7 +17,7 @@ Every package keeps these rules. A rule without a passing test is pending, and i
 | P11 | **Every exclusion has a reason.** | `core.test.ts` (profiles) |
 | P12 | **Assigned records are never evidence of location,** and don't shape a group's coverage, sites, spread, findings or validation. | `panel.test.ts` (panels), `build.test.ts` (records assigned by their own sequence) |
 | P13 | **Claims are scoped** to one group and panel version. | `panel.test.ts` (results), `build.test.ts` (evaluator version 2) |
-| P14 | **Failures stop a run;** retries can't duplicate records and skips can't pass silently. | Pending (acquire) |
+| P14 | **Failures stop a run;** retries can't duplicate records and skips can't pass silently. | `acquire.test.ts` (NCBI client) |
 | P15 | **Stated confidence must be calibrated** before it is shown as a probability. | Pending (validation) |
 | P16 | **Saved panels are never rewritten.** Changed content needs a new version, and results name the exact version. | `engine.test.ts` (runs and panels stay true) |
 | P17 | **A panel's conclusions can't change after sealing.** Thresholds, record checks and sequences are sealed, and loading verifies them. | `engine.test.ts`, `panel.test.ts`, `build.test.ts` |

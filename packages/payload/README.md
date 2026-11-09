@@ -23,3 +23,5 @@ It refuses, in plain words, a file whose text doesn't match its SHA-256, a file 
 
 `assignWaiting(payload, { evaluate })` is the sweep. It tests each waiting sequence against the panel for its marker and species, using the `evaluate` function you pass (OnePhylogeny's `testSample` in a Node job), and records a result pending review. A sequence with no panel stays waiting, and one the panel's checks refuse is marked `not-assessable`, with the reason. Results reach readers only after a reviewer approves them.
 
+On a multi-site host, set `tenantField` if the site field isn't called `tenant`. A result, sample or sequence keeps the site it was made for, so nobody can move it to another site's readers.
+

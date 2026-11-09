@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.0-alpha.4
+
+- **Payload, fixes access:** a result's site (the host's tenant field) could change after it was made. Someone who reviews one site and belongs to another could approve a result and then move it, so the other site's people would see it. Results, samples and sequences now keep the site they were made for. The new option `tenantField` names the field (default `tenant`). Tested with made-up reviewers on two sites.
+- Tests: a reviewer can't make results, approving in bulk reaches only the reviewer's own site, and samples and sequences are read only by their own site's staff. First test audit in `docs/test-audit.md`.
+
 ## 0.1.0-alpha.3
 
 - **Payload, fixes access:** an access rule that returns a query, such as "results on this reviewer's own site", was read as "everything" when it decided who sees pending results, panels, samples and sequences. Rules are now joined with "or" (`either`, `anyOf`, both exported), so a reviewer of one site sees and approves only that site's results. Tested with reviewers on two made-up sites.
