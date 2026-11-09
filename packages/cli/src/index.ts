@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 import { execFile } from 'node:child_process'
-import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { mkdirSync, readFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { parseCuration, parseFasta, parseProfile } from '@captiveorigins/onephylogeny-core'
 import { NcbiClient, suggestOutgroups } from '@captiveorigins/onephylogeny-acquire'
-import { buildPanelFromRun, comparePanelVersions, buildTree, EngineError, fetchAndAnchor, isCancelled, profilePaths, runSample, traceArtifact, type ArtifactType, type EngineContext, type Store, type ToolRunner } from '@captiveorigins/onephylogeny-engine'
+import { buildPanelFromRun, comparePanelVersions, buildTree, EngineError, fetchAndAnchor, isCancelled, profilePaths, runSample, traceArtifact, type ArtifactType, type EngineContext, type ToolRunner } from '@captiveorigins/onephylogeny-engine'
+import { nodeStore } from './store.js'
 
 const USAGE = `onephylogeny <command> --workspace DIR --profile ID [options]
 
@@ -26,23 +27,6 @@ const flag = (name: string) => {
   return i >= 0 ? args[i + 1] : undefined
 }
 const has = (name: string) => args.includes(`--${name}`)
-
-const nodeStore = (root: string): Store => ({
-  read: async (p) => readFileSync(join(root, p), 'utf8'),
-  write: async (p, text) => {
-    const file = join(root, p)
-    mkdirSync(dirname(file), { recursive: true })
-    const temp = `${file}.${process.pid}.tmp`
-    writeFileSync(temp, text)
-    renameSync(temp, file)
-  },
-  append: async (p, text) => {
-    const file = join(root, p)
-    mkdirSync(dirname(file), { recursive: true })
-    appendFileSync(file, text)
-  },
-  exists: async (p) => existsSync(join(root, p)),
-})
 
 const exec = (tool: string, a: string[], cwd?: string) =>
   new Promise<{ code: number; stdout: string; stderr: string }>((res) => {

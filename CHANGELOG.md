@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- CLI: a failed save now removes its temporary file. The file store moved to `src/store.ts` and has its first tests: saves replace a file whole, a failed write keeps the old file, and nothing is left behind.
+
 ## 0.1.0-alpha.4
 
 - **Payload, fixes access:** a result's site (the host's tenant field) could change after it was made. Someone who reviews one site and belongs to another could approve a result and then move it, so the other site's people would see it. Results, samples and sequences now keep the site they were made for. The new option `tenantField` names the field (default `tenant`). Tested with made-up reviewers on two sites.
