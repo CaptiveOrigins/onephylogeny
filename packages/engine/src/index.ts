@@ -323,6 +323,18 @@ export type PanelBuildOutcome = { bundle: PanelBundle; diagnostics: Diagnostic[]
 
 const defaultValidate = async (input: ValidationInput): Promise<ValidationReports> => fullValidation(input)
 
+/** The records of a finished fetch run (the latest when no ID is given), as the panel build reads them. */
+export async function loadRunRecords(store: Store, profileId: string, runId?: string): Promise<SequenceRecord[]> {
+  const P = profilePaths(profileId)
+  const id = runId ?? ((await store.exists(P.latest)) ? (await store.read(P.latest)).trim() : '')
+  if (!id) throw new EngineError('run-missing', 'No finished fetch run exists yet', 'Fetch records first')
+  const run = JSON.parse(await store.read(`${P.run(id)}/run.json`)) as Run
+  const gatedRef = artifactOf(run, 'gated-records')
+  if (!gatedRef) throw new EngineError('run-missing', `Run ${id} didn't finish fetching`, 'Fetch records again')
+  const gated = await loadArtifact(store, { type: 'gated-records', key: gatedRef.key })
+  return JSON.parse(await (await loadArtifact(store, gated.manifest.inputs[0]!)).read('records.json')) as SequenceRecord[]
+}
+
 /** Builds and validates a candidate panel from a finished fetch run and the curation file. */
 export async function buildPanelFromRun(ctx: EngineContext, profile: Profile, curation: Curation, id?: string): Promise<PanelBuildOutcome> {
   const settings = profile.panel
