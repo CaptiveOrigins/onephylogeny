@@ -1,6 +1,6 @@
 import {
   ALIGNER, alignToReference, LOCATE_FLANK, locateMarker, assessAlignment, buildPanel, canonicalJson, checkNumts, collapseHaplotypes, compareRuns, DEFAULT_GATES, extractLocation, findGeneFeatures, fullValidation, gatesForRecord, parseFasta, parseGenBank,
-  evaluateQuery, toRecordSheet, toSequenceRecord, validatePanel, verifyBundle, validatedScopeFromReport, validateProfile, validateResult, writeFasta,
+  evaluateQuery, sampleQc, toRecordSheet, toSequenceRecord, validatePanel, verifyBundle, validatedScopeFromReport, validateProfile, validateResult, writeFasta,
   type Alignment, type Curation, type Diagnostic, type GateSettings, type GenBankRecord, type LinkedRecord, type MarkerPlace, type Panel, type PanelBundle, type PanelMember, type Profile, type Result, type Run, type RunComparison, type SequenceRecord, type Snapshot, type ValidationInput,
 } from '@captiveorigins/onephylogeny-core'
 import { classifyAccessions, genomesHoldingMarkerQuery, linkedAccessions, NcbiClient, selectionQuery, studiesFromRecords, type FoundPaper } from '@captiveorigins/onephylogeny-acquire'
@@ -479,6 +479,8 @@ export function testSample(sequence: string, queryId: string, bundle: PanelBundl
     queryId, runId: options.runId ?? 'sample', querySha256: hashText(sequence.toUpperCase()), producedBy: [ENGINE, ALIGNER],
     caveats: ['Rules are configured values and these statuses are not probabilities', ...diagnostics.filter((d) => d.severity === 'warning').map((d) => d.message), ...numtCaveats],
   })
+  // Quality by named rules, beside the statuses, never changing them (roadmap stage 4).
+  result.qc = sampleQc(a.aligned, diagnostics, bundle.sequences, bundle.panel.qc)
   diagnostics.push(...validateResult(result, bundle.panel))
   return { result, diagnostics, aligned: a.aligned, insertions: a.insertions.reduce((s, x) => s + x.length, 0), deletions: a.deletions.reduce((s, x) => s + x.length, 0), identity: a.identity, clipped: a.clipped }
 }

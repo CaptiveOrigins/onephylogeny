@@ -16,6 +16,8 @@ export type SampleReport = {
   coverage: { columnsCompared: number; notEvaluated: string[] }
   /** Where the evidence points more than one way (roadmap stage 4). Empty when it doesn't. */
   conflicts: string[]
+  /** The sequence's quality by named rules, if the result carries it. */
+  quality?: { overall: string; rules: string[] }
   gaps: string[]
   versions: { panel: string; checksum: string; panelStatus: string; run: Id; query: Id; querySha256?: string; producedBy: string[] }
   citations: string[]
@@ -66,6 +68,7 @@ export function sampleReport(panel: Panel, result: Result): SampleReport {
     comparisons: result.pairs.map((p) => ({ pair: `${label(p.a)} vs ${label(p.b)}`, outcome: pairOutcome(p, label) })),
     coverage: { columnsCompared: result.overlap, notEvaluated },
     conflicts: resultConflicts(result).map((c) => conflictText(c, label)),
+    ...(result.qc ? { quality: { overall: result.qc.overall, rules: result.qc.rules.map((q) => `${q.rule}: ${q.status}. ${q.detail}`) } } : {}),
     // The result's own caveats already say what wasn't evaluated and what the panel doesn't cover, in the evaluator's
     // words; the panel's line is added only for a result made before it did. Exact repeats are dropped.
     gaps: [
@@ -103,6 +106,7 @@ export function reportMarkdown(r: SampleReport): string {
     for (const c of r.comparisons) out.push(`| ${cell(c.pair)} | ${cell(c.outcome)} |`)
   }
   out.push('', '## Coverage', '', `${r.coverage.columnsCompared} columns compared.${r.coverage.notEvaluated.length ? ` Not evaluated: ${r.coverage.notEvaluated.join(', ')}.` : ''}`)
+  if (r.quality) out.push('', '## Sequence quality', '', `Overall: ${r.quality.overall}. These describe the sequence and don't change any status.`, '', ...r.quality.rules.map((q) => `- ${q}`))
   if (r.conflicts.length) out.push('', '## Conflicting evidence', '', ...r.conflicts.map((c) => `- ${c}`))
   if (r.gaps.length) out.push('', '## Gaps and caveats', '', ...r.gaps.map((g) => `- ${g}`))
   const v = r.versions

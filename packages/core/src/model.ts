@@ -1,4 +1,5 @@
 import type { GateSettings } from './gates.js'
+import type { QcSettings, SampleQc } from './qc.js'
 
 /** Records are plain JSON: ISO date strings, no classes. See docs/architecture/data-schema.md. */
 export type Id = string
@@ -94,6 +95,8 @@ export type PanelSettings = {
   rules: EvaluationRules
   /** How hard to test claims. Fewer shuffles or simulations can't reach the gates' p-value. */
   controls?: { shuffles?: number; simulations?: number; seed?: number }
+  /** Sample QC thresholds sealed into the panel. Without them, OnePhylogeny's stated defaults apply. */
+  qc?: QcSettings
 }
 
 /** How to read a panel. Uncalibrated, stated values: none of this is a probability. */
@@ -257,6 +260,8 @@ export type Panel = {
   rules: EvaluationRules
   /** The record checks its members passed, sealed so a sample is held to the same checks. */
   gates: GateSettings
+  /** Sample QC thresholds, sealed so every sample gets the same QC. Absent means the stated defaults. */
+  qc?: QcSettings
   /** Nuclear copies of the marker from a genome screen, so every sample is checked against the same ones. Absent if no screen ran. */
   numtCopies?: { id: string; aligned: string }[]
   /** The Study state behind this panel, sealed so post hoc omissions travel with its results. */
@@ -356,4 +361,6 @@ export type Result = {
   /** Why this result falls outside what the panel has been validated for. Empty means it's inside. */
   outOfValidatedScope: string[]
   caveats: string[]
+  /** The sequence's quality by named rules (roadmap stage 4). It describes the sequence; it changes no status. */
+  qc?: SampleQc
 }

@@ -98,7 +98,7 @@ This is where a real user currently gets stuck.
 
 Informed by the techniques research.
 
-1. **QC rules per panel.** Named rules (missing data, mixed sites, frame, stops, clustered differences) with an overall status.
+1. **QC rules per panel.** Named rules (missing data, mixed sites, frame, stops, clustered differences) with an overall status. *Built 2026-11-10 (`sampleQc`, `result.qc`); the default thresholds are uncalibrated proposals.*
 2. **Better authenticity checks.** A NUMT screen against a genome, plus chimera and mislabel detection.
 3. **Stronger validation.** Fragment simulation, leave-one-study-out, per-window reports and intervals for small groups.
 4. **Conflict reporting.** Report when evidence supports several groups or windows disagree. *Built 2026-11-10 (`resultConflicts`, in reports).*

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Sample QC (roadmap stage 4):** every result now carries `qc`: five named rules (missing data, mixed sites, frame, stops, clustered differences against the nearest panel record), each good, mediocre or bad, and an overall status. QC describes the sequence and changes no status. A panel can seal its own thresholds (`qc` in its settings); otherwise OnePhylogeny's stated defaults apply, which are proposals, not calibrated. Reports gain a "Sequence quality" section, and the result schema is regenerated. On the redfoot panel 0.7.1, all its member examples rate good, and verify still passes.
 ## 0.1.0-alpha.6
 
 Roadmap stage 3 (making curation humane) is complete, along with the first parts of stages 4 and 5.
