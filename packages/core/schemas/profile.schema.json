@@ -387,6 +387,10 @@
           },
           "additionalProperties": false,
           "description": "How hard to test claims. Fewer shuffles or simulations can't reach the gates' p-value."
+        },
+        "qc": {
+          "$ref": "#/definitions/QcSettings",
+          "description": "Sample QC thresholds sealed into the panel. Without them, OnePhylogeny's stated defaults apply."
         }
       },
       "required": [
@@ -458,6 +462,76 @@
       ],
       "additionalProperties": false,
       "description": "How to read a panel. Uncalibrated, stated values: none of this is a probability."
+    },
+    "QcSettings": {
+      "type": "object",
+      "properties": {
+        "missingData": {
+          "type": "object",
+          "properties": {
+            "mediocre": {
+              "type": "number"
+            },
+            "bad": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "mediocre",
+            "bad"
+          ],
+          "additionalProperties": false,
+          "description": "Share of covered columns that are N or another ambiguity: mediocre at or above `mediocre`, bad at or above `bad`."
+        },
+        "mixedSites": {
+          "type": "object",
+          "properties": {
+            "mediocre": {
+              "type": "number"
+            },
+            "bad": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "mediocre",
+            "bad"
+          ],
+          "additionalProperties": false,
+          "description": "Count of two- or three-base ambiguity codes (such as R or Y): in a haploid marker, a sign of mixed template."
+        },
+        "clusteredDifferences": {
+          "type": "object",
+          "properties": {
+            "window": {
+              "type": "number"
+            },
+            "minDifferences": {
+              "type": "number"
+            },
+            "mediocre": {
+              "type": "number"
+            },
+            "bad": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "window",
+            "minDifferences",
+            "mediocre",
+            "bad"
+          ],
+          "additionalProperties": false,
+          "description": "At least `minDifferences` differences from the nearest panel record within `window` columns is a cluster."
+        }
+      },
+      "required": [
+        "missingData",
+        "mixedSites",
+        "clusteredDifferences"
+      ],
+      "additionalProperties": false
     }
   }
 }

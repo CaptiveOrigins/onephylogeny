@@ -2,6 +2,17 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-10: sample QC
+
+- **`packages/core/test/qc.test.ts` (5 tests):**
+  - a clean sequence is good;
+  - missing data is graded by share of covered columns, with gaps not counted, and mixed sites by count;
+  - frame and stops come from the record checks;
+  - clusters are measured against the nearest panel record, and spread-out differences aren't clusters;
+  - a panel's sealed thresholds win over the defaults.
+- **`engine.test.ts` (1 test):** every result carries QC, a mixed site changes no status, and sealed thresholds apply.
+- **By hand:** the real panel 0.7.1 still verifies, and its member examples rate good.
+
 ## 2026-11-10: panel methods text
 
 `packages/core/test/methods.test.ts` (3 tests) covers what the methods text promises:

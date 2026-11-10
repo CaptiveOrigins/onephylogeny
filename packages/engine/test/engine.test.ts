@@ -700,3 +700,23 @@ describe('curation history (roadmap stage 3)', () => {
     expect((await readCurationHistory(store, 'demo')).damagedLines).toEqual([2])
   })
 })
+
+describe('sample QC in results (roadmap stage 4)', () => {
+  const curation: Curation = { schemaVersion: 1, records: {
+    'A1.1': { group: 'a', provenanceClass: 'wild-documented', site: 's1' }, 'A2.1': { group: 'a', provenanceClass: 'wild-documented', site: 's2' },
+    'B1.1': { group: 'b', provenanceClass: 'wild-documented', site: 's3' },
+  } }
+  it('every result carries QC, which changes no status, and a panel can seal its own thresholds', async () => {
+    const ctx = makeContext()
+    await fetchAndAnchor(ctx, profile)
+    await buildPanelFromRun(ctx, profile, curation)
+    const bundle = await loadPanel(ctx.store, profilePaths('demo').panel('p', '1'))
+    const clean = testSample(mutate([10, 200, 450], 0, 500), 's', bundle)
+    expect(clean.result!.qc).toMatchObject({ overall: 'good', settings: 'default' })
+    const mixed = testSample(mutate([10, 200, 450], 0, 500).replace(/^(.{100})./, '$1R'), 's', bundle)
+    expect(mixed.result!.qc!.rules.find((r) => r.rule === 'mixed-sites')!.status).toBe('mediocre')
+    expect(mixed.result!.findings.map((f) => f.status)).toEqual(clean.result!.findings.map((f) => f.status))
+    const sealed = { ...bundle, panel: { ...bundle.panel, qc: { missingData: { mediocre: 0.5, bad: 0.9 }, mixedSites: { mediocre: 1, bad: 1 }, clusteredDifferences: { window: 30, minDifferences: 3, mediocre: 1, bad: 2 } } } }
+    expect(testSample(mutate([10, 200, 450], 0, 500).replace(/^(.{100})./, '$1R'), 's', sealed).result!.qc).toMatchObject({ overall: 'bad', settings: 'panel' })
+  })
+})

@@ -90,6 +90,7 @@ export function unsealedBundle(input: BuildPanelInput): PanelBundle {
     builtBy: input.builtBy,
     rules: settings.rules,
     gates: input.gates ?? DEFAULT_GATES,
+    ...(settings.qc ? { qc: settings.qc } : {}),
     sequencesChecksum: '',
     ...(input.builtWith ? { builtWith: input.builtWith } : {}),
     ...(input.numtCopies?.length ? { numtCopies: input.numtCopies } : {}),

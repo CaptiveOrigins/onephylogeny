@@ -98,6 +98,10 @@
           "items": {
             "type": "string"
           }
+        },
+        "qc": {
+          "$ref": "#/definitions/SampleQc",
+          "description": "The sequence's quality by named rules (roadmap stage 4). It describes the sequence; it changes no status."
         }
       },
       "required": [
@@ -343,6 +347,72 @@
       ],
       "additionalProperties": false,
       "description": "Belongs to the query, not to a group: it never overwrites what was found about one."
+    },
+    "SampleQc": {
+      "type": "object",
+      "properties": {
+        "overall": {
+          "$ref": "#/definitions/QcStatus"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "rule": {
+                "$ref": "#/definitions/QcRule"
+              },
+              "status": {
+                "$ref": "#/definitions/QcStatus"
+              },
+              "detail": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "rule",
+              "status",
+              "detail"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "settings": {
+          "type": "string",
+          "enum": [
+            "panel",
+            "default"
+          ]
+        },
+        "nearest": {
+          "$ref": "#/definitions/Id"
+        }
+      },
+      "required": [
+        "overall",
+        "rules",
+        "settings"
+      ],
+      "additionalProperties": false
+    },
+    "QcStatus": {
+      "type": "string",
+      "enum": [
+        "good",
+        "mediocre",
+        "bad"
+      ],
+      "description": "Sample QC (roadmap stage 4): named rules, each good, mediocre or bad, and an overall status, in the spirit of Nextclade's QC. They describe the sequence's quality; they don't change what it is consistent with. Thresholds are a panel's own when it seals them, otherwise these defaults, which are stated proposals and not calibrated."
+    },
+    "QcRule": {
+      "type": "string",
+      "enum": [
+        "missing-data",
+        "mixed-sites",
+        "frame",
+        "stops",
+        "clustered-differences"
+      ]
     }
   }
 }
