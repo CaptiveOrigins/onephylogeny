@@ -1,6 +1,6 @@
 {
   "name": "@captiveorigins/onephylogeny-onetaxonomy",
-  "version": "0.1.0-alpha.5",
+  "version": "0.1.0-alpha.6",
   "description": "Optional bridge from OnePhylogeny to OneTaxonomy: exports finished trees as Phylogeny records, with their support values and explicit taxon mappings.",
   "keywords": [
     "phylogenetics",

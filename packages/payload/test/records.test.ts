@@ -150,4 +150,13 @@ describe('assignWaiting', () => {
     expect(await assignWaiting(payload, { evaluate })).toMatchObject({ notAssessable: 1 })
     expect(await payload.findByID({ collection: 'sequences' as never, id: sequence.id as never })).toMatchObject({ status: 'not-assessable', statusReason: 'Only 40% of the sequence aligned to the reference' })
   })
+  it('leaves sequences waiting when the panel is skipped, and names the panel and why', async () => {
+    await clear()
+    const panel = await panelFor({ shownAsExploratory: true })
+    const { sequence } = await register()
+    const evaluate: Evaluate = async () => ({ skip: 'Example member-a now answers differently' })
+    expect(await assignWaiting(payload, { evaluate })).toMatchObject({ skipped: 1, assigned: 0, notAssessable: 0, skippedPanels: [{ panel: String(panel.id), key: 'redfoot', version: panel.version, reason: 'Example member-a now answers differently' }] })
+    expect(((await payload.findByID({ collection: 'sequences' as never, id: sequence.id as never })) as unknown as Record<string, unknown>).status).toBe('received')
+    expect((await payload.find({ collection: 'assignments' as never, where: { sequence: { equals: sequence.id } } as never, depth: 0 })).docs).toHaveLength(0)
+  })
 })

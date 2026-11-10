@@ -1,6 +1,6 @@
 {
   "name": "@captiveorigins/onephylogeny-cli",
-  "version": "0.1.0-alpha.5",
+  "version": "0.1.0-alpha.6",
   "description": "OnePhylogeny command line: run profiles, build panels, test samples and suggest outgroups.",
   "keywords": [
     "phylogenetics",
