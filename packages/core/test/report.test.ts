@@ -54,6 +54,14 @@ describe('sample report (roadmap stage 2)', () => {
     expect(r.citations).toEqual(['Author (2025) A study. https://doi.org/10.0/x'])
   })
 
+  it('shows conflicting evidence in its own section, and none for a clean result', () => {
+    const p = panelOf()
+    expect(sampleReport(p, resultOf(p)).conflicts).toEqual([])
+    const two = sampleReport(p, resultOf(p, { findings: [finding('a', 'consistent'), finding('b', 'consistent'), finding('c', 'not_evaluable')] } as never))
+    expect(two.conflicts).toEqual(['More than one group fits this sequence: Group A, Group B.'])
+    expect(reportMarkdown(two)).toContain('## Conflicting evidence')
+  })
+
   it('says each gap once, even when the result already carries it', () => {
     const p = panelOf()
     const r = sampleReport(p, resultOf(p, { caveats: ['Group C could not be evaluated, so this result says nothing about it', 'This panel does not cover: Western islands'] }))

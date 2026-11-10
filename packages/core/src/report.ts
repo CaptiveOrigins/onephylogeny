@@ -1,4 +1,5 @@
 import { regionCard, type RegionCardRefusal } from './card.js'
+import { conflictText, resultConflicts } from './conflicts.js'
 import type { FindingStatus, Id, Panel, PairFinding, Result } from './model.js'
 
 /**
@@ -13,6 +14,8 @@ export type SampleReport = {
   groups: { id: Id; label: string; status: FindingStatus; statusText: string; reason: string; columnsCompared: number }[]
   comparisons: { pair: string; outcome: string }[]
   coverage: { columnsCompared: number; notEvaluated: string[] }
+  /** Where the evidence points more than one way (roadmap stage 4). Empty when it doesn't. */
+  conflicts: string[]
   gaps: string[]
   versions: { panel: string; checksum: string; panelStatus: string; run: Id; query: Id; querySha256?: string; producedBy: string[] }
   citations: string[]
@@ -62,6 +65,7 @@ export function sampleReport(panel: Panel, result: Result): SampleReport {
     // "vs", not a slash: group labels often contain one ("North / East").
     comparisons: result.pairs.map((p) => ({ pair: `${label(p.a)} vs ${label(p.b)}`, outcome: pairOutcome(p, label) })),
     coverage: { columnsCompared: result.overlap, notEvaluated },
+    conflicts: resultConflicts(result).map((c) => conflictText(c, label)),
     // The result's own caveats already say what wasn't evaluated and what the panel doesn't cover, in the evaluator's
     // words; the panel's line is added only for a result made before it did. Exact repeats are dropped.
     gaps: [
@@ -99,6 +103,7 @@ export function reportMarkdown(r: SampleReport): string {
     for (const c of r.comparisons) out.push(`| ${cell(c.pair)} | ${cell(c.outcome)} |`)
   }
   out.push('', '## Coverage', '', `${r.coverage.columnsCompared} columns compared.${r.coverage.notEvaluated.length ? ` Not evaluated: ${r.coverage.notEvaluated.join(', ')}.` : ''}`)
+  if (r.conflicts.length) out.push('', '## Conflicting evidence', '', ...r.conflicts.map((c) => `- ${c}`))
   if (r.gaps.length) out.push('', '## Gaps and caveats', '', ...r.gaps.map((g) => `- ${g}`))
   const v = r.versions
   out.push('', '## Versions', '', `- Panel: ${v.panel} (${v.panelStatus}), checksum \`${v.checksum}\``, `- Sample: ${v.query}${v.querySha256 ? `, sequence \`${v.querySha256}\`` : ''}`, `- Run: ${v.run}`)
