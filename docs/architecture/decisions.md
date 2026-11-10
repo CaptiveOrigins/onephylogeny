@@ -4,6 +4,8 @@ Decisions the owner made about OnePhylogeny, newest first, each with its date. T
 
 | Date | Decision | Where it lives |
 | --- | --- | --- |
+| 2026-11-10 | The group audit stays strict: only records covering a window whole. "The rule was set before seeing the data. Report the 5p gap as a real limit; longer sequences will fill it later." Relayed. | [ADR 0007](adr/0007-strict-group-audit.md), [Limitations](limitations.md) |
+| 2026-11-10 | Go on with paper lookup through Europe PMC and Crossref, within their terms and rate limits. Relayed. | `lookupPaper`, `paced` |
 | 2026-11-07 | Card wording, in the owner's words: "Closer to the maternal line population sampled in <regions> than those in <others>. Other regions are unsampled or untested. Not proof of where this animal was collected." Relayed. | `REGION_CARD_LABELS` |
 | 2026-11-07 | A region card says the animal's maternal line is closer to one sampled population than to the others it was compared with: "an indication their genetics more closely match this population compared to X, Y, Z", never proof of origin. Relayed. | `regionCard`, P30 |
 | 2026-11-07 | Keepers may get results before the outside expert review, always labeled exploratory, and private unless they opt in per animal. Relayed. | Payload `resultsAgainst`, `shownAsExploratory` |
