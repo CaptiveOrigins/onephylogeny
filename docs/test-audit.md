@@ -2,6 +2,16 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-10: conflict reporting
+
+`packages/core/test/conflicts.test.ts` (5 tests) and one report test cover what conflict reporting promises:
+
+- **A clean result reports nothing.**
+- **It reports** several consistent groups; windows that disagree, measured by rate (a tie shared across windows isn't a disagreement); and comparisons that favour a ruled-out group or go against the fitting one.
+- **The wording is plain**, and reports show conflicts in their own section.
+
+Checked by hand on the 8 saved redfoot results (see the changelog).
+
 ## 2026-11-10: guided setup
 
 What the suggestion promises, and the proof:
