@@ -1,6 +1,6 @@
 {
   "name": "@captiveorigins/onephylogeny-onepedigree",
-  "version": "0.1.0-alpha.4",
+  "version": "0.1.0-alpha.5",
   "description": "Optional bridge from OnePhylogeny to OnePedigree: checks sequence results against recorded maternal lines and reports conflicts for review, without correcting either side.",
   "keywords": [
     "phylogenetics",

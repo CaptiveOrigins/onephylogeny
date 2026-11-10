@@ -1,6 +1,6 @@
 {
   "name": "@captiveorigins/onephylogeny-react",
-  "version": "0.1.0-alpha.4",
+  "version": "0.1.0-alpha.5",
   "description": "OnePhylogeny for React: server-renderable views of sample results, panel coverage, validation, run logs, outgroup suggestions and a compact lineage card.",
   "keywords": ["phylogenetics", "react", "reference-panel"],
   "homepage": "https://github.com/CaptiveOrigins/onephylogeny#readme",

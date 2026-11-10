@@ -29,9 +29,61 @@ export type PanelExample = {
 export type PanelExamples = { schemaVersion: 1; panel: { id: Id; version: string; checksum: string }; producedBy: { name: string; version: string }[]; examples: PanelExample[] }
 
 /** The files a dataset's manifest covers, when present. `artifact.json` is left out: it points into one machine's store. */
-export const DATASET_FILES = ['panel.json', 'panel.fasta', 'validation.json', 'diagnostics.json', 'examples.json'] as const
+export const DATASET_FILES = ['panel.json', 'panel.fasta', 'validation.json', 'diagnostics.json', 'examples.json', 'README.md'] as const
 
-export type DatasetManifest = { schemaVersion: 1; panel: { id: Id; version: string; checksum: string }; files: Record<string, string> }
+export type DatasetManifest = {
+  schemaVersion: 1
+  panel: { id: Id; version: string; checksum: string }
+  files: Record<string, string>
+  /** The software that wrote the examples. A copy is compatible with any version whose rerun of the examples matches. */
+  builtWith?: { name: string; version: string }[]
+  /** The panel's sources, as it cites them. */
+  citations?: string[]
+}
+
+/**
+ * A README for the folder, so the dataset reads without the tool: what the panel is for, its groups and regions, what it
+ * can't speak to, how far it has been validated, how to check a copy, and what to cite. Built from the sealed panel
+ * alone, so it never holds a coordinate or a site.
+ */
+export function datasetReadme(bundle: PanelBundle, examples: PanelExamples): string {
+  const p = bundle.panel
+  const lines = [
+    `# ${p.id} ${p.version}`,
+    '',
+    `A OnePhylogeny reference panel for ${p.marker.kind === 'gene' ? `the ${p.marker.gene} gene` : 'one marker'}, status **${p.status}**. It says which sampled maternal-line population a sequence is closer to. That is never proof of where an animal was collected.`,
+    '',
+    '## Groups',
+    '',
+    '| Group | Region | Records |',
+    '| --- | --- | --- |',
+    ...p.groups.map((g) => `| ${g.label} | ${g.region ?? '(none)'} | ${g.evidence.length} |`),
+    '',
+    '## Limits',
+    '',
+    ...(p.notCovered.length ? p.notCovered.map((n) => `- Not covered: ${n}`) : ['- The panel states nothing about what it does not cover.']),
+    ...(p.validatedScope.length ? p.validatedScope.map((v) => `- Validated: ${v}`) : ['- No claim has passed validation yet, so every result is exploratory.']),
+    '- Statuses follow stated rules and are not probabilities.',
+    '',
+    '## Checking a copy',
+    '',
+    `\`onephylogeny verify --dir .\` checks every file against \`dataset.json\`, checks the seal (checksum \`${p.checksum}\`), and reruns the ${examples.examples.length} examples in \`examples.json\`. A copy is good only if all of them still give the answers recorded there.`,
+    '',
+    '## Files',
+    '',
+    '- `panel.json`: the sealed panel. `panel.fasta`: its reference and aligned records.',
+    '- `validation.json`: the validation report. `diagnostics.json`: notes from the build.',
+    '- `examples.json`: sequences with the answers they gave. `dataset.json`: every file\'s SHA-256.',
+    '',
+    '## Cite',
+    '',
+    ...(p.sources.length ? p.sources.map((s) => `- ${s.citation}${s.url ? ` ${s.url}` : ''}`) : ['- No sources recorded.']),
+    '',
+    `Built with ${examples.producedBy.map((t) => `${t.name} ${t.version}`).join(', ')}.`,
+    '',
+  ]
+  return lines.join('\n')
+}
 
 export type SampleTester = (sequence: string, queryId: string, bundle: PanelBundle) => { result: { findings: { group: Id; status: FindingStatus }[]; pairs: { a: Id; b: Id; state: string; favors?: Id }[] } | null; diagnostics: Diagnostic[] }
 
@@ -108,9 +160,11 @@ export async function writeDataset(store: Store, dir: string, bundle: PanelBundl
     if (canonicalJson(existing.examples) !== canonicalJson(examples.examples) || existing.panel.checksum !== examples.panel.checksum)
       throw new EngineError('examples-differ', `Panel ${bundle.panel.id} ${bundle.panel.version} already has different examples`, 'Run verify to see which ones changed; a panel version keeps the examples it was published with')
   } else await store.write(`${dir}/examples.json`, text)
+  const kept = JSON.parse(await store.read(`${dir}/examples.json`)) as PanelExamples
+  await store.write(`${dir}/README.md`, datasetReadme(bundle, kept))
   const files: Record<string, string> = {}
   for (const f of DATASET_FILES) if (await store.exists(`${dir}/${f}`)) files[f] = hashText(await store.read(`${dir}/${f}`))
-  const manifest: DatasetManifest = { schemaVersion: 1, panel: examples.panel, files }
+  const manifest: DatasetManifest = { schemaVersion: 1, panel: examples.panel, files, builtWith: kept.producedBy, citations: bundle.panel.sources.map((s) => (s.url ? `${s.citation} ${s.url}` : s.citation)) }
   await store.write(`${dir}/dataset.json`, `${JSON.stringify(manifest, null, 2)}\n`)
   return manifest
 }

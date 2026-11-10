@@ -1,6 +1,6 @@
 {
   "name": "@captiveorigins/onephylogeny-acquire",
-  "version": "0.1.0-alpha.4",
+  "version": "0.1.0-alpha.5",
   "description": "OnePhylogeny acquire: fetches sequence records by taxon and marker with safe retries and no duplicates, keeps raw files with hashes, and suggests outgroups outward through the taxonomy.",
   "keywords": [
     "phylogenetics",

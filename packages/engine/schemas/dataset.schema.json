@@ -37,6 +37,33 @@
           "additionalProperties": {
             "type": "string"
           }
+        },
+        "builtWith": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "version": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "version"
+            ],
+            "additionalProperties": false
+          },
+          "description": "The software that wrote the examples. A copy is compatible with any version whose rerun of the examples matches."
+        },
+        "citations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The panel's sources, as it cites them."
         }
       },
       "required": [
