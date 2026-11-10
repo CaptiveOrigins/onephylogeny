@@ -1,0 +1,677 @@
+{
+  "$id": "urn:onephylogeny:schema:panel:v2",
+  "title": "OnePhylogeny panel, schema version 2",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/Panel",
+  "definitions": {
+    "Panel": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "const": 2
+        },
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "version": {
+          "type": "string"
+        },
+        "checksum": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/PanelStatus"
+        },
+        "taxa": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ExternalId"
+          }
+        },
+        "marker": {
+          "$ref": "#/definitions/Marker"
+        },
+        "reference": {
+          "type": "object",
+          "properties": {
+            "accession": {
+              "type": "string"
+            },
+            "length": {
+              "type": "number"
+            },
+            "codonStart": {
+              "type": "number"
+            },
+            "geneticCode": {
+              "$ref": "#/definitions/GeneticCode"
+            }
+          },
+          "required": [
+            "accession",
+            "length"
+          ],
+          "additionalProperties": false
+        },
+        "windows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PanelWindow"
+          }
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PanelGroup"
+          }
+        },
+        "pairs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PanelPair"
+          },
+          "description": "Every pair of groups in every window. Derived from sequences and rules, and derived again on load."
+        },
+        "notCovered": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Regions, populations or windows this panel can't speak to. Reports must carry them."
+        },
+        "validatedScope": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The claims this panel has been validated for, in words. Empty means none yet."
+        },
+        "claims": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ValidatedClaim"
+          },
+          "description": "The same claims in a form results can check. Only the validation report fills these."
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "citation": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "citation"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "builtBy": {
+          "$ref": "#/definitions/Id"
+        },
+        "rules": {
+          "$ref": "#/definitions/EvaluationRules",
+          "description": "Part of the sealed panel, so editing a profile can never change what a panel version concludes."
+        },
+        "gates": {
+          "$ref": "#/definitions/GateSettings",
+          "description": "The record checks its members passed, sealed so a sample is held to the same checks."
+        },
+        "numtCopies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "aligned": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "aligned"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Nuclear copies of the marker from a genome screen, so every sample is checked against the same ones. Absent if no screen ran."
+        },
+        "study": {
+          "$ref": "#/definitions/StudyLink",
+          "description": "The Study state behind this panel, sealed so post hoc omissions travel with its results."
+        },
+        "sequencesChecksum": {
+          "type": "string",
+          "description": "Hash of the aligned sequences and reference that travel beside this JSON, so the seal covers them too."
+        },
+        "builtWith": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "version": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "version"
+            ],
+            "additionalProperties": false
+          },
+          "description": "What made this panel."
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "id",
+        "version",
+        "status",
+        "taxa",
+        "marker",
+        "reference",
+        "windows",
+        "groups",
+        "pairs",
+        "notCovered",
+        "validatedScope",
+        "claims",
+        "sources",
+        "builtBy",
+        "rules",
+        "gates",
+        "sequencesChecksum"
+      ],
+      "additionalProperties": false,
+      "description": "An immutable reference panel, exported as this JSON with sequences in FASTA beside it."
+    },
+    "Id": {
+      "type": "string",
+      "description": "Records are plain JSON: ISO date strings, no classes. See docs/architecture/data-schema.md."
+    },
+    "PanelStatus": {
+      "type": "string",
+      "enum": [
+        "candidate",
+        "active",
+        "superseded",
+        "withdrawn"
+      ]
+    },
+    "ExternalId": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "id"
+      ],
+      "additionalProperties": false,
+      "description": "An identifier qualified by the system that issued it, such as an NCBI taxon id."
+    },
+    "Marker": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "gene",
+            "mitogenome",
+            "snp"
+          ]
+        },
+        "gene": {
+          "type": "string"
+        },
+        "synonyms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "products": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "organelle": {
+          "type": "string",
+          "enum": [
+            "mitochondrion",
+            "plastid"
+          ]
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false
+    },
+    "GeneticCode": {
+      "type": "number",
+      "enum": [
+        1,
+        2
+      ]
+    },
+    "PanelWindow": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "label": {
+          "type": "string"
+        },
+        "start": {
+          "type": "number"
+        },
+        "end": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "start",
+        "end"
+      ],
+      "additionalProperties": false,
+      "description": "A named stretch of the reference, the same for every group. Half-open: `start` is included, `end` is not."
+    },
+    "PanelGroup": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "label": {
+          "type": "string"
+        },
+        "region": {
+          "type": "string",
+          "description": "A generalized named region. Panels never hold coordinates."
+        },
+        "coverage": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GroupCoverage"
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "record": {
+                "$ref": "#/definitions/Id"
+              },
+              "use": {
+                "$ref": "#/definitions/EvidenceUse"
+              },
+              "provenanceClass": {
+                "$ref": "#/definitions/ProvenanceClass"
+              },
+              "originSource": {
+                "type": "string"
+              },
+              "block": {
+                "type": "string"
+              },
+              "study": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "record",
+              "use",
+              "provenanceClass"
+            ],
+            "additionalProperties": false
+          },
+          "description": "`block` is an opaque label, so a panel doesn't reveal sampling sites."
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "coverage",
+        "evidence"
+      ],
+      "additionalProperties": false
+    },
+    "GroupCoverage": {
+      "type": "object",
+      "properties": {
+        "window": {
+          "$ref": "#/definitions/Id"
+        },
+        "records": {
+          "type": "number"
+        },
+        "blocks": {
+          "type": "number"
+        },
+        "columnsAtDepth": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "description": "Half-open runs of columns with enough records."
+        },
+        "spreadRate": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "The largest differences-per-column from any haplotype to its nearest groupmate here. Null if nothing could be compared."
+        },
+        "recordsNeeded": {
+          "type": "number",
+          "description": "How many more records would bring this window's best column up to depth."
+        }
+      },
+      "required": [
+        "window",
+        "records",
+        "blocks",
+        "columnsAtDepth",
+        "spreadRate",
+        "recordsNeeded"
+      ],
+      "additionalProperties": false,
+      "description": "What one group has in one window. A group short of depth is reported as data, never left out."
+    },
+    "EvidenceUse": {
+      "type": "string",
+      "enum": [
+        "lineage-and-location",
+        "lineage-only"
+      ],
+      "description": "How a reference record may be used. Records assigned by sequence can never show where a group occurs."
+    },
+    "ProvenanceClass": {
+      "type": "string",
+      "enum": [
+        "wild-documented",
+        "museum-documented",
+        "origin-reported",
+        "seized",
+        "ex-situ",
+        "zoo",
+        "unknown"
+      ],
+      "description": "What is known about how an animal or specimen came to be sampled. `unknown` is a real value."
+    },
+    "PanelPair": {
+      "type": "object",
+      "properties": {
+        "a": {
+          "$ref": "#/definitions/Id"
+        },
+        "b": {
+          "$ref": "#/definitions/Id"
+        },
+        "window": {
+          "$ref": "#/definitions/Id"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "resolvable",
+            "no_fixed_sites",
+            "not_evaluable"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "records": {
+          "$ref": "#/definitions/PairSide"
+        },
+        "blocks": {
+          "$ref": "#/definitions/PairSide"
+        },
+        "sites": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PairSite"
+          }
+        }
+      },
+      "required": [
+        "a",
+        "b",
+        "window",
+        "state",
+        "records",
+        "blocks",
+        "sites"
+      ],
+      "additionalProperties": false,
+      "description": "Two groups in one window. `not_evaluable` is kept as data, because an empty list of sites alone is ambiguous."
+    },
+    "PairSide": {
+      "type": "object",
+      "properties": {
+        "a": {
+          "type": "number"
+        },
+        "b": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "a",
+        "b"
+      ],
+      "additionalProperties": false
+    },
+    "PairSite": {
+      "type": "object",
+      "properties": {
+        "position": {
+          "type": "number"
+        },
+        "a": {
+          "type": "string"
+        },
+        "b": {
+          "type": "string"
+        },
+        "depth": {
+          "$ref": "#/definitions/PairSide"
+        },
+        "blocks": {
+          "$ref": "#/definitions/PairSide"
+        },
+        "unseenUpper95": {
+          "$ref": "#/definitions/PairSide",
+          "description": "95% upper bound on the share of a group carrying a state not seen here, `1 - 0.05^(1/n)`. Optimistic: it treats records as independent."
+        }
+      },
+      "required": [
+        "position",
+        "a",
+        "b",
+        "depth",
+        "blocks",
+        "unseenUpper95"
+      ],
+      "additionalProperties": false,
+      "description": "A column where two groups share no possible base, in records that can show location."
+    },
+    "ValidatedClaim": {
+      "type": "object",
+      "properties": {
+        "a": {
+          "$ref": "#/definitions/Id"
+        },
+        "b": {
+          "$ref": "#/definitions/Id"
+        },
+        "window": {
+          "$ref": "#/definitions/Id"
+        },
+        "minColumns": {
+          "type": "number"
+        },
+        "sites": {
+          "type": "object",
+          "properties": {
+            "a": {
+              "type": "number"
+            },
+            "b": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "a",
+            "b"
+          ],
+          "additionalProperties": false
+        },
+        "basis": {
+          "type": "string",
+          "enum": [
+            "exploratory",
+            "confirmatory"
+          ]
+        }
+      },
+      "required": [
+        "a",
+        "b",
+        "window",
+        "minColumns",
+        "sites",
+        "basis"
+      ],
+      "additionalProperties": false,
+      "description": "A pair of groups in one window that passed every gate. `exploratory` until a test meeting the protocol's section 2 runs."
+    },
+    "EvaluationRules": {
+      "type": "object",
+      "properties": {
+        "minSharedColumns": {
+          "type": "number",
+          "description": "Fewer columns than this, shared with a group's well-covered columns in a window, means not evaluable there."
+        },
+        "minDepthPerColumn": {
+          "type": "number",
+          "description": "A column counts for a group only with at least this many records. One record never makes a group comparable."
+        },
+        "minBlocksForExclusion": {
+          "type": "number",
+          "description": "Independent sampling sites a group needs at a column before a conflict there can rule it out."
+        },
+        "minDecisiveSites": {
+          "type": "number",
+          "description": "Sites favoring one side, with none favoring the other, needed to resolve a pair of groups."
+        },
+        "tolerance": {
+          "type": "number",
+          "description": "Differences allowed beyond a group's own spread, scaled to the columns compared."
+        }
+      },
+      "required": [
+        "minSharedColumns",
+        "minDepthPerColumn",
+        "minBlocksForExclusion",
+        "minDecisiveSites",
+        "tolerance"
+      ],
+      "additionalProperties": false,
+      "description": "How to read a panel. Uncalibrated, stated values: none of this is a probability."
+    },
+    "GateSettings": {
+      "type": "object",
+      "properties": {
+        "minAlignedColumns": {
+          "type": "number"
+        },
+        "minIdentity": {
+          "type": "number"
+        },
+        "minQueryCoverage": {
+          "type": "number",
+          "description": "Share of the query that must align. Only records many times longer than the reference skip it: see `gatesForRecord`."
+        },
+        "containerRecordFactor": {
+          "type": "number",
+          "description": "A record with no annotated gene, at least this many times the reference's length, holds more than the marker."
+        },
+        "maxTerminalDiscordance": {
+          "type": "number",
+          "description": "Most unaligned bases allowed at either end where the reference has columns left to align them to."
+        },
+        "frameErrors": {
+          "type": "boolean",
+          "description": "Frame-shifting indels and in-frame stops exclude the record, rather than warn. Panel builds use this."
+        },
+        "codonStart": {
+          "type": "number"
+        },
+        "geneticCode": {
+          "$ref": "#/definitions/GeneticCode"
+        }
+      },
+      "required": [
+        "minAlignedColumns",
+        "minIdentity"
+      ],
+      "additionalProperties": false
+    },
+    "StudyLink": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "title": {
+          "type": "string"
+        },
+        "stateHash": {
+          "type": "string"
+        },
+        "postHocOmitted": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "stateHash",
+        "postHocOmitted"
+      ],
+      "additionalProperties": false,
+      "description": "Which Study state a fetch or panel came from, and what that state left out after results were seen."
+    }
+  }
+}

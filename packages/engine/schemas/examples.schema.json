@@ -1,0 +1,165 @@
+{
+  "$id": "urn:onephylogeny:schema:examples:v1",
+  "title": "OnePhylogeny examples, schema version 1",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/PanelExamples",
+  "definitions": {
+    "PanelExamples": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "const": 1
+        },
+        "panel": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "Records are plain JSON: ISO date strings, no classes. See docs/architecture/data-schema.md."
+            },
+            "version": {
+              "type": "string"
+            },
+            "checksum": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "version",
+            "checksum"
+          ],
+          "additionalProperties": false
+        },
+        "producedBy": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "version": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "version"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "examples": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PanelExample"
+          }
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "panel",
+        "producedBy",
+        "examples"
+      ],
+      "additionalProperties": false
+    },
+    "PanelExample": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "member",
+            "fragment",
+            "control"
+          ]
+        },
+        "note": {
+          "type": "string",
+          "description": "Why this example is here, in words."
+        },
+        "sequence": {
+          "type": "string"
+        },
+        "expected": {
+          "$ref": "#/definitions/ExampleExpectation"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "note",
+        "sequence",
+        "expected"
+      ],
+      "additionalProperties": false
+    },
+    "ExampleExpectation": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "outcome": {
+              "type": "string",
+              "const": "result"
+            },
+            "statuses": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string",
+                "enum": [
+                  "consistent",
+                  "excluded_within_panel",
+                  "not_evaluable",
+                  "inconclusive"
+                ]
+              },
+              "propertyNames": {
+                "description": "Records are plain JSON: ISO date strings, no classes. See docs/architecture/data-schema.md."
+              }
+            },
+            "pairs": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "outcome",
+            "statuses",
+            "pairs"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "outcome": {
+              "type": "string",
+              "const": "refused"
+            },
+            "codes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "outcome",
+            "codes"
+          ],
+          "additionalProperties": false
+        }
+      ],
+      "description": "What an example must give again. Statuses per group and how each pair resolved, or the codes that refused it."
+    }
+  }
+}

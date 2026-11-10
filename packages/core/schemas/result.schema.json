@@ -1,0 +1,348 @@
+{
+  "$id": "urn:onephylogeny:schema:result:v2",
+  "title": "OnePhylogeny result, schema version 2",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/Result",
+  "definitions": {
+    "Result": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "const": 2
+        },
+        "query": {
+          "$ref": "#/definitions/Id"
+        },
+        "querySha256": {
+          "type": "string",
+          "description": "Hash of the exact sequence tested."
+        },
+        "producedBy": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "version": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "version"
+            ],
+            "additionalProperties": false
+          },
+          "description": "What produced this result, in the spirit of reporting software and data versions with every call."
+        },
+        "panel": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/definitions/Id"
+            },
+            "version": {
+              "type": "string"
+            },
+            "checksum": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "version",
+            "checksum"
+          ],
+          "additionalProperties": false
+        },
+        "run": {
+          "$ref": "#/definitions/Id"
+        },
+        "overlap": {
+          "type": "number"
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Finding"
+          }
+        },
+        "pairs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PairFinding"
+          }
+        },
+        "candidatesNotEvaluated": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Id"
+          },
+          "description": "Groups with no finding either way. The true group could be one of these."
+        },
+        "novelty": {
+          "$ref": "#/definitions/Novelty"
+        },
+        "outOfValidatedScope": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Why this result falls outside what the panel has been validated for. Empty means it's inside."
+        },
+        "caveats": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "query",
+        "panel",
+        "run",
+        "overlap",
+        "findings",
+        "pairs",
+        "candidatesNotEvaluated",
+        "novelty",
+        "outOfValidatedScope",
+        "caveats"
+      ],
+      "additionalProperties": false,
+      "description": "One query against one exact panel version. Stored verbatim wherever it travels."
+    },
+    "Id": {
+      "type": "string",
+      "description": "Records are plain JSON: ISO date strings, no classes. See docs/architecture/data-schema.md."
+    },
+    "Finding": {
+      "type": "object",
+      "properties": {
+        "group": {
+          "$ref": "#/definitions/Id"
+        },
+        "status": {
+          "$ref": "#/definitions/FindingStatus"
+        },
+        "reasonCode": {
+          "$ref": "#/definitions/FindingReason"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "overlap": {
+          "type": "number",
+          "description": "Columns compared, counting only those where this group has enough records."
+        },
+        "unresolved": {
+          "type": "number",
+          "description": "Columns where an ambiguity code could match or differ, so they neither support nor count against."
+        },
+        "differences": {
+          "type": "number"
+        },
+        "distance": {
+          "type": "number",
+          "description": "Differences per column over everything compared. Compare this, not raw counts, across groups with different coverage."
+        },
+        "informativeSites": {
+          "type": "number",
+          "description": "Sites this query covers that separate this group from another. Many shared columns with none of these establish little."
+        },
+        "blocks": {
+          "type": "number",
+          "description": "Independent sampling sites behind the columns compared."
+        },
+        "recordsNeeded": {
+          "type": "number",
+          "description": "More records this group needs before it can be compared here."
+        },
+        "windows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FindingWindow"
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Id"
+          }
+        }
+      },
+      "required": [
+        "group",
+        "status",
+        "reasonCode",
+        "reason",
+        "overlap",
+        "informativeSites",
+        "windows",
+        "evidence"
+      ],
+      "additionalProperties": false
+    },
+    "FindingStatus": {
+      "type": "string",
+      "enum": [
+        "consistent",
+        "excluded_within_panel",
+        "not_evaluable",
+        "inconclusive"
+      ]
+    },
+    "FindingReason": {
+      "type": "string",
+      "enum": [
+        "within-spread",
+        "contradicted-outside-spread",
+        "contradicted-within-spread",
+        "outside-spread-not-contradicted",
+        "no-location-evidence",
+        "too-few-records",
+        "too-few-shared-columns"
+      ],
+      "description": "Why a group got the status it did, in a form code can count."
+    },
+    "FindingWindow": {
+      "type": "object",
+      "properties": {
+        "window": {
+          "$ref": "#/definitions/Id"
+        },
+        "sharedColumns": {
+          "type": "number"
+        },
+        "differences": {
+          "type": "number"
+        },
+        "unresolved": {
+          "type": "number"
+        },
+        "allowedDifferences": {
+          "type": "number"
+        },
+        "nearest": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Id"
+          }
+        }
+      },
+      "required": [
+        "window",
+        "sharedColumns",
+        "differences",
+        "unresolved",
+        "allowedDifferences",
+        "nearest"
+      ],
+      "additionalProperties": false
+    },
+    "PairFinding": {
+      "type": "object",
+      "properties": {
+        "a": {
+          "$ref": "#/definitions/Id"
+        },
+        "b": {
+          "$ref": "#/definitions/Id"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "resolved",
+            "not_resolved",
+            "not_evaluable"
+          ]
+        },
+        "reasonCode": {
+          "$ref": "#/definitions/PairReason"
+        },
+        "favors": {
+          "$ref": "#/definitions/Id",
+          "description": "The group the decisive sites favor, when resolved."
+        },
+        "sitesCovered": {
+          "type": "number"
+        },
+        "forA": {
+          "type": "number"
+        },
+        "forB": {
+          "type": "number"
+        },
+        "neither": {
+          "type": "number",
+          "description": "Bases matching neither side, which may signal an unsampled population."
+        },
+        "ambiguous": {
+          "type": "number",
+          "description": "Ambiguity codes, counted for neither side."
+        }
+      },
+      "required": [
+        "a",
+        "b",
+        "state",
+        "reasonCode",
+        "sitesCovered",
+        "forA",
+        "forB",
+        "neither",
+        "ambiguous"
+      ],
+      "additionalProperties": false,
+      "description": "Whether this query separates two groups. `not_resolved` is a real answer: the columns it covers don't separate them."
+    },
+    "PairReason": {
+      "type": "string",
+      "enum": [
+        "decisive-sites",
+        "group-not-evaluable",
+        "no-sites-covered",
+        "too-few-decisive-sites",
+        "sites-disagree",
+        "thin-group"
+      ]
+    },
+    "Novelty": {
+      "type": "object",
+      "properties": {
+        "flagged": {
+          "type": "boolean",
+          "description": "True when no evaluated group fits. A single unmatched base is reported but doesn't flag the query."
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "no-consistent-group",
+              "base-matching-neither-side"
+            ]
+          }
+        },
+        "closest": {
+          "$ref": "#/definitions/Id",
+          "description": "The evaluated group nearest by rate, when none fits."
+        },
+        "neitherSideSites": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "flagged",
+        "reasons",
+        "neitherSideSites"
+      ],
+      "additionalProperties": false,
+      "description": "Belongs to the query, not to a group: it never overwrites what was found about one."
+    }
+  }
+}

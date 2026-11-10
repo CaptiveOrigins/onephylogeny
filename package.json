@@ -3,10 +3,33 @@
   "private": true,
   "type": "module",
   "description": "OnePhylogeny: a source-available, species-agnostic framework for acquiring sequence evidence, building reference panels and placing samples in lineages, with provenance and honest uncertainty.",
-  "keywords": ["phylogenetics", "phylogeography", "mitochondrial-dna", "reference-panel", "haplotype", "wildlife-forensics", "provenance"],
+  "keywords": [
+    "phylogenetics",
+    "phylogeography",
+    "mitochondrial-dna",
+    "reference-panel",
+    "haplotype",
+    "wildlife-forensics",
+    "provenance"
+  ],
   "license": "PolyForm-Noncommercial-1.0.0",
   "packageManager": "pnpm@11.2.2",
-  "engines": { "node": ">=22" },
-  "scripts": { "build": "pnpm -r build", "typecheck": "pnpm -r typecheck", "test": "pnpm -r test" },
-  "devDependencies": { "@types/node": "^24.19.2", "tsup": "^8.5.0", "typescript": "^5.9.0", "vitest": "^4.1.12" }
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "schemas": "node scripts/schemas.mjs",
+    "schemas:check": "node scripts/schemas.mjs --check"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "ajv": "^8.20.0",
+    "ts-json-schema-generator": "^2.9.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.0",
+    "vitest": "^4.1.12"
+  }
 }
