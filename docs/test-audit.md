@@ -2,6 +2,15 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-10: chimera candidates
+
+`packages/core/test/audit.test.ts` (2 new tests) covers what the check promises:
+
+- **A record with halves nearest to different groups is flagged**, and its neighbours aren't pulled along with it.
+- **Consistent records pass.** Records missing a whole window, and windows where the own group has nothing to compare, are skipped.
+
+Both failure modes were found by these tests while building, and fixed: consensus instead of nearest record, and the own-group rule.
+
 ## 2026-11-10: sample QC
 
 - **`packages/core/test/qc.test.ts` (5 tests):**

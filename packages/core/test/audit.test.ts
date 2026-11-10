@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { auditGroups, pDistance, type Panel, type PanelBundle } from '../src/index.js'
+import { auditGroups, chimeraCandidates, pDistance, type Panel, type PanelBundle } from '../src/index.js'
 
 // Invented panel: one 10-column window; the audit reads groups, evidence, windows and sequences.
 const ev = (record: string) => ({ record, use: 'lineage-and-location' as const, provenanceClass: 'wild-documented' as const })
@@ -38,5 +38,21 @@ describe('group audit (roadmap stage 3)', () => {
     expect([w!.columns, w!.mostCovered]).toEqual([10, 10])
     expect(w!.groups.map((g) => g.records)).toEqual([1, 1])
     expect(w!.flags.filter((f) => f.kind === 'closer-to-other-group')).toEqual([])
+  })
+})
+
+describe('chimera candidates (roadmap stage 4)', () => {
+  const two = (groups: Record<string, Record<string, string>>): PanelBundle => {
+    const b = bundleOf(groups)
+    return { ...b, panel: { ...b.panel, windows: [{ id: 'left', label: 'L', start: 0, end: 5 }, { id: 'right', label: 'R', start: 5, end: 10 }] } as Panel }
+  }
+  it('flags a record whose two halves are nearest to different groups', () => {
+    const r = chimeraCandidates(two({ a: { a1: 'AAAAAAAAAA', a2: 'AAAAAAAAAC', x: 'AAAAAGGGGG' }, b: { b1: 'GGGGGGGGGG', b2: 'GGGGGGGGGT' } }))
+    expect(r.checked).toBe(5)
+    expect(r.candidates).toEqual([{ record: 'x', group: 'a', windows: [{ window: 'left', nearestGroups: ['a'], distance: 0 }, { window: 'right', nearestGroups: ['b'], distance: 0 }] }])
+  })
+  it('passes consistent records, and skips records that don\'t cover two windows whole', () => {
+    const r = chimeraCandidates(two({ a: { a1: 'AAAAAAAAAA', a2: 'AAAAA-----' }, b: { b1: 'GGGGGGGGGG', b2: 'GGGGGGGGGT' } }))
+    expect(r).toEqual({ candidates: [], checked: 3 })
   })
 })
