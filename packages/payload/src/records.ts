@@ -188,7 +188,11 @@ export async function registerSequence(payload: Payload, input: RegisterSequence
 }
 
 /** What `assignWaiting` asks the host to compute for one sequence against one panel. */
-export type Evaluate = (args: { residues: string; queryId: string; panel: Record<string, unknown> }) => Promise<{ result: Result | null; problems: string[] }>
+/**
+ * Tests one sequence. `{ skip }` means the panel itself can't be used right now (for example its examples no longer give
+ * the answers they gave when it was built): the sequence stays waiting, and the skip is reported, never held against it.
+ */
+export type Evaluate = (args: { residues: string; queryId: string; panel: Record<string, unknown> }) => Promise<{ result: Result | null; problems: string[] } | { skip: string }>
 
 /** A short, plain summary of a result, naming the groups it is consistent with. */
 export function summarize(result: Result, panel: { groups?: { groupId: string; label: string }[] }): string {
@@ -201,12 +205,14 @@ export function summarize(result: Result, panel: { groups?: { groupId: string; l
 
 /**
  * The sweep: tests each sequence still `received` against the panel for its marker and species, and records a result
- * waiting for review. A sequence with no panel stays waiting; one the checks refuse is marked not assessable, with why.
+ * waiting for review. A sequence with no panel stays waiting; one the checks refuse is marked not assessable, with why. A
+ * panel `evaluate` skips leaves its sequences waiting, and is listed in `skippedPanels` so the run can say so.
  */
 export async function assignWaiting(payload: Payload, args: { evaluate: Evaluate; limit?: number; req?: PayloadRequest }) {
   const c = configOf(payload)
   const opts = { req: args.req, overrideAccess: true, depth: 0 } as const
-  const tally = { assigned: 0, notAssessable: 0, noPanel: 0 }
+  const tally = { assigned: 0, notAssessable: 0, noPanel: 0, skipped: 0 }
+  const skippedPanels = new Map<string, { panel: string; key: string; version: string; reason: string }>()
   const waiting = await payload.find({ collection: c.sequences as never, where: { status: { equals: 'received' } } as Where, sort: 'createdAt', limit: args.limit ?? 200, ...opts })
   const usable: Where = c.againstShown
     ? { or: [{ status: { equals: 'active' } }, { and: [{ status: { equals: 'candidate' } }, { shownAsExploratory: { equals: true } }] }] }
@@ -224,7 +230,13 @@ export async function assignWaiting(payload: Payload, args: { evaluate: Evaluate
       await payload.update({ collection: c.sequences as never, id: seq.id as never, data: { status: 'assigned' } as never, ...opts })
       continue
     }
-    const { result, problems } = await args.evaluate({ residues: String(seq.residues), queryId: String(seq.id), panel })
+    const outcome = await args.evaluate({ residues: String(seq.residues), queryId: String(seq.id), panel })
+    if ('skip' in outcome) {
+      tally.skipped++
+      skippedPanels.set(String(panel.id), { panel: String(panel.id), key: String(panel.key), version: String(panel.version), reason: outcome.skip })
+      continue
+    }
+    const { result, problems } = outcome
     if (!result) {
       await payload.update({ collection: c.sequences as never, id: seq.id as never, data: { status: 'not-assessable', statusReason: (problems.join('; ') || 'The panel\'s checks refused this sequence.').slice(0, 1000) } as never, ...opts })
       tally.notAssessable++
@@ -238,5 +250,5 @@ export async function assignWaiting(payload: Payload, args: { evaluate: Evaluate
     await payload.update({ collection: c.sequences as never, id: seq.id as never, data: { status: 'assigned' } as never, ...opts })
     tally.assigned++
   }
-  return { ...tally, checked: waiting.docs.length }
+  return { ...tally, checked: waiting.docs.length, skippedPanels: [...skippedPanels.values()] }
 }
