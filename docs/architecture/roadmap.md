@@ -112,7 +112,7 @@ Informed by the techniques research.
 
 1. Haplotype network and region map, from generalized regions only.
 2. Tree view that reuses OneTaxonomy's viewers, including paired support.
-3. Methods text and a citation list for each run, generated from provenance.
+3. Methods text and a citation list for each run, generated from provenance. *Built for panels 2026-11-10 (`onephylogeny methods`); Studies already had `studyMethods`.*
 4. Comparison of two runs or two panel versions.
 
 **Check:** a reader can follow one conclusion from the summary to its supporting records and papers without opening a file.

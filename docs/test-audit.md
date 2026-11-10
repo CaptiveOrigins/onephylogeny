@@ -2,6 +2,16 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-10: panel methods text
+
+`packages/core/test/methods.test.ts` (3 tests) covers what the methods text promises:
+
+- **It describes the panel from what it records**, with rules stated as configured values, its limits, the caveat and the citations.
+- **It counts validated claims by basis, and names a nuclear-copy screen.**
+- **It never writes a coordinate-like number.**
+
+Checked by hand on the real panel 0.7.1. That check caught wording that misdescribed `tolerance` and the nuclear-copy screen, both fixed against the model's definitions before commit.
+
 ## 2026-11-10: conflict reporting
 
 `packages/core/test/conflicts.test.ts` (5 tests) and one report test cover what conflict reporting promises:
