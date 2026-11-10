@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.6
+
+Roadmap stage 3 (making curation humane) is complete, along with the first parts of stages 4 and 5.
+
+- **Payload, sweep:** `Evaluate` may return `{ skip: reason }` for a panel that can't be used right now. Its sequences stay waiting, and `assignWaiting` returns `skipped` and `skippedPanels`, so a run can report it. Agreed with the platform, for checking a panel's examples before use.
 - **Panel methods text (roadmap stage 5):** `panelMethods(panel)` in core and `onephylogeny methods --dir PANEL`. It writes plain prose for a report's methods section, with the citation list, generated only from what the sealed panel records: taxa, marker, reference, record checks, nuclear-copy screen, windows, the evaluation rules (stated as configured values), validated claims by basis, limits and software. It never writes coordinates.
 - **Conflict reporting (roadmap stage 4):** `resultConflicts(result)` in core, and a "Conflicting evidence" section in sample reports. It reports when more than one group fits, when different windows are closest to different groups (by differences per shared column), and when a comparison favours a ruled-out group or goes against the one that fits. Statuses are unchanged; conflicts are reported beside them. On the 8 saved redfoot results, 4 of the 5 that fit no single group show their 3p window closest to West Colombia / Panama and their 5p window closest to East Colombia / West Venezuela. Why isn't known: it could be the records, the groups or real mixing.
 - **Guided setup (roadmap stage 3):** "Suggest a reference" in the Mac app's Setup, and `suggestReference` in acquire. It finds the nearest RefSeq complete mitochondrial genome, from the taxon itself or up to three levels above, and says when it had to use a relative. It also gives the taxon's mitochondrial genetic code from NCBI Taxonomy, offering only codes the frame check supports and saying why when it can't. Nothing is set until "Use …" is clicked. For redfoot (taxon 50047) it suggests NC_080265.1 with the vertebrate mitochondrial code, the same choices the hand-built profile made.
