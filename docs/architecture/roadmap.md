@@ -2,7 +2,7 @@
 
 **Goal.** Someone with a sample and a species can answer "which lineages is this consistent with, how sure are we, and what can't we say?", reproduce that answer later, and see the evidence behind it.
 
-Each stage ends with a check someone can run. A stage isn't finished until its check passes on real data. The [phase plan](phase-plan.md) records what has happened; this page says what comes next and why.
+Since 2026-11-10 the open items here are tracked as tasks in the maintainers' task log (K197 to K199, K214 to K233), which is where they're ranked. Each stage ends with a check someone can run. A stage isn't finished until its check passes on real data. The [phase plan](phase-plan.md) records what has happened; this page says what comes next and why.
 
 ## What mature pipelines taught us
 
