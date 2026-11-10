@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.7
+
+Publishes on npm the work the Mac app 0.3.0 already carries, described in full under "Mac app 0.3.0" below: the region map (`RegionMap`, ecoregion tags on groups, ADR 0008), the haplotype network (`haplotypeNetwork`, `HaplotypeNetworkFigure`), chimera candidates (`chimeraCandidates`, `onephylogeny chimeras`) and sample QC (`result.qc`, with uncalibrated default thresholds). Results for the same panel and sequence keep their statuses; QC and conflicts are reported beside them.
+
 ## Mac app 0.3.0
 
 The Mac app at OnePhylogeny 0.1.0-alpha.6 and the unreleased work below it: stage 3's Study-tab paper lookup and guided setup ("Suggest a reference"), curation history on every decision, sample QC in results, and the haplotype network in the Panel tab. The README now gives both ways past macOS's warning. A person hasn't yet worked through this build; that is test T26.
