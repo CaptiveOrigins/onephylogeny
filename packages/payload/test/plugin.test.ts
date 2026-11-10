@@ -39,7 +39,7 @@ describe('panels', () => {
   it('start as candidates and refuse coordinates', async () => {
     expect((await createPanel()).status).toBe('candidate')
     await expect(createPanel({ status: 'active' })).rejects.toThrow(/starts as a candidate/)
-    await expect(createPanel({ groups: [{ groupId: 'a', label: 'A', lat: 1 }] })).rejects.toThrow()
+    await expect(createPanel({ groups: [{ groupId: 'a', label: 'A', lat: 1 }] })).rejects.toThrow(/never hold coordinates/)
   })
   it('activating supersedes the previous active panel of that key', async () => {
     const one = await activate((await createPanel({ key: 'k' })).id)
@@ -89,6 +89,13 @@ describe('results', () => {
     const base = resultFor(p)
     await expect(assign(p, { ...base, findings: [base.findings[0]] })).rejects.toThrow(/Missing: b/)
     await expect(assign(p, { ...base, findings: [base.findings[0], { ...base.findings[1], status: 'excluded_within_panel' }] })).rejects.toThrow(/shares no sites/)
+  })
+  it('refuse coordinates anywhere in a result, and save nothing', async () => {
+    const p = await activate((await createPanel()).id)
+    const base = resultFor(p)
+    await expect(assign(p, { ...base, findings: [{ ...base.findings[0], latitude: 1 }, base.findings[1]] })).rejects.toThrow(/never hold coordinates/)
+    await expect(assign(p, { ...base, extra: { place: { lat_lon: 'x' } } })).rejects.toThrow(/never hold coordinates/)
+    expect((await payload.find({ collection: 'assignments' as never, where: { panel: { equals: p.id } } as never })).totalDocs).toBe(0)
   })
   it('are hidden until approved, then released with who and when', async () => {
     const p = await activate((await createPanel()).id)

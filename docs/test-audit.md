@@ -2,6 +2,39 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-10: full audit
+
+The 14-day full pass, over every package and the Mac app. Promises came from the README, the invariants (P1 to P30), the analysis protocol, the ADRs, the roadmap's "Built" notes and decisions.md. Each was mapped to tests by reading them; no suite was rerun just for the audit. The suites went from 384 tests in 31 files to 389 in 32, all passing.
+
+### Covered
+
+- **No coordinates anywhere shown or shared.** Panels refuse them (`panel.test.ts`, `plugin.test.ts`). Region cards and reports hide a region that looks like a position (`card.test.ts`, `report.test.ts`). Methods text and the dataset README never write a coordinate-like number (`methods.test.ts`, `engine.test.ts`). The record sheet leaves them out unless asked, and the curation sheet never writes them and refuses them in a site or note (`core.test.ts`, `curation-sheet.test.ts`). The schemas refuse a `latitude` field.
+- **Sealing, immutability and verify.** P16 and P17 in `engine.test.ts`, `panel.test.ts` and `build.test.ts`; `verify` catches an edited file, a missing file, a broken seal and changed answers; a version can't be overwritten with different content; Payload freezes a panel once active and never lets a result be edited.
+- **Atomic writes and crash recovery.** P18 and P19 in `engine.test.ts` (a failure at every write recovers to the same result), and the CLI store in `store.test.ts`.
+- **Fail-closed checks.** An empty search fails unless allowed, a panel with no records fails, a short batch fails after retries, any error refuses the whole curation sheet, and the region card stops on any comparison favouring another group. In the Payload plugin, anonymous readers get nothing, candidates are hidden from readers, the released endpoint runs with the caller's permissions, and a reviewer reaches only their own site.
+- **Unknown stays unknown.** Provenance starts unknown (P9), no shared sites gives `not_evaluable` and a `null` distance (P4), a NUMT screen never clears a clean record, QC changes no status, paper lookup never overwrites a DOI or PMID, and the schemas refuse a made-up status such as `probably`.
+
+### Gaps added (with the tests)
+
+- **A record's coordinates never reach a published file or a result.** No test fed the engine a record that carried coordinates. `engine.test.ts` now builds a panel with made-up `lat_lon` on one record, checks the run kept it, then checks every file in the panel folder and a sample result for it.
+- **The Payload plugin refuses coordinates in a result.** The check existed but wasn't tested. `plugin.test.ts` now tries a coordinate key in a finding and one nested deeper, and checks nothing was saved. The panel test now checks the coordinate message, not just any error.
+- **The Mac app's file store.** It had no test. `apps/desktop/test/platform-mac.test.tsx` (3 tests, mocked Tauri file system) checks that a save goes through a temporary file and replaces the old one whole, that a failed write keeps the old file, that logs append, and that nothing is written before a workspace is chosen.
+
+No bugs were found. No source code changed.
+
+### Gaps left
+
+- **A failed rename in the Mac store leaves a `.tmp` file.** The old file stays intact, so nothing is lost. The CLI store had the same leftover and was fixed on 2026-11-09. It's for the lead to decide whether to make the two match; this pass didn't change source code.
+- **Climate output.** Nothing is built yet (decisions.md, 2026-11-07). When it is, it needs the same no-coordinate test as reports and methods text.
+- **P7's query-frame check and P15's calibration** stay pending, as the invariants table says.
+- **Payload and the platform don't run `verify` on import,** as noted on 2026-11-10. That waits for stage 2's format work.
+- **The Mac app's `decide` → `saveCuration` wiring** is still covered by the typecheck only. A UI test would be bigger than this pass.
+
+### Left out as overkill
+
+- Payload's internals, the CLI's argument parsing, and the playground app.
+- A real-disk test of the Mac store. The mocked one checks the order of writes, which is what keeps a file whole.
+
 ## 2026-11-10: region map
 
 - **`react.test.tsx` (2 tests):**
