@@ -2,6 +2,19 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-10: haplotype network
+
+- **`packages/core/test/network.test.ts` (4 tests):**
+  - steps count unambiguous sites only;
+  - identical haplotypes collapse, with counts by group, joined by the fewest steps;
+  - every equally short link is kept;
+  - partial records are left out and counted, and an unknown window is refused.
+- **`react.test.tsx` (2 tests):**
+  - the layout is deterministic, and fitted inside the frame;
+  - the legend names only groups present, multi-step links are labelled, and the table matches.
+- **`app.test.tsx`:** the network appears after a build.
+- **Looked at by hand:** a render of the real panel 0.7.1's 3p window. That caught circles cut off at the edge, fixed with `fitLayout`.
+
 ## 2026-11-10: chimera candidates
 
 `packages/core/test/audit.test.ts` (2 new tests) covers what the check promises:

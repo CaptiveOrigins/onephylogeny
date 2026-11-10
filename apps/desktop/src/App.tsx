@@ -1,7 +1,7 @@
 import { NcbiClient, suggestOutgroups, suggestReference, type OutgroupLadder, type ReferenceSuggestion } from '@captiveorigins/onephylogeny-acquire'
-import { DEFAULT_RULES, LOCATION_EVIDENCE, parseCuration, parseFasta, parseProfile, validateProfile, type Curation, type Diagnostic, type EvaluationRules, type EvidenceUse, type Panel, type PanelWindow, type Profile, type ProvenanceClass, type Result, type RunEvent, type SequenceRecord, type Snapshot } from '@captiveorigins/onephylogeny-core'
+import { DEFAULT_RULES, haplotypeNetwork, LOCATION_EVIDENCE, parseCuration, parseFasta, parseProfile, validateProfile, type Curation, type Diagnostic, type EvaluationRules, type EvidenceUse, type Panel, type PanelWindow, type Profile, type ProvenanceClass, type Result, type RunEvent, type SequenceRecord, type Snapshot } from '@captiveorigins/onephylogeny-core'
 import { buildPanelFromRun, buildTree, EngineError, fetchAndAnchor, isCancelled, loadPanel, profilePaths, runSample, saveCuration, type EngineContext, type RecordOutcome, type TreeOutcome } from '@captiveorigins/onephylogeny-engine'
-import { EventLog, OutgroupLadderView, PanelSummary, ResultView, ValidationView } from '@captiveorigins/onephylogeny-react'
+import { EventLog, HaplotypeNetworkFigure, OutgroupLadderView, PanelSummary, ResultView, ValidationView } from '@captiveorigins/onephylogeny-react'
 import { TreeCanvas } from '@captiveorigins/onephylogeny-react/canvas'
 import { treeToPhylogeny } from '@captiveorigins/onephylogeny-onetaxonomy'
 import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -78,7 +78,7 @@ export function App({ platform }: { platform: Platform }) {
   const [outcomes, setOutcomes] = useState<RecordOutcome[]>([])
   const [runId, setRunId] = useState<string | null>(null)
   const [studySession, setStudySession] = useState<StudySession>(emptyStudySession)
-  const [panelState, setPanelState] = useState<{ panel: Panel; diagnostics: Diagnostic[]; validation: any; unassigned: number } | null>(null)
+  const [panelState, setPanelState] = useState<{ panel: Panel; sequences: Record<string, string>; diagnostics: Diagnostic[]; validation: any; unassigned: number } | null>(null)
 
   const [settings, setSettings] = useState<Settings>({ autoUpdate: false, appearance: 'auto' })
   const [showSettings, setShowSettings] = useState(false)
@@ -152,7 +152,8 @@ export function App({ platform }: { platform: Platform }) {
       const dir = paths.panel(p.panel.id, p.panel.version)
       if (await platform.store.exists(`${dir}/panel.json`)) {
         const extra = JSON.parse(await platform.store.read(`${dir}/diagnostics.json`))
-        setPanelState({ panel: (await loadPanel(platform.store, dir)).panel, diagnostics: extra.diagnostics, unassigned: extra.unassigned, validation: JSON.parse(await platform.store.read(`${dir}/validation.json`)) })
+        const loaded = await loadPanel(platform.store, dir)
+        setPanelState({ panel: loaded.panel, sequences: loaded.sequences, diagnostics: extra.diagnostics, unassigned: extra.unassigned, validation: JSON.parse(await platform.store.read(`${dir}/validation.json`)) })
       }
     }
   }
@@ -233,7 +234,7 @@ export function App({ platform }: { platform: Platform }) {
         {tab === 'panel' && <PanelTab profile={profile} edit={edit} save={save} state={panelState} hasRun={Boolean(runId)} busy={Boolean(busy)} busyLabel={busy} busySince={busySince} platform={platform} onBuild={() => attempt('Building panel', async () => {
           await save()
           const out = await buildPanelFromRun(engine(), profile, curation)
-          setPanelState({ panel: out.bundle.panel, diagnostics: out.diagnostics, validation: out.validation, unassigned: out.unassigned })
+          setPanelState({ panel: out.bundle.panel, sequences: out.bundle.sequences, diagnostics: out.diagnostics, validation: out.validation, unassigned: out.unassigned })
         })} />}
         {tab === 'sample' && <SampleTab profile={profile} platform={platform} hasPanel={Boolean(panelState)} attempt={attempt} context={engine} />}
         {tab === 'tree' && <TreeTab profile={profile} edit={edit} platform={platform} records={records} attempt={attempt} run={(w) => buildTree(engine(), profile, { absoluteDir: platform.root()!, ...(w ? { window: w } : {}) })} hasRun={Boolean(runId)} />}
@@ -406,7 +407,19 @@ function Records({ profile, curation, decide, records, outcomes, runId, platform
   )
 }
 
-function PanelTab({ profile, edit, save, state, hasRun, busy, busyLabel, busySince, platform, onBuild }: { profile: Profile; edit: (p: Profile) => void; save: () => Promise<void>; state: { panel: Panel; diagnostics: Diagnostic[]; validation: any; unassigned: number } | null; hasRun: boolean; busy: boolean; busyLabel: string | null; busySince: number; platform: Platform; onBuild: () => void }) {
+/** The haplotype network for one window at a time (roadmap stage 5). */
+function NetworkSection({ panel, sequences }: { panel: Panel; sequences: Record<string, string> }) {
+  const [windowId, setWindowId] = useState(panel.windows[panel.windows.length - 1]?.id ?? '')
+  const network = useMemo(() => (windowId ? haplotypeNetwork({ panel, sequences }, windowId) : null), [panel, sequences, windowId])
+  if (!panel.windows.length || !network) return null
+  return <section aria-label="Haplotype network">
+    <h3>Haplotype network</h3>
+    <Field label="Window"><select value={windowId} onChange={(e) => setWindowId(e.target.value)}>{panel.windows.map((w) => <option key={w.id} value={w.id}>{w.label}</option>)}</select></Field>
+    {network.nodes.length ? <HaplotypeNetworkFigure network={network} panel={panel} /> : <p className="muted">No record covers this window whole ({network.partial} partial), so there is no network to draw. Longer sequences would fill it.</p>}
+  </section>
+}
+
+function PanelTab({ profile, edit, save, state, hasRun, busy, busyLabel, busySince, platform, onBuild }: { profile: Profile; edit: (p: Profile) => void; save: () => Promise<void>; state: { panel: Panel; sequences: Record<string, string>; diagnostics: Diagnostic[]; validation: any; unassigned: number } | null; hasRun: boolean; busy: boolean; busyLabel: string | null; busySince: number; platform: Platform; onBuild: () => void }) {
   const panel = profile.panel!
   const setP = (x: Partial<typeof panel>) => edit({ ...profile, panel: { ...panel, ...x } })
   const th = panel.rules ?? DEFAULT_RULES
@@ -447,6 +460,7 @@ function PanelTab({ profile, edit, save, state, hasRun, busy, busyLabel, busySin
         <Diagnostics items={state.diagnostics} />
         {state.unassigned > 0 && <p className="muted">{state.unassigned} records passed checks but aren't in a group, so they aren't in this panel.</p>}
         <PanelSummary panel={state.panel} />
+        <NetworkSection panel={state.panel} sequences={state.sequences} />
         <h3>Validation</h3>
         <ValidationView blocks={state.validation.blocks} groups={state.validation.groups} ladder={state.validation.ladder} claims={state.validation.claims} panel={state.panel} />
       </>}
