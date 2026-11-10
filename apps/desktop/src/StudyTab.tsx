@@ -1,6 +1,6 @@
-import { type FoundPaper, NcbiClient, searchPapers } from '@captiveorigins/onephylogeny-acquire'
+import { type FoundPaper, type LinkProposal, lookupPaper, NcbiClient, paced, searchPapers } from '@captiveorigins/onephylogeny-acquire'
 import { CompareRuns } from './CompareRuns'
-import { confirmOutgroup, coverageTrack, dropOn, moveItem, newStudy, parseStudy, postHocOmissions, recordRun, restoreOmitted, studyMethods, studyUse, duplicateStudy, withoutPostHoc, type Curation, type MoveResult, type PanelWindow, type Profile, type Study, type StudyColumn, type StudyItem, type StudyPaper, type StudyRecord } from '@captiveorigins/onephylogeny-core'
+import { confirmOutgroup, coverageTrack, dropOn, linkPaper, moveItem, newStudy, parseStudy, postHocOmissions, recordRun, restoreOmitted, studyMethods, studyUse, duplicateStudy, withoutPostHoc, type Curation, type MoveResult, type PanelWindow, type Profile, type Study, type StudyColumn, type StudyItem, type StudyPaper, type StudyRecord } from '@captiveorigins/onephylogeny-core'
 import { findPaperRecords, findRecordStudies, isCancelled, profilePaths, type EngineContext } from '@captiveorigins/onephylogeny-engine'
 import { useEffect, useMemo, useState, type DragEvent, type ReactNode } from 'react'
 import type { Platform } from './platform'
@@ -84,6 +84,36 @@ export function GeneRegion({ study, columns, windows }: { study: Study; columns:
       </tbody></table></details>
     </section>
   )
+}
+
+/**
+ * Finding a paper's DOI and PMID (roadmap stage 3): proposals from Crossref and Europe PMC, each with its source and title
+ * match. Nothing is attached until "Use this link"; the Study then records where it came from and when.
+ */
+function PublishedPaper({ paper, lookup, onUse, busy }: { paper: StudyPaper; lookup: (p: StudyPaper) => Promise<{ proposals: LinkProposal[]; failed: string[] }>; onUse: (p: LinkProposal) => void; busy: boolean }) {
+  const [found, setFound] = useState<{ proposals: LinkProposal[]; failed: string[] } | null>(null)
+  const [looking, setLooking] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => { setFound(null); setError(null) }, [paper.id])
+  const ids = [paper.doi && `DOI ${paper.doi}`, paper.pmid && `PMID ${paper.pmid}`].filter(Boolean).join(', ')
+  const approved = paper.linkSource ? ` Linked ${paper.linkSource.source.approvedAt.slice(0, 10)}, from ${paper.linkSource.source.citation?.split(' ')[0] ?? 'a lookup'}.` : ''
+  const find = async () => {
+    setLooking(true); setError(null)
+    try { setFound(await lookup(paper)) } catch (e) { setError(e instanceof Error ? e.message : String(e)) } finally { setLooking(false) }
+  }
+  return <section aria-label="Published paper" className="paper-link">
+    <h3>Published paper: {paper.label}</h3>
+    <p className="muted">{ids ? `${ids}.${approved}` : 'No DOI or PMID yet.'}</p>
+    {(!paper.doi || !paper.pmid) && !paper.unpublished && <button disabled={busy || looking} onClick={() => void find()}>{looking ? 'Looking…' : 'Find the published paper'}</button>}
+    {error && <p role="alert" className="error">{error}</p>}
+    {found && found.failed.length > 0 && <p role="alert" className="error">Not every source answered, so this list may be incomplete: {found.failed.join('; ')}</p>}
+    {found && !found.proposals.length && <p className="muted">No close title match in Crossref or Europe PMC.</p>}
+    {found && found.proposals.length > 0 && <ul className="plain">{found.proposals.map((p, i) => <li key={`${p.service}-${p.doi ?? p.pmid ?? i}`} className="study-row">
+      <div><strong>{p.title}</strong>{p.year ? ` (${p.year})` : ''}{p.journal ? `, ${p.journal}` : ''}</div>
+      <div className="muted">{p.service === 'crossref' ? 'Crossref' : 'Europe PMC'}: {[p.doi && `DOI ${p.doi}`, p.pmid && `PMID ${p.pmid}`].filter(Boolean).join(', ')}. Title {p.exactTitle ? 'identical' : `${Math.round(p.titleMatch * 100)}% the same words`}.{p.supplementsUrl ? ' Open access; supplements listed at ' : ''}{p.supplementsUrl && <code>{p.supplementsUrl}</code>}</div>
+      <button disabled={busy || (Boolean(paper.doi && p.doi) && paper.doi !== p.doi) || (Boolean(paper.pmid && p.pmid) && paper.pmid !== p.pmid)} onClick={() => onUse(p)} aria-label={`Use this link: ${p.doi ?? p.pmid}`}>Use this link</button>
+    </li>)}</ul>}
+  </section>
 }
 
 export function StudyTab({ profile, platform, session, setSession, attempt, context, curation, decide, edit, save, busy }: {
@@ -231,6 +261,8 @@ export function StudyTab({ profile, platform, session, setSession, attempt, cont
   const outgroup = records.filter((r) => r.column === 'outgroup')
   const paperOf = (id: string) => study?.papers.find((p) => p.id === id)
   const sel = session.selected
+  // One paced fetch for every lookup, so Crossref and Europe PMC see one request a second at most.
+  const lookupFetch = useMemo(() => paced(platform.fetch), [platform])
   const litPaper = (id: string) => !!sel && (sel.kind === 'paper' ? sel.id === id : !!study?.records[sel.accession]?.papers.includes(id))
   const litRecord = (r: StudyRecord) => !!sel && (sel.kind === 'record' ? sel.accession === r.accession || r.papers.some((p) => study?.records[sel.accession]?.papers.includes(p)) : r.papers.includes(sel.id))
   const select = (s: StudySession['selected']) => setSession((x) => ({ ...x, selected: JSON.stringify(x.selected) === JSON.stringify(s) ? null : s }))
@@ -418,6 +450,13 @@ export function StudyTab({ profile, platform, session, setSession, attempt, cont
           <ul className="plain">{outgroup.map(row)}</ul>
         </Column>
       </div>
+
+      {study && sel?.kind === 'paper' && (() => {
+        const paper = study.papers.find((p) => p.id === sel.id)
+        return paper && <PublishedPaper paper={paper} busy={busy} lookup={(p) => lookupPaper(lookupFetch, p)} onUse={(proposal) => {
+          try { commit(linkPaper(study, paper.id, { ...(proposal.doi ? { doi: proposal.doi } : {}), ...(proposal.pmid ? { pmid: proposal.pmid } : {}), source: proposal.source }, { at: now() })); setMessage(`Linked ${paper.label} to ${proposal.doi ?? proposal.pmid}.`) } catch (e) { setMessage(e instanceof Error ? e.message : String(e)) }
+        }} />
+      })()}
 
       {study && columns && study.papers.length > 0 && <GeneRegion study={study} columns={columns} windows={profile.panel?.windows ?? []} />}
 

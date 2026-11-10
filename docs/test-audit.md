@@ -2,6 +2,15 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-10: paper lookup in the Mac app
+
+These tests cover the app side:
+
+- **`study.test.ts` (2 tests):** `linkPaper` records the source, approver and time, and logs the link. It never replaces a different DOI or PMID, and refuses an empty link or an unknown paper.
+- **`app.test.tsx`, clicked through on the preview platform:** a GenBank-only study gets proposals from the fake Crossref. Nothing is attached by finding them. "Use this link" attaches the DOI, and the saved Study holds its source and the log entry.
+
+Not seen in a running Mac app; covered by these tests and the typecheck only. Crossref was added to the Tauri HTTP allow-list but hasn't been exercised through Tauri.
+
 ## 2026-11-10: paper lookup
 
 `packages/acquire/test/lookup.test.ts` (5 tests, with fake services) covers what the lookup promises:

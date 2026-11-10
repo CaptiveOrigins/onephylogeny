@@ -39,6 +39,9 @@
         },
         {
           "url": "https://www.ebi.ac.uk/europepmc/*"
+        },
+        {
+          "url": "https://api.crossref.org/works*"
         }
       ]
     },
