@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addPaperRecords, confirmOutgroup, coverageTrack, dropOn, moveLeft, moveRight, newStudy, omit, parseStudy, recordRun, restoreOmitted, studyMethods, studyStateHash, studyUse, type LinkedRecord, type Study, type StudyPaper } from '../src/index.js'
+import { addPaperRecords, confirmOutgroup, linkPaper, coverageTrack, dropOn, moveLeft, moveRight, newStudy, omit, parseStudy, recordRun, restoreOmitted, studyMethods, studyStateHash, studyUse, type LinkedRecord, type Study, type StudyPaper } from '../src/index.js'
 
 const at = '2026-11-05T00:00:00Z'
 const opts = { at }
@@ -118,5 +118,25 @@ describe('integrity', () => {
     expect(parseStudy(JSON.stringify(s))).toEqual(s)
     expect(() => parseStudy('{"schemaVersion":2}')).toThrow('schema version')
     expect(() => parseStudy('nope')).toThrow('not valid JSON')
+  })
+})
+
+describe('linking a paper (roadmap stage 3)', () => {
+  const at = '2026-11-10T00:00:00.000Z'
+  const withPaper = () => ({ ...newStudy('s', 'S', at), papers: [{ id: 'genbank:x', label: 'Smith 2015', colorIndex: 0, title: 'A study', sources: ['genbank' as const], linked: [], linkLookup: 'done' as const }] })
+  const source = { kind: 'publication' as const, citation: 'Crossref https://api.crossref.org/works?x', retrievedAt: at }
+
+  it('sets the DOI with its source and approver, and logs it', () => {
+    const s = linkPaper(withPaper(), 'genbank:x', { doi: '10.1/x', source }, { at, by: 'curator-1' })
+    expect(s.papers[0]).toMatchObject({ doi: '10.1/x', linkSource: { doi: '10.1/x', source: { ...source, approvedBy: 'curator-1', approvedAt: at } } })
+    expect(s.log.at(-1)).toEqual({ at, action: 'paper-linked', item: 'genbank:x', detail: 'DOI 10.1/x, from Crossref' })
+  })
+
+  it('never replaces a different DOI or PMID, and refuses an empty link or an unknown paper', () => {
+    const s = linkPaper(withPaper(), 'genbank:x', { doi: '10.1/x', source }, { at })
+    expect(() => linkPaper(s, 'genbank:x', { doi: '10.1/y', source }, { at })).toThrow(/already has DOI/)
+    expect(linkPaper(s, 'genbank:x', { doi: '10.1/x', pmid: '5', source }, { at }).papers[0]).toMatchObject({ doi: '10.1/x', pmid: '5' })
+    expect(() => linkPaper(s, 'genbank:x', { source }, { at })).toThrow(/needs a DOI or a PMID/)
+    expect(() => linkPaper(s, 'nope', { doi: '10.1/x', source }, { at })).toThrow(/No paper/)
   })
 })

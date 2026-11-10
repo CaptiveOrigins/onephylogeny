@@ -175,6 +175,34 @@ describe('the Mac app, clicked through', () => {
       await waitFor(() => expect(column('Ingroup').queryByText('N0.1')).toBeNull())
     })
 
+    it('finds a study\'s published paper and links it only when asked, recording where it came from', async () => {
+      await openProfile()
+      await fetchRecords()
+      tab('Study')
+      fireEvent.click(screen.getByRole('button', { name: 'Search' }))
+      await screen.findByText(/papers\. PubMed/, undefined, { timeout: 20_000 })
+      fireEvent.click(await screen.findByRole('button', { name: 'Add A study of the south' }))
+      await screen.findByText('Save this Study?')
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+      await screen.findByText('Autosaving')
+      fireEvent.click(column('Papers').getAllByRole('button').find((b) => b.className === 'link')!)
+      const section = () => within(screen.getByRole('region', { name: 'Published paper' }))
+      expect(section().getByText('No DOI or PMID yet.')).toBeTruthy()
+      fireEvent.click(section().getByRole('button', { name: 'Find the published paper' }))
+      const use = await section().findByRole('button', { name: 'Use this link: 10.1/south' }, { timeout: 5_000 })
+      expect(section().getByText(/Crossref: DOI 10\.1\/south\. Title identical\./)).toBeTruthy()
+      // Nothing is attached by finding it.
+      expect(section().getByText('No DOI or PMID yet.')).toBeTruthy()
+      fireEvent.click(use)
+      await section().findByText(/^DOI 10\.1\/south\. Linked \d{4}-\d{2}-\d{2}, from Crossref\.$/)
+      const dir = (await platform.list(`profiles/${ID}/studies`))[0]!
+      await waitFor(async () => {
+        const saved = JSON.parse(await platform.store.read(`profiles/${ID}/studies/${dir}/study.json`))
+        expect(saved.papers[0].linkSource.source).toMatchObject({ kind: 'publication', approvedAt: expect.any(String) })
+        expect(saved.log.at(-1)).toMatchObject({ action: 'paper-linked', detail: 'DOI 10.1/south, from Crossref' })
+      })
+    })
+
     it('marks a Study not saved when the offer is declined', async () => {
       await addNorth()
       fireEvent.click(within(screen.getByText('Save this Study?').closest('form')!).getByRole('button', { name: 'Not now' }))

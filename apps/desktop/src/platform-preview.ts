@@ -43,6 +43,8 @@ export function createPreviewPlatform(): Platform {
     },
     list: async (dir) => seen(dir),
     fetch: async (url, init) => {
+      if (url.includes('crossref')) return respond(JSON.stringify({ message: { items: [{ DOI: '10.1/SOUTH', title: ['A study of the south'], issued: { 'date-parts': [[2021]] }, 'container-title': ['Example Journal'] }] } }))
+      if (url.includes('europepmc') && url.includes('TITLE')) return respond(JSON.stringify({ resultList: { result: [] } }))
       if (url.includes('europepmc')) return respond(JSON.stringify({ hitCount: 1, resultList: { result: [{ id: '7', pmid: '7', doi: '10.1/north', title: 'A study of the north', authorString: 'Author A.', pubYear: '2020', isOpenAccess: 'Y' }] } }))
       const p = new URLSearchParams(init?.body)
       if (p.get('db') === 'pubmed') return respond(JSON.stringify(url.includes('esummary') ? { result: {} } : { esearchresult: { count: '0', idlist: [] } }))

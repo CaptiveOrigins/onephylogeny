@@ -1,6 +1,6 @@
 import { canonicalJson } from './panel.js'
 import { sha256Hex } from './sha256.js'
-import type { StudyLink } from './model.js'
+import type { FieldSource, StudyLink } from './model.js'
 
 /**
  * A Study: papers gathered for an analysis, with their records sorted into ingroup and outgroup.
@@ -42,7 +42,11 @@ export type StudyPaper = {
   linked: LinkedRecord[]
   /** Whether the records have been looked up. "None found" and "not looked" are different answers. */
   linkLookup: 'not-done' | 'done' | 'failed'
+  /** Where an approved DOI or PMID came from, and who approved it when (roadmap stage 3, paper lookup). */
+  linkSource?: PaperLinkSource
 }
+
+export type PaperLinkSource = { doi?: string; pmid?: string; source: FieldSource & { approvedBy?: string; approvedAt: string } }
 
 export type StudyRecord = LinkedRecord & {
   /** Every paper citing it: a record cited twice counts once. Empty if added by hand. */
@@ -83,6 +87,21 @@ export function newStudy(id: string, title: string, at: string): Study {
 }
 
 const logged = (s: Study, e: StudyEvent): Study => ({ ...s, log: [...s.log, e] })
+
+/**
+ * A person approves a proposed DOI or PMID for one paper. It records where the link came from and who approved it,
+ * logs it, and refuses to replace a different DOI or PMID already set: remove that first, on purpose.
+ */
+export function linkPaper(s: Study, paperId: string, link: { doi?: string; pmid?: string; source: FieldSource }, meta: { at: string; by?: string }): Study {
+  const paper = s.papers.find((p) => p.id === paperId)
+  if (!paper) throw new Error(`No paper ${paperId} in this Study`)
+  if (!link.doi && !link.pmid) throw new Error('A link needs a DOI or a PMID')
+  if (paper.doi && link.doi && paper.doi !== link.doi) throw new Error(`${paper.label} already has DOI ${paper.doi}`)
+  if (paper.pmid && link.pmid && paper.pmid !== link.pmid) throw new Error(`${paper.label} already has PMID ${paper.pmid}`)
+  const linkSource: PaperLinkSource = { ...(link.doi ? { doi: link.doi } : {}), ...(link.pmid ? { pmid: link.pmid } : {}), source: { ...link.source, ...(meta.by ? { approvedBy: meta.by } : {}), approvedAt: meta.at } }
+  const next = { ...paper, ...(link.doi ? { doi: link.doi } : {}), ...(link.pmid ? { pmid: link.pmid } : {}), linkSource }
+  return logged({ ...s, papers: s.papers.map((p) => (p.id === paperId ? next : p)) }, { at: meta.at, action: 'paper-linked', item: paperId, detail: [link.doi && `DOI ${link.doi}`, link.pmid && `PMID ${link.pmid}`, link.source.citation && `from ${link.source.citation.split(' ')[0]}`].filter(Boolean).join(', ') })
+}
 
 export function itemColumn(study: Study, item: StudyItem): StudyColumn | null {
   if (item.kind === 'result') return study.papers.some((p) => p.id === item.paper.id) ? 'papers' : 'results'
