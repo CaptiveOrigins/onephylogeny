@@ -66,6 +66,22 @@ describe('the Mac app, clicked through', () => {
     expect(await screen.findByRole('heading', { name: 'Second species' })).toBeTruthy()
   })
 
+  it('suggests a reference and genetic code, and sets them only when chosen', async () => {
+    await openProfile()
+    // A marker not known to be mitochondrial gets no suggestion, and says why.
+    fireEvent.click(screen.getByRole('button', { name: 'Suggest a reference' }))
+    expect(await screen.findByText(/Only mitochondrial markers get a suggested reference/, undefined, { timeout: 10_000 })).toBeTruthy()
+    fireEvent.change(screen.getByRole('combobox', { name: /Organelle/ }), { target: { value: 'mitochondrion' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Suggest a reference' }))
+    await waitFor(() => expect(screen.getByRole('status', { name: 'Suggested reference' }).textContent).toContain('Genetic code: Vertebrate mitochondrial (2)'), { timeout: 10_000 })
+    const before = (screen.getByRole('textbox', { name: /Reference accession/ }) as HTMLInputElement).value
+    expect(before).not.toBe('NC_000099.1')
+    fireEvent.click(await within(screen.getByRole('status', { name: 'Suggested reference' })).findByRole('button', { name: 'Use NC_000099.1' }))
+    expect((screen.getByRole('textbox', { name: /Reference accession/ }) as HTMLInputElement).value).toBe('NC_000099.1')
+    expect((screen.getByRole('combobox', { name: /Genetic code/ }) as HTMLSelectElement).value).toBe('2')
+    expect(screen.queryByRole('status', { name: 'Suggested reference' })).toBeNull()
+  })
+
   it('says what a study-wide provenance change did, and saves it', async () => {
     await openProfile()
     await fetchRecords()

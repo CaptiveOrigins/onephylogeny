@@ -103,13 +103,15 @@ export class NcbiClient {
   }
 
   /** A taxon's ancestors, nearest first. */
-  async lineage(taxid: string): Promise<{ scientificName: string; ancestors: TaxonStep[] }> {
+  async lineage(taxid: string): Promise<{ scientificName: string; ancestors: TaxonStep[]; mitoGeneticCode?: number }> {
     const xml = await this.request('efetch.fcgi', { db: 'taxonomy', id: taxid, retmode: 'xml' })
     const name = /<ScientificName>([^<]+)<\/ScientificName>/.exec(xml)?.[1]
     if (!name) throw new AcquireError(`Taxon ${taxid} was not found`)
     const lineage = /<LineageEx>([\s\S]*?)<\/LineageEx>/.exec(xml)?.[1] ?? ''
     const ancestors = [...lineage.matchAll(/<Taxon>\s*<TaxId>(\d+)<\/TaxId>\s*<ScientificName>([^<]+)<\/ScientificName>\s*<Rank>([^<]*)<\/Rank>/g)].map((m) => ({ id: m[1]!, name: m[2]!, rank: m[3]! })).reverse()
-    return { scientificName: name, ancestors }
+    // The taxon's own mitochondrial code; the lineage's taxa come first in the XML only inside LineageEx, which is cut out here.
+    const mgc = /<MitoGeneticCode>\s*<MGCId>(\d+)<\/MGCId>/.exec(xml.replace(/<LineageEx>[\s\S]*?<\/LineageEx>/, ''))?.[1]
+    return { scientificName: name, ancestors, ...(mgc ? { mitoGeneticCode: Number(mgc) } : {}) }
   }
 }
 
@@ -200,3 +202,45 @@ export async function suggestOutgroups(client: NcbiClient, selection: Selection,
 
 export * from './papers.js'
 export * from './lookup.js'
+
+export type ReferenceCandidate = { accession: string; organism: string; length: number; title: string }
+export type ReferenceSuggestion = {
+  /** The nearest level with a RefSeq mitochondrial genome: the taxon itself, or an ancestor. */
+  from: { id: string; name: string; rank: string; sameTaxon: boolean } | null
+  candidates: ReferenceCandidate[]
+  /** From NCBI Taxonomy. Only codes the frame check supports are offered; others say why not. */
+  geneticCode: { code: number; supported: true; label: string } | { code?: number; supported: false; reason: string }
+  notes: string[]
+}
+
+const CODE_LABELS: Record<number, string> = { 1: 'Standard (1)', 2: 'Vertebrate mitochondrial (2)' }
+
+/**
+ * Guided setup (roadmap stage 3): a reference a newcomer can start from. The nearest RefSeq complete mitochondrial genome,
+ * from the taxon itself or up to `maxSteps` ancestors, and the taxon's mitochondrial genetic code. Suggestions only: a
+ * person chooses, and can change both.
+ */
+export async function suggestReference(client: NcbiClient, selection: Selection, options: { maxSteps?: number } = {}): Promise<ReferenceSuggestion> {
+  const notes: string[] = []
+  const mito = selection.marker.kind === 'mitogenome' || (selection.marker.kind === 'gene' && selection.marker.organelle === 'mitochondrion')
+  const taxid = selection.taxa.find((t) => t.source === 'ncbi-taxonomy')?.id
+  if (!taxid) return { from: null, candidates: [], geneticCode: { supported: false, reason: 'Choose an NCBI taxon first' }, notes }
+  const lin = await client.lineage(taxid)
+  const code = lin.mitoGeneticCode
+  const geneticCode: ReferenceSuggestion['geneticCode'] = !mito
+    ? { supported: false, reason: 'Only mitochondrial markers get a suggested genetic code' }
+    : code && CODE_LABELS[code] ? { code, supported: true, label: CODE_LABELS[code]! }
+      : { ...(code ? { code } : {}), supported: false, reason: code ? `NCBI gives mitochondrial code ${code}, which the frame check doesn't support yet. Leave it unchecked.` : 'NCBI gives no mitochondrial code for this taxon' }
+  if (!mito) return { from: null, candidates: [], geneticCode, notes: ['Only mitochondrial markers get a suggested reference so far. Enter one by hand.'] }
+  const levels = [{ id: taxid, name: lin.scientificName, rank: 'taxon' }, ...lin.ancestors.slice(0, options.maxSteps ?? 3)]
+  for (const [i, level] of levels.entries()) {
+    const found = await client.summaries(`txid${level.id}[Organism:exp] AND mitochondrion[Filter] AND refseq[Filter] AND 10000:25000[SLEN]`, 20)
+    if (!found.length) continue
+    const candidates = found.map(({ accession, organism, length, title }) => ({ accession, organism, length, title }))
+      .sort((a, b) => Number(b.organism === lin.scientificName) - Number(a.organism === lin.scientificName) || b.length - a.length || a.accession.localeCompare(b.accession))
+    if (i > 0) notes.push(`No RefSeq mitochondrial genome for ${lin.scientificName} itself; these are from the ${level.rank} ${level.name}. Records are anchored to the reference's coordinates, so a relative works, but check that it holds the marker.`)
+    notes.push('A RefSeq genome is a convention, not proof it is typical of the species. Check that its marker is complete and annotated.')
+    return { from: { ...level, sameTaxon: i === 0 }, candidates, geneticCode, notes }
+  }
+  return { from: null, candidates: [], geneticCode, notes: [`No RefSeq mitochondrial genome within ${levels.length - 1} levels above ${lin.scientificName}. Enter a reference by hand, such as the longest complete record of the marker.`] }
+}

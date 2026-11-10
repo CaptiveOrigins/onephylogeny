@@ -51,8 +51,10 @@ export function createPreviewPlatform(): Platform {
       if (url.includes('elink')) return respond(JSON.stringify({ linksets: [{}] }))
       if (p.get('db') === 'taxonomy') {
         if (url.includes('esearch')) return respond(JSON.stringify({ esearchresult: { count: '1', idlist: ['1'] } }))
-        return respond('<TaxaSet><Taxon><ScientificName>Example taxon</ScientificName><LineageEx><Taxon><TaxId>9</TaxId><ScientificName>Examplidae</ScientificName><Rank>family</Rank></Taxon><Taxon><TaxId>8</TaxId><ScientificName>Examplus</ScientificName><Rank>genus</Rank></Taxon></LineageEx></Taxon></TaxaSet>')
+        return respond('<TaxaSet><Taxon><ScientificName>Example taxon</ScientificName><MitoGeneticCode><MGCId>2</MGCId></MitoGeneticCode><LineageEx><Taxon><TaxId>9</TaxId><ScientificName>Examplidae</ScientificName><Rank>family</Rank></Taxon><Taxon><TaxId>8</TaxId><ScientificName>Examplus</ScientificName><Rank>genus</Rank></Taxon></LineageEx></Taxon></TaxaSet>')
       }
+      if (p.get('term')?.includes('refseq[Filter]') && p.get('term')?.startsWith('txid1[')) return respond(JSON.stringify({ esearchresult: { count: '1', idlist: ['99'] } }))
+      if (url.includes('esummary') && p.get('id') === '99') return respond(JSON.stringify({ result: { 99: { accessionversion: 'NC_000099.1', organism: 'Example taxon', slen: 16600, title: 'Example taxon mitochondrion, complete genome' } } }))
       if (p.get('term')?.startsWith('txid8')) return respond(JSON.stringify({ esearchresult: { count: '1', idlist: ['91'] } }))
       if (p.get('term')?.startsWith('txid9')) return respond(JSON.stringify({ esearchresult: { count: '2', idlist: ['92', '93'] } }))
       if (url.includes('esummary')) return respond(JSON.stringify({ result: { 91: { accessionversion: 'OUT91.1', organism: 'Examplus sister', slen: 900 }, 92: { accessionversion: 'OUT92.1', organism: 'Farther one', slen: 880 }, 93: { accessionversion: 'OUT93.1', organism: 'Farther two', slen: 870 } } }))
