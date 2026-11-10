@@ -1,6 +1,6 @@
 [package]
 name = "onephylogeny"
-version = "0.2.0"
+version = "0.3.0"
 description = "OnePhylogeny for Mac"
 authors = ["Captive Origins"]
 license-file = "../../../LICENSE"

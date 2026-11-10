@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## Mac app 0.3.0
+
+The Mac app at OnePhylogeny 0.1.0-alpha.6 and the unreleased work below it: stage 3's Study-tab paper lookup and guided setup ("Suggest a reference"), curation history on every decision, sample QC in results, and the haplotype network in the Panel tab. The README now gives both ways past macOS's warning. A person hasn't yet worked through this build; that is test T26.
+
 - **Region map (roadmap stage 5, ADR 0008, owner 2026-11-10):** panel groups can carry `ecoregions` (RESOLVE Ecoregions 2017 IDs), validated and sealed, and `RegionMap` in the React package shades them by group, with neighbouring ecoregions for context, a legend, a table and the credit line. `scripts/ecoregions.mjs` builds the outlines from the official release, simplified to about 8 MB, with mapshaper (not a dependency). Rendered by hand with illustrative tags for the redfoot groups; no real panel is tagged yet.
 - **Haplotype network (roadmap stage 5):** `haplotypeNetwork(panel, window)` in core, `HaplotypeNetworkFigure` in the React package, and a section in the Mac app's Panel tab with a window chooser.
   - It's a minimum spanning network of one window's haplotypes, from records covering it whole (ADR 0007), keeping every equally short link.

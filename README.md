@@ -51,6 +51,15 @@ onephylogeny trace     --workspace DIR --profile ID --type T --key K   # everyth
 
 A profile is plain JSON and holds every choice: taxa, marker, reference, filters, outgroups, groups and rules.
 
+## Install the Mac app
+
+Download the latest `.dmg` from this repository's [Releases](https://github.com/CaptiveOrigins/onephylogeny/releases) page (tags `desktop-v*`) and drag OnePhylogeny to Applications. The app isn't notarized, so macOS blocks the first launch. Use either way past the warning:
+
+- **System Settings:** try to open the app once, then go to System Settings > Privacy & Security, scroll down, click **Open Anyway**, and click **Open** when the warning comes back. Apple says to do this only for an app you trust.
+- **Terminal:** `xattr -dr com.apple.quarantine "/Applications/OnePhylogeny.app"`
+
+It can't update itself yet: download the newest `.dmg` to update.
+
 ## Develop
 
 ```bash
