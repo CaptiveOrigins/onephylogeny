@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Panels prove themselves (roadmap stage 2, ADR 0006):** a built panel's folder now holds `examples.json` and `dataset.json`. The examples are, per group, the longest located member, a 300-base fragment and a control that must be refused, each with the answers it gave at build time. The manifest holds the SHA-256 of every file. `onephylogeny verify --dir DIR` checks the hashes and the seal, then reruns the examples, so a copy on another machine or under another software version is shown to give the same answers. `onephylogeny dataset --dir DIR` adds both files to a panel built earlier. Tested on made-up data, and on a copy of the real redfoot panel 0.7.1: 7 examples, about 0.3 s, and a one-base edit is caught.
 - CLI: a failed save now removes its temporary file. The file store moved to `src/store.ts` and has its first tests: saves replace a file whole, a failed write keeps the old file, and nothing is left behind.
 
 ## 0.1.0-alpha.4

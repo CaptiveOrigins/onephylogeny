@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Curation, Profile } from '@captiveorigins/onephylogeny-core'
-import { buildPanelFromRun, comparePanelVersions, panelVersions, EngineError, ENGINE_VERSION, fetchAndAnchor, loadArtifact, loadPanel, profilePaths, runSample, testSample, traceArtifact, type EngineContext, type Store } from '../src/index.js'
+import { buildPanelFromRun, checkExamples, comparePanelVersions, panelVersions, EngineError, ENGINE_VERSION, fetchAndAnchor, loadArtifact, loadPanel, profilePaths, runSample, testSample, traceArtifact, verifyDataset, writeDataset, type DatasetManifest, type EngineContext, type PanelExamples, type Store } from '../src/index.js'
 
 function randomSeq(n: number, seed: number): string {
   let a = seed >>> 0
@@ -463,5 +463,87 @@ describe('artifacts and provenance', () => {
     const refused = await runSample(ctx, profile, randomSeq(400, 1234), 'wrong')
     expect(refused.result).toBeNull()
     expect(refused.run.status).toBe('succeeded')
+  })
+})
+
+describe('panel dataset (roadmap stage 2)', () => {
+  const curation: Curation = { schemaVersion: 1, records: {
+    'A1.1': { group: 'a', provenanceClass: 'wild-documented', site: 's1' }, 'A2.1': { group: 'a', provenanceClass: 'wild-documented', site: 's2' },
+    'B1.1': { group: 'b', provenanceClass: 'wild-documented', site: 's3' },
+  } }
+  const built = async () => {
+    const ctx = makeContext()
+    await fetchAndAnchor(ctx, profile)
+    await buildPanelFromRun(ctx, profile, curation)
+    return { ctx, dir: profilePaths('demo').panel('p', '1') }
+  }
+  const codes = (r: { diagnostics: { code: string }[] }) => r.diagnostics.map((d) => d.code)
+
+  it('a build writes examples with their answers, and a manifest of every file', async () => {
+    const { ctx, dir } = await built()
+    const examples = JSON.parse(ctx.store.files.get(`${dir}/examples.json`)!) as PanelExamples
+    expect(examples.examples.map((e) => e.id)).toEqual(['member-a', 'member-b', 'fragment-a', 'control-not-marker'])
+    expect(examples.examples.find((e) => e.id === 'member-a')!.expected).toMatchObject({ outcome: 'result', statuses: { a: 'consistent' } })
+    expect(examples.examples.find((e) => e.id === 'control-not-marker')!.expected.outcome).toBe('refused')
+    expect(examples.examples.find((e) => e.id === 'fragment-a')!.sequence).toHaveLength(300)
+    const manifest = JSON.parse(ctx.store.files.get(`${dir}/dataset.json`)!) as DatasetManifest
+    expect(Object.keys(manifest.files).sort()).toEqual(['diagnostics.json', 'examples.json', 'panel.fasta', 'panel.json', 'validation.json'])
+    expect(manifest.panel.checksum).toBe(examples.panel.checksum)
+  })
+
+  it('verifies a faithful copy', async () => {
+    const { ctx, dir } = await built()
+    const r = await verifyDataset(ctx.store, dir, loadPanel, testSample)
+    expect(r.diagnostics).toEqual([])
+    expect(r.checked).toEqual({ files: 5, examples: 4 })
+  })
+
+  it('catches an edited file, a missing file, and a broken seal', async () => {
+    const { ctx, dir } = await built()
+    ctx.store.files.set(`${dir}/validation.json`, ctx.store.files.get(`${dir}/validation.json`)!.replace('{', '{ '))
+    expect(codes(await verifyDataset(ctx.store, dir, loadPanel, testSample))).toEqual(['file-changed'])
+    ctx.store.files.delete(`${dir}/diagnostics.json`)
+    expect(codes(await verifyDataset(ctx.store, dir, loadPanel, testSample))).toContain('file-missing')
+    const panel = JSON.parse(ctx.store.files.get(`${dir}/panel.json`)!)
+    ctx.store.files.set(`${dir}/panel.json`, JSON.stringify({ ...panel, notCovered: [] }))
+    expect(codes(await verifyDataset(ctx.store, dir, loadPanel, testSample))).toEqual(expect.arrayContaining(['file-changed', 'panel-changed']))
+  })
+
+  it('reruns the examples, so software that answers differently fails', async () => {
+    const { ctx, dir } = await built()
+    const flipped: typeof testSample = (s, id, b) => {
+      const out = testSample(s, id, b)
+      return out.result ? { ...out, result: { ...out.result, findings: out.result.findings.map((f) => ({ ...f, status: 'inconclusive' as const })) } } : out
+    }
+    const r = await verifyDataset(ctx.store, dir, loadPanel, flipped)
+    expect(codes(r).filter((c) => c === 'example-changed')).toHaveLength(3)
+    expect(r.diagnostics[0]!.message).toMatch(/gave .*inconclusive.*, not .*consistent/)
+  })
+
+  it('refuses examples made for another panel, and a folder without a manifest or examples', async () => {
+    const { ctx, dir } = await built()
+    const examples = JSON.parse(ctx.store.files.get(`${dir}/examples.json`)!) as PanelExamples
+    const bundle = await loadPanel(ctx.store, dir)
+    expect(checkExamples({ ...examples, panel: { ...examples.panel, checksum: 'other' } }, bundle, testSample).map((d) => d.code)).toEqual(['examples-wrong-panel'])
+    expect(checkExamples({ ...examples, examples: [] }, bundle, testSample).map((d) => d.code)).toEqual(['no-examples'])
+    ctx.store.files.delete(`${dir}/dataset.json`)
+    ctx.store.files.delete(`${dir}/examples.json`)
+    expect(codes(await verifyDataset(ctx.store, dir, loadPanel, testSample))).toEqual(['no-dataset-manifest', 'no-examples'])
+  })
+
+  it('a panel version keeps the examples it was published with', async () => {
+    const { ctx, dir } = await built()
+    const bundle = await loadPanel(ctx.store, dir)
+    await expect(writeDataset(ctx.store, dir, bundle, testSample)).resolves.toBeTruthy()
+    const changed = JSON.parse(ctx.store.files.get(`${dir}/examples.json`)!) as PanelExamples
+    changed.examples[0]!.sequence = changed.examples[0]!.sequence.slice(1)
+    ctx.store.files.set(`${dir}/examples.json`, JSON.stringify(changed))
+    await expect(writeDataset(ctx.store, dir, bundle, testSample)).rejects.toMatchObject({ code: 'examples-differ' })
+  })
+
+  it('chooses the same examples every time', async () => {
+    const a = await built()
+    const b = await built()
+    expect(a.ctx.store.files.get(`${a.dir}/examples.json`)).toBe(b.ctx.store.files.get(`${b.dir}/examples.json`))
   })
 })

@@ -13,6 +13,8 @@ export * from './errors.js'
 export type { EngineContext, Store, ToolRunner, Compute, ValidationReports } from './context.js'
 export { traceArtifact, loadArtifact, type ArtifactRef, type ArtifactType, type ArtifactManifest, type TraceNode } from './artifacts.js'
 export { ENGINE_VERSION, profilePaths } from './run.js'
+export * from './dataset.js'
+import { writeDataset } from './dataset.js'
 
 const cachePath = (version: string) => `cache/genbank/${version.replace(/[^A-Za-z0-9._-]/g, '_')}.gb`
 
@@ -402,6 +404,8 @@ export async function buildPanelFromRun(ctx: EngineContext, profile: Profile, cu
     await ctx.store.write(`${out}/validation.json`, json(validation))
     await ctx.store.write(`${out}/diagnostics.json`, json({ diagnostics, unassigned }))
     await ctx.store.write(`${out}/artifact.json`, json(ref(panelArtifact)))
+    // Examples with the answers they give now, and every file's hash, so any copy can be verified (roadmap stage 2).
+    await writeDataset(ctx.store, out, bundle, testSample)
     return { bundle, diagnostics, validation, unassigned, published: true }
   })
   return { ...value, run }

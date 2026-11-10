@@ -4,7 +4,7 @@ import { mkdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { parseCuration, parseFasta, parseProfile } from '@captiveorigins/onephylogeny-core'
 import { NcbiClient, suggestOutgroups } from '@captiveorigins/onephylogeny-acquire'
-import { buildPanelFromRun, comparePanelVersions, buildTree, EngineError, fetchAndAnchor, isCancelled, profilePaths, runSample, traceArtifact, type ArtifactType, type EngineContext, type ToolRunner } from '@captiveorigins/onephylogeny-engine'
+import { buildPanelFromRun, comparePanelVersions, buildTree, EngineError, fetchAndAnchor, isCancelled, loadPanel, profilePaths, runSample, testSample, traceArtifact, verifyDataset, writeDataset, type ArtifactType, type EngineContext, type ToolRunner } from '@captiveorigins/onephylogeny-engine'
 import { nodeStore } from './store.js'
 
 const USAGE = `onephylogeny <command> --workspace DIR --profile ID [options]
@@ -17,6 +17,8 @@ const USAGE = `onephylogeny <command> --workspace DIR --profile ID [options]
   tree [--start N --end N] Build a tree from one window with IQ-TREE
   trace --type T --key K   Show everything that produced an artifact
   compare --a V --b V      Compare two built panel versions
+  verify --dir DIR         Check a built panel folder: file hashes, seal, and its examples rerun (no profile needed)
+  dataset --dir DIR        Add examples and a manifest to a panel built before they existed (no profile needed)
 
 Options: --events (print JSON Lines events). Set NCBI_API_KEY to fetch faster.`
 
@@ -51,6 +53,20 @@ async function main() {
   if (!command || command === 'help' || has('help')) return console.log(USAGE)
   if (command === 'doctor') {
     console.log(JSON.stringify({ iqtree3: await tools.version('iqtree3'), note: 'Fetching, anchoring, panels and sample tests need no native tools.' }, null, 2))
+    return
+  }
+  if (command === 'verify' || command === 'dataset') {
+    const dir = flag('dir')
+    if (!dir) throw new Error('--dir is required')
+    const store = nodeStore(resolve(dir))
+    if (command === 'dataset') {
+      const manifest = await writeDataset(store, '.', await loadPanel(store, '.'), testSample)
+      console.log(JSON.stringify(manifest, null, 2))
+      return
+    }
+    const r = await verifyDataset(store, '.', loadPanel, testSample)
+    console.log(JSON.stringify({ verified: !r.diagnostics.some((d) => d.severity === 'error'), ...r }, null, 2))
+    if (r.diagnostics.some((d) => d.severity === 'error')) process.exitCode = 1
     return
   }
   const root = resolve(flag('workspace') ?? '.')

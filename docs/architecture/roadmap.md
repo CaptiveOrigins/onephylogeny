@@ -74,7 +74,7 @@ The techniques research changes what comes next, and the [analysis protocol](ana
 ## Stage 2: Make panels real datasets
 
 1. **Dataset format.** A folder or zip: manifest, reference, aligned sequences, QC rules, group definitions, generalized regions, validation report, example sequences with expected results, README, changelog, citations and a compatible software range.
-2. **Immutable tags and verify.** `onephylogeny panel verify` checks hashes and reruns the examples.
+2. **Immutable tags and verify.** `onephylogeny verify` checks hashes and reruns the examples. *Built 2026-11-10 with example sequences and a file manifest ([ADR 0006](adr/0006-panel-dataset.md)); README, changelog, citations and a software range are still to come.*
 3. **Report export.** A self-contained report for one sample: conclusion, reasons, coverage, gaps, versions and citations.
 4. **Published JSON Schemas** for profiles, curation, panels and results.
 5. **Sample routing.** Given a sequence, suggest which installed panels apply.

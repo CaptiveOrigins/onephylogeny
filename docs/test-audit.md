@@ -2,6 +2,21 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-10: panel examples and verify
+
+`examples.json`, `dataset.json` and `verify` (ADR 0006) promise six things, each covered in `packages/engine/test/engine.test.ts` (7 new tests):
+
+- **A build writes both files**, with the expected examples and every file's hash.
+- **A faithful copy verifies.**
+- **An edited file, a missing file and a broken seal each fail,** with their own codes.
+- **A change in answers fails.** An evaluator that answers differently fails every example it changes, naming both answers.
+- **Bad inputs are refused:** examples made for another panel, and a folder with no manifest or no examples.
+- **A version keeps its examples.** Writing different ones is refused, and choosing them is deterministic.
+
+The two CLI commands are thin wrappers. They were checked by hand on a copy of the real redfoot panel 0.7.1, which verified, and failed after a one-base edit, with exit code 1. Testing their argument parsing would be overkill.
+
+Gap: the Payload plugin and the platform don't run `verify` on import yet. That belongs with the rest of stage 2's format.
+
 ## 2026-11-09: the CLI's file store
 
 Closes the CLI gap left by the first audit. The file store moved out of the CLI's entry file into `packages/cli/src/store.ts`, so it can be tested without running a command. `packages/cli/test/store.test.ts` covers writing, reading, appending and new folders. It also tests that a save replaces a file whole, and that a failed write keeps the old file. **Fixed:** when the rename failed, the temporary file was left behind; it's now removed. The test failed before the fix. The rest of the CLI stays a thin wrapper over the tested engine, and testing its argument parsing would be overkill.
