@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Sanger chromatograms (roadmap stage 6.3):** `readAbif` reads ABI `.ab1` files: called bases, Phred qualities, peak positions, the four traces and the sample name. On two of Biopython's test files it reads the same bases, qualities and sample names Biopython does. A file that isn't ABIF, is cut short or has no base calls is refused with a plain reason. `assessRead` trims by Mott's algorithm (the Phred and Biopython method), turns kept bases below Q20 into N, flags positions with a strong second peak (a mixed sample, a nuclear copy or heteroplasmy; calls are unchanged), and rates the read usable, short or failed. A read without quality values is failed, never trusted. The thresholds (cutoff 0.05, Q20, 100 bases, a second peak a third of the first) are stated defaults, not calibrated. CLI: `onephylogeny sanger --ab1 FILE`.
+- **Primer-to-window check (roadmap stage 6.3):** `checkPrimers` places a primer pair on the panel's reference (IUPAC codes allowed, up to 3 mismatches) and says which windows the amplicon covers whole, in part or not at all. Bases under the primers come from the primers, so they're left out of what the sample can tell. Primers that sit outside the marker are placed on a longer reference with the marker's offset. A primer found nowhere, or in two equally good places, is a refusal. CLI: `onephylogeny primers --dir PANEL --forward SEQ --reverse SEQ`.
+
 ## 0.1.0-alpha.7
 
 Publishes on npm the work the Mac app 0.3.0 already carries, described in full under "Mac app 0.3.0" below: the region map (`RegionMap`, ecoregion tags on groups, ADR 0008), the haplotype network (`haplotypeNetwork`, `HaplotypeNetworkFigure`), chimera candidates (`chimeraCandidates`, `onephylogeny chimeras`) and sample QC (`result.qc`, with uncalibrated default thresholds). Results for the same panel and sequence keep their statuses; QC and conflicts are reported beside them.

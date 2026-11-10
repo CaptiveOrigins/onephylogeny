@@ -2,6 +2,12 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-10: Sanger chromatograms and primers
+
+- **Promises:** `.ab1` files are read exactly; nothing unreadable is guessed at; low-quality bases become N and are counted; second peaks are flagged without changing calls; primer placement refuses rather than guesses.
+- **Covered** (`packages/core/test/chromatogram.test.ts`, 15 tests): bases, qualities and sample names match Biopython's own expected values on two real files (a good 3730 read and a failed 310 read). Not ABIF and cut-short files are refused. Mott trimming, masking, the mixed-peak flag, short and failed reads, and a read with no qualities. Primers in the flanks with an offset, partial coverage with the primer sites left out, degenerate codes, absent, reversed and two-place primers.
+- **Gaps left:** the trimming isn't compared base for base with Biopython's `abi-trim` (Biopython isn't installed here). The CLI commands are covered only by typecheck. No tortoise trace has been read yet: the fixtures are Biopython's plasmid and test reads.
+
 ## 2026-11-10: full audit
 
 The 14-day full pass, over every package and the Mac app. Promises came from the README, the invariants (P1 to P30), the analysis protocol, the ADRs, the roadmap's "Built" notes and decisions.md. Each was mapped to tests by reading them; no suite was rerun just for the audit. The suites went from 384 tests in 31 files to 389 in 32, all passing.
