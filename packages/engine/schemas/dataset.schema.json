@@ -1,0 +1,50 @@
+{
+  "$id": "urn:onephylogeny:schema:dataset:v1",
+  "title": "OnePhylogeny dataset, schema version 1",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/DatasetManifest",
+  "definitions": {
+    "DatasetManifest": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "const": 1
+        },
+        "panel": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "Records are plain JSON: ISO date strings, no classes. See docs/architecture/data-schema.md."
+            },
+            "version": {
+              "type": "string"
+            },
+            "checksum": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "version",
+            "checksum"
+          ],
+          "additionalProperties": false
+        },
+        "files": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "panel",
+        "files"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

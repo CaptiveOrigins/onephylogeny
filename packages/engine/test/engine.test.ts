@@ -1,6 +1,16 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { Ajv } from 'ajv'
 import { describe, expect, it } from 'vitest'
 import type { Curation, Profile } from '@captiveorigins/onephylogeny-core'
 import { buildPanelFromRun, checkExamples, comparePanelVersions, panelVersions, EngineError, ENGINE_VERSION, fetchAndAnchor, loadArtifact, loadPanel, profilePaths, runSample, testSample, traceArtifact, verifyDataset, writeDataset, type DatasetManifest, type EngineContext, type PanelExamples, type Store } from '../src/index.js'
+
+const ajv = new Ajv({ allErrors: true, strict: false })
+const schemaRoot = fileURLToPath(new URL('../../', import.meta.url))
+const validate = (pkg: string, name: string) => {
+  const schema = JSON.parse(readFileSync(`${schemaRoot}${pkg}/schemas/${name}.schema.json`, 'utf8')) as { $id: string }
+  return ajv.getSchema(schema.$id) ?? ajv.compile(schema)
+}
 
 function randomSeq(n: number, seed: number): string {
   let a = seed >>> 0
@@ -539,6 +549,32 @@ describe('panel dataset (roadmap stage 2)', () => {
     changed.examples[0]!.sequence = changed.examples[0]!.sequence.slice(1)
     ctx.store.files.set(`${dir}/examples.json`, JSON.stringify(changed))
     await expect(writeDataset(ctx.store, dir, bundle, testSample)).rejects.toMatchObject({ code: 'examples-differ' })
+  })
+
+  it('everything the engine writes fits the published JSON Schemas', async () => {
+    const { ctx, dir } = await built()
+    const sample = testSample(mutate([10, 200, 450], 0, 500), 's', await loadPanel(ctx.store, dir))
+    const read = (f: string) => JSON.parse(ctx.store.files.get(`${dir}/${f}`)!)
+    for (const [pkg, name, value] of [
+      ['core', 'profile', profile], ['core', 'curation', curation], ['core', 'panel', read('panel.json')], ['core', 'result', sample.result],
+      ['engine', 'examples', read('examples.json')], ['engine', 'dataset', read('dataset.json')],
+    ] as const) {
+      const v = validate(pkg, name)
+      expect(v(value), `${name}: ${ajv.errorsText(v.errors)}`).toBe(true)
+    }
+  })
+
+  it('the schemas refuse another version, an unknown field, a missing field and an unknown status', async () => {
+    const { ctx, dir } = await built()
+    const panel = JSON.parse(ctx.store.files.get(`${dir}/panel.json`)!) as Record<string, unknown>
+    const v = validate('core', 'panel')
+    expect(v(panel)).toBe(true)
+    expect(v({ ...panel, schemaVersion: 3 })).toBe(false)
+    expect(v({ ...panel, latitude: 1 })).toBe(false)
+    const { groups: _groups, ...noGroups } = panel
+    expect(v(noGroups)).toBe(false)
+    const result = testSample(mutate([10, 200, 450], 0, 500), 's', await loadPanel(ctx.store, dir)).result!
+    expect(validate('core', 'result')({ ...result, findings: [{ ...result.findings[0], status: 'probably' }] })).toBe(false)
   })
 
   it('chooses the same examples every time', async () => {

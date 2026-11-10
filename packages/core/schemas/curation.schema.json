@@ -1,0 +1,87 @@
+{
+  "$id": "urn:onephylogeny:schema:curation:v1",
+  "title": "OnePhylogeny curation, schema version 1",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/Curation",
+  "definitions": {
+    "Curation": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "const": 1
+        },
+        "records": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/RecordDecision"
+          }
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "records"
+      ],
+      "additionalProperties": false,
+      "description": "Human decisions about records, kept apart from what sources say. Every decision can carry a note."
+    },
+    "RecordDecision": {
+      "type": "object",
+      "properties": {
+        "group": {
+          "$ref": "#/definitions/Id"
+        },
+        "provenanceClass": {
+          "$ref": "#/definitions/ProvenanceClass"
+        },
+        "use": {
+          "$ref": "#/definitions/EvidenceUse"
+        },
+        "site": {
+          "type": "string",
+          "description": "Sampling site or block, used so validation never tests a record against its own site."
+        },
+        "study": {
+          "type": "string",
+          "description": "The paper or submission this record comes from. Defaults to the title on its source record."
+        },
+        "originSource": {
+          "type": "string",
+          "description": "The source of a reported origin, such as a paper's table. Required for `origin-reported`."
+        },
+        "exclude": {
+          "type": "boolean"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Id": {
+      "type": "string",
+      "description": "Records are plain JSON: ISO date strings, no classes. See docs/architecture/data-schema.md."
+    },
+    "ProvenanceClass": {
+      "type": "string",
+      "enum": [
+        "wild-documented",
+        "museum-documented",
+        "origin-reported",
+        "seized",
+        "ex-situ",
+        "zoo",
+        "unknown"
+      ],
+      "description": "What is known about how an animal or specimen came to be sampled. `unknown` is a real value."
+    },
+    "EvidenceUse": {
+      "type": "string",
+      "enum": [
+        "lineage-and-location",
+        "lineage-only"
+      ],
+      "description": "How a reference record may be used. Records assigned by sequence can never show where a group occurs."
+    }
+  }
+}

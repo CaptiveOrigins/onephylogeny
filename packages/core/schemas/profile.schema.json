@@ -1,0 +1,463 @@
+{
+  "$id": "urn:onephylogeny:schema:profile:v1",
+  "title": "OnePhylogeny profile, schema version 1",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/Profile",
+  "definitions": {
+    "Profile": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "const": 1
+        },
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "title": {
+          "type": "string"
+        },
+        "selection": {
+          "$ref": "#/definitions/Selection"
+        },
+        "gates": {
+          "type": "object",
+          "properties": {
+            "minAlignedColumns": {
+              "type": "number"
+            },
+            "minIdentity": {
+              "type": "number"
+            },
+            "minQueryCoverage": {
+              "type": "number",
+              "description": "Share of the query that must align. Only records many times longer than the reference skip it: see `gatesForRecord`."
+            },
+            "containerRecordFactor": {
+              "type": "number",
+              "description": "A record with no annotated gene, at least this many times the reference's length, holds more than the marker."
+            },
+            "maxTerminalDiscordance": {
+              "type": "number",
+              "description": "Most unaligned bases allowed at either end where the reference has columns left to align them to."
+            },
+            "frameErrors": {
+              "type": "boolean",
+              "description": "Frame-shifting indels and in-frame stops exclude the record, rather than warn. Panel builds use this."
+            },
+            "codonStart": {
+              "type": "number"
+            },
+            "geneticCode": {
+              "$ref": "#/definitions/GeneticCode"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Overrides for the record checks. Whatever applied is sealed into any panel built from them."
+        },
+        "reference": {
+          "type": "object",
+          "properties": {
+            "accession": {
+              "type": "string"
+            },
+            "codonStart": {
+              "type": "number"
+            },
+            "geneticCode": {
+              "$ref": "#/definitions/GeneticCode"
+            }
+          },
+          "required": [
+            "accession"
+          ],
+          "additionalProperties": false
+        },
+        "tree": {
+          "type": "object",
+          "properties": {
+            "model": {
+              "type": "string"
+            },
+            "bootstrap": {
+              "type": "number"
+            },
+            "shAlrt": {
+              "type": "number"
+            },
+            "seed": {
+              "type": "number"
+            },
+            "threads": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "model",
+            "bootstrap",
+            "shAlrt",
+            "seed",
+            "threads"
+          ],
+          "additionalProperties": false
+        },
+        "panel": {
+          "$ref": "#/definitions/PanelSettings"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "id",
+        "title",
+        "selection"
+      ],
+      "additionalProperties": false,
+      "description": "How to run a selection. Every value that was once hardcoded lives here."
+    },
+    "Id": {
+      "type": "string",
+      "description": "Records are plain JSON: ISO date strings, no classes. See docs/architecture/data-schema.md."
+    },
+    "Selection": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "title": {
+          "type": "string"
+        },
+        "taxa": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ExternalId"
+          },
+          "description": "Ingroup taxa as source-qualified ids, for example from NCBI Taxonomy or OneTaxonomy."
+        },
+        "marker": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "gene",
+                "mitogenome",
+                "snp"
+              ]
+            },
+            "gene": {
+              "type": "string"
+            },
+            "synonyms": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "products": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "organelle": {
+              "type": "string",
+              "enum": [
+                "mitochondrion",
+                "plastid"
+              ]
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        "outgroups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "accession": {
+                "type": "string"
+              },
+              "taxon": {
+                "$ref": "#/definitions/ExternalId"
+              },
+              "rationale": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "exclude": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "accession": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "accession",
+              "reason"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Fetch exactly these accessions instead of searching, as chosen in a Study. Every record still goes through the same checks."
+        },
+        "fromStudy": {
+          "$ref": "#/definitions/StudyLink",
+          "description": "The Study that chose them. Doesn't affect what's fetched, so it stays out of artifact keys."
+        },
+        "filters": {
+          "type": "object",
+          "properties": {
+            "minLength": {
+              "type": "number"
+            },
+            "maxLength": {
+              "type": "number"
+            },
+            "maxAmbiguous": {
+              "type": "number"
+            },
+            "provenanceClasses": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ProvenanceClass"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "taxa",
+        "marker",
+        "outgroups",
+        "exclude",
+        "filters"
+      ],
+      "additionalProperties": false
+    },
+    "ExternalId": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "id"
+      ],
+      "additionalProperties": false,
+      "description": "An identifier qualified by the system that issued it, such as an NCBI taxon id."
+    },
+    "StudyLink": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "title": {
+          "type": "string"
+        },
+        "stateHash": {
+          "type": "string"
+        },
+        "postHocOmitted": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "stateHash",
+        "postHocOmitted"
+      ],
+      "additionalProperties": false,
+      "description": "Which Study state a fetch or panel came from, and what that state left out after results were seen."
+    },
+    "ProvenanceClass": {
+      "type": "string",
+      "enum": [
+        "wild-documented",
+        "museum-documented",
+        "origin-reported",
+        "seized",
+        "ex-situ",
+        "zoo",
+        "unknown"
+      ],
+      "description": "What is known about how an animal or specimen came to be sampled. `unknown` is a real value."
+    },
+    "GeneticCode": {
+      "type": "number",
+      "enum": [
+        1,
+        2
+      ]
+    },
+    "PanelSettings": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "version": {
+          "type": "string"
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/definitions/Id"
+              },
+              "label": {
+                "type": "string"
+              },
+              "region": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "notCovered": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "validatedScope": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "windows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PanelWindow"
+          },
+          "description": "Named stretches of the reference, usually where amplicons fall. Without them the whole marker is one window."
+        },
+        "rules": {
+          "$ref": "#/definitions/EvaluationRules"
+        },
+        "controls": {
+          "type": "object",
+          "properties": {
+            "shuffles": {
+              "type": "number"
+            },
+            "simulations": {
+              "type": "number"
+            },
+            "seed": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false,
+          "description": "How hard to test claims. Fewer shuffles or simulations can't reach the gates' p-value."
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "groups",
+        "notCovered",
+        "validatedScope",
+        "rules"
+      ],
+      "additionalProperties": false,
+      "description": "How to build and read a panel. Groups and thresholds are always configuration, never code."
+    },
+    "PanelWindow": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/Id"
+        },
+        "label": {
+          "type": "string"
+        },
+        "start": {
+          "type": "number"
+        },
+        "end": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "start",
+        "end"
+      ],
+      "additionalProperties": false,
+      "description": "A named stretch of the reference, the same for every group. Half-open: `start` is included, `end` is not."
+    },
+    "EvaluationRules": {
+      "type": "object",
+      "properties": {
+        "minSharedColumns": {
+          "type": "number",
+          "description": "Fewer columns than this, shared with a group's well-covered columns in a window, means not evaluable there."
+        },
+        "minDepthPerColumn": {
+          "type": "number",
+          "description": "A column counts for a group only with at least this many records. One record never makes a group comparable."
+        },
+        "minBlocksForExclusion": {
+          "type": "number",
+          "description": "Independent sampling sites a group needs at a column before a conflict there can rule it out."
+        },
+        "minDecisiveSites": {
+          "type": "number",
+          "description": "Sites favoring one side, with none favoring the other, needed to resolve a pair of groups."
+        },
+        "tolerance": {
+          "type": "number",
+          "description": "Differences allowed beyond a group's own spread, scaled to the columns compared."
+        }
+      },
+      "required": [
+        "minSharedColumns",
+        "minDepthPerColumn",
+        "minBlocksForExclusion",
+        "minDecisiveSites",
+        "tolerance"
+      ],
+      "additionalProperties": false,
+      "description": "How to read a panel. Uncalibrated, stated values: none of this is a probability."
+    }
+  }
+}
