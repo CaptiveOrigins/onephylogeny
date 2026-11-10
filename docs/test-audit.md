@@ -2,6 +2,18 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-10: sample reports
+
+`packages/core/test/report.test.ts` (8 tests) covers what the report promises:
+
+- **It names a region only as the region card would.** It uses the card's words, label and caveat, and a candidate panel is labelled exploratory.
+- **It explains a refusal.** When no region is named, it says why in plain words, and it still carries the caveat.
+- **It carries everything else:** each group's status and reason, the comparisons, coverage, gaps once each, versions and sources.
+- **It never shows a position.** A region that looks like coordinates isn't printed, and the report says why.
+- **Its tables stay whole** when a reason contains a bar or a line break.
+
+The CLI command is a thin wrapper. It was checked by hand on the 8 saved redfoot results: none crashed, and none printed a coordinate.
+
 ## 2026-11-10: published JSON Schemas
 
 The schemas promise three things:
