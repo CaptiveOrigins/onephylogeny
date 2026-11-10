@@ -1,6 +1,6 @@
 {
   "name": "@captiveorigins/onephylogeny-core",
-  "version": "0.1.0-alpha.4",
+  "version": "0.1.0-alpha.5",
   "description": "OnePhylogeny core: sequence records, GenBank and FASTA parsing, reference coordinates, coverage-aware comparison and haplotypes, frame checks, profiles and record sheets. Species-agnostic, with no React, CMS, database or platform dependency.",
   "keywords": [
     "phylogenetics",
