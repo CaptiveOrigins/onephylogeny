@@ -2,6 +2,19 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-10: curation sheet
+
+`packages/core/test/curation-sheet.test.ts` (8 tests) covers what the sheet promises:
+
+- **Export** writes every record, decided or not, and never a coordinate.
+- **An unchanged sheet round-trips** with no changes.
+- **Edits are read back and counted.** A blank cell clears a field, and a missing row or column keeps what was there.
+- **Any error refuses the whole sheet**, listing every problem: unknown group, class or use, a bad exclude value, a duplicate, a missing record, an origin-reported record without its source, coordinates in a site or note. A broken quote and a missing record column are refused too.
+- **Unknown columns and records are warnings.** A byte-order mark and CRLF line ends are accepted, and formulas are defused and restored.
+- **Bulk assign by study** keeps the other fields and doesn't change the original.
+
+`engine.test.ts` covers `loadRunRecords`, including the case where there's no run. The CLI was checked by hand on the real redfoot workspace: an export and re-import changed nothing, and a wrong group was refused with exit code 1.
+
 ## 2026-11-10: dataset README and citations
 
 `engine.test.ts` checks that a build writes `README.md`, with groups, limits, how to check a copy and what to cite, and no coordinate-like numbers. `dataset.json` carries `builtWith` and the citations. An edited README fails `verify` like any other file. The schemas were regenerated, and their drift check passes.

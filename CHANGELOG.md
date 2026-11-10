@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Curation sheet (roadmap stage 3, bulk tools):** `onephylogeny curation export` prints every record of the latest run as a CSV, with its decision and read-only context (organism, length, title) and never a coordinate. `curation import --file F` checks a filled-in sheet and lists every change, and `--apply` saves it. A blank cell clears a field, a missing column or row keeps what was there, and any error refuses the whole sheet: an unknown group, class or use, a duplicate, an origin-reported record without its source, or coordinates in a site or note. Formulas are defused on the way out and restored on the way in. In core: `curationToCsv`, `curationFromCsv`, `parseCsv`, `bulkAssign` and `recordsOfStudy`, and in the engine `loadRunRecords`. Tried on the real redfoot curation: 296 records round-trip with no change, and a wrong group is refused.
 ## 0.1.0-alpha.5
 
 Roadmap stage 2 is complete: panels are datasets that prove themselves.

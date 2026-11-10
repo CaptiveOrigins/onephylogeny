@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { Ajv } from 'ajv'
 import { describe, expect, it } from 'vitest'
 import type { Curation, Profile } from '@captiveorigins/onephylogeny-core'
-import { buildPanelFromRun, checkExamples, comparePanelVersions, panelVersions, EngineError, ENGINE_VERSION, fetchAndAnchor, loadArtifact, loadPanel, profilePaths, routeSample, runSample, testSample, traceArtifact, verifyDataset, writeDataset, type DatasetManifest, type EngineContext, type PanelExamples, type Store } from '../src/index.js'
+import { buildPanelFromRun, checkExamples, comparePanelVersions, panelVersions, EngineError, ENGINE_VERSION, fetchAndAnchor, loadArtifact, loadPanel, loadRunRecords, profilePaths, routeSample, runSample, testSample, traceArtifact, verifyDataset, writeDataset, type DatasetManifest, type EngineContext, type PanelExamples, type Store } from '../src/index.js'
 
 const ajv = new Ajv({ allErrors: true, strict: false })
 const schemaRoot = fileURLToPath(new URL('../../', import.meta.url))
@@ -658,5 +658,15 @@ describe('sample routing (roadmap stage 2)', () => {
     const candidate = { ...p, panel: { ...p.panel, id: 'cand', status: 'candidate' as const } }
     const active = { ...p, panel: { ...p.panel, id: 'act', status: 'active' as const } }
     expect(routeSample(mutate([10, 200, 450], 0, 500), [candidate, active]).map((s) => s.panel.id)).toEqual(['act', 'cand'])
+  })
+})
+
+describe('run records for the curation sheet', () => {
+  it('reads the latest run\'s records, and says when there is none', async () => {
+    const ctx = makeContext()
+    await expect(loadRunRecords(ctx.store, 'demo')).rejects.toMatchObject({ code: 'run-missing' })
+    await fetchAndAnchor(ctx, profile)
+    const records = await loadRunRecords(ctx.store, 'demo')
+    expect(records.map((r) => r.version)).toEqual(expect.arrayContaining(['A1.1', 'A2.1', 'B1.1', 'B2.1', 'U1.1', 'W1.1']))
   })
 })
