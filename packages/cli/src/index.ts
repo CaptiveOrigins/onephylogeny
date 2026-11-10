@@ -3,7 +3,7 @@ import { execFile } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { auditGroups, curationFromCsv, curationToCsv, parseCuration, parseFasta, parseProfile, reportMarkdown, sampleReport, type Result } from '@captiveorigins/onephylogeny-core'
-import { NcbiClient, suggestOutgroups } from '@captiveorigins/onephylogeny-acquire'
+import { lookupPaper, NcbiClient, paced, suggestOutgroups } from '@captiveorigins/onephylogeny-acquire'
 import { buildPanelFromRun, comparePanelVersions, buildTree, EngineError, fetchAndAnchor, isCancelled, loadPanel, loadRunRecords, profilePaths, readCurationHistory, saveCuration, routeSample, runSample, testSample, traceArtifact, verifyDataset, writeDataset, type ArtifactType, type EngineContext, type ToolRunner } from '@captiveorigins/onephylogeny-engine'
 import { nodeStore } from './store.js'
 
@@ -24,6 +24,8 @@ const USAGE = `onephylogeny <command> --workspace DIR --profile ID [options]
   compare --a V --b V      Compare two built panel versions
   verify --dir DIR         Check a built panel folder: file hashes, seal, and its examples rerun (no profile needed)
   dataset --dir DIR        Add examples and a manifest to a panel built before they existed (no profile needed)
+  lookup --title T [--authors A]
+                           Propose DOI and PubMed links for a study from Crossref and Europe PMC (nothing is attached)
   audit --dir DIR          Check a built panel's groups against its sequences, window by window (flags only)
   route --fasta FILE --panels DIR
                            Which panels under DIR apply to each sequence (no profile needed)
@@ -63,6 +65,13 @@ async function main() {
   if (!command || command === 'help' || has('help')) return console.log(USAGE)
   if (command === 'doctor') {
     console.log(JSON.stringify({ iqtree3: await tools.version('iqtree3'), note: 'Fetching, anchoring, panels and sample tests need no native tools.' }, null, 2))
+    return
+  }
+  if (command === 'lookup') {
+    const title = flag('title')
+    if (!title) throw new Error('--title is required')
+    const authors = flag('authors')
+    console.log(JSON.stringify(await lookupPaper(paced((url, init) => fetch(url, init)), { title, ...(authors ? { authors } : {}) }), null, 2))
     return
   }
   if (command === 'audit') {

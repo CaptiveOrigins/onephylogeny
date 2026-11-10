@@ -199,3 +199,4 @@ export async function suggestOutgroups(client: NcbiClient, selection: Selection,
 }
 
 export * from './papers.js'
+export * from './lookup.js'

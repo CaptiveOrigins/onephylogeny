@@ -2,6 +2,20 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-10: paper lookup
+
+`packages/acquire/test/lookup.test.ts` (5 tests, with fake services) covers what the lookup promises:
+
+- **Title matching** ignores case, punctuation and markup.
+- **Proposals come from both services**, best match first, with their source, retrieval time and the supplement link, and noise is dropped.
+- **A refusing service is reported.**
+- **Requests are paced** a second apart, one at a time, with a User-Agent that names the tool and holds no email address.
+- **Approval** records who and when, and never overwrites an existing DOI or PMID.
+
+Checked by hand: one real request to each service for a redfoot study.
+
+Gap: the Mac app's Study tab doesn't offer lookup or approval yet.
+
 ## 2026-11-10: group audit
 
 `packages/core/test/audit.test.ts` (5 tests) covers what the audit promises:
