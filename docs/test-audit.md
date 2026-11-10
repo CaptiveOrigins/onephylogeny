@@ -2,6 +2,18 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-10: guided setup
+
+What the suggestion promises, and the proof:
+
+- **`reference.test.ts` (4 tests, fake NCBI):**
+  - the taxon's own RefSeq mitogenome comes first, with its supported genetic code;
+  - when the taxon has none, it walks up to a relative and says so;
+  - an unsupported code (5) and a non-mitochondrial marker get no frame check, with the reason;
+  - with no taxon, it asks for one.
+- **`app.test.tsx`:** a marker not known to be mitochondrial gets the explanation. Once the organelle is set, the suggestion shows its code, and nothing changes until "Use NC_…", which sets the accession and code.
+- **Checked by hand against real NCBI:** for redfoot (50047) it suggests NC_080265.1 with code 2, matching the real profile.
+
 ## 2026-11-10: paper lookup in the Mac app
 
 These tests cover the app side:

@@ -1,4 +1,4 @@
-import { NcbiClient, suggestOutgroups, type OutgroupLadder } from '@captiveorigins/onephylogeny-acquire'
+import { NcbiClient, suggestOutgroups, suggestReference, type OutgroupLadder, type ReferenceSuggestion } from '@captiveorigins/onephylogeny-acquire'
 import { DEFAULT_RULES, LOCATION_EVIDENCE, parseCuration, parseFasta, parseProfile, validateProfile, type Curation, type Diagnostic, type EvaluationRules, type EvidenceUse, type Panel, type PanelWindow, type Profile, type ProvenanceClass, type Result, type RunEvent, type SequenceRecord, type Snapshot } from '@captiveorigins/onephylogeny-core'
 import { buildPanelFromRun, buildTree, EngineError, fetchAndAnchor, isCancelled, loadPanel, profilePaths, runSample, saveCuration, type EngineContext, type RecordOutcome, type TreeOutcome } from '@captiveorigins/onephylogeny-engine'
 import { EventLog, OutgroupLadderView, PanelSummary, ResultView, ValidationView } from '@captiveorigins/onephylogeny-react'
@@ -252,6 +252,7 @@ function Setup({ profile, edit, save, saved, platform, attempt, client }: { prof
   const [name, setName] = useState('')
   const [found, setFound] = useState<{ id: string; scientificName: string }[] | null>(null)
   const [ladder, setLadder] = useState<OutgroupLadder | null>(null)
+  const [suggested, setSuggested] = useState<ReferenceSuggestion | null>(null)
   const problems = validateProfile(profile)
   const ref = profile.reference ?? { accession: '' }
   return (
@@ -274,6 +275,19 @@ function Setup({ profile, edit, save, saved, platform, attempt, client }: { prof
         </>}
       </div>
       <h3>Reference</h3>
+      <div className="row">
+        <button disabled={!s.taxa.length} onClick={() => attempt('Suggesting a reference', async () => setSuggested(await suggestReference(client(), s)))}>Suggest a reference</button>
+        <span className="muted">{s.taxa.length ? 'The nearest RefSeq mitochondrial genome and the genetic code NCBI gives. You choose.' : 'Add a species first.'}</span>
+      </div>
+      {suggested && <div className="inline-prompt" role="status" aria-label="Suggested reference">
+        {suggested.notes.map((n) => <p key={n} className="muted">{n}</p>)}
+        <p>Genetic code: {suggested.geneticCode.supported ? suggested.geneticCode.label : suggested.geneticCode.reason}</p>
+        <ul className="plain">{suggested.candidates.slice(0, 5).map((c) => <li key={c.accession}>
+          <button onClick={() => { const { geneticCode: _g, codonStart: _c, ...rest } = ref; edit({ ...profile, reference: { ...rest, accession: c.accession, ...(suggested.geneticCode.supported ? { geneticCode: suggested.geneticCode.code as 1 | 2, codonStart: 0 } : {}) } }); setSuggested(null) }}>Use {c.accession}</button>
+          {' '}{c.organism}, {c.length.toLocaleString()} bases
+        </li>)}</ul>
+        <button className="link" onClick={() => setSuggested(null)}>Close</button>
+      </div>}
       <div className="grid">
         <Field label="Reference accession" hint="With version. Every record is anchored to this"><input value={ref.accession} onChange={(e) => edit({ ...profile, reference: { ...ref, accession: e.target.value.trim() } })} /></Field>
         <Field label="Genetic code" hint="Used to check reading frame"><select value={ref.geneticCode ?? ''} onChange={(e) => { const { geneticCode: _g, codonStart: _c, ...rest } = ref; edit({ ...profile, reference: e.target.value ? { ...rest, geneticCode: Number(e.target.value) as 1 | 2, codonStart: ref.codonStart ?? 0 } : rest }) }}><option value="">Don't check</option><option value="2">Vertebrate mitochondrial (2)</option><option value="1">Standard (1)</option></select></Field>

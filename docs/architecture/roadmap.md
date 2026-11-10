@@ -89,7 +89,7 @@ This is where a real user currently gets stuck.
 2. **Bulk tools.** Assign by study, clade or selection. Import and export the curation sheet as CSV. *Sheet import and export and assigning by study or selection built 2026-11-10 (`onephylogeny curation`); by clade waits for the group audit.*
 3. **Paper lookup.** Find each study through Europe PMC and Crossref, and link supplements. Every extracted field records its source and needs approval. *Built 2026-11-10: `onephylogeny lookup`, and in the Mac app's Study tab ("Find the published paper", "Use this link").*
 4. **Decision history.** Who changed what, when and why. *Built 2026-11-10: `curation-history.jsonl`, written by every save in the app and the CLI.*
-5. **Guided setup.** Suggest a reference for the species and marker, with defaults a newcomer can trust and change.
+5. **Guided setup.** Suggest a reference for the species and marker, with defaults a newcomer can trust and change. *Reference and genetic code built 2026-11-10 ("Suggest a reference"). Default filters and outgroups already have their own suggestions; a step-by-step first run is left for the first-run session with a person.*
 6. **First-run session.** A person runs a new species end to end, and we fix what goes wrong.
 
 **Check:** someone unfamiliar with this project builds a defensible panel for a species other than the first, unaided.
