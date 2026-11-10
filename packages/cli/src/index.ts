@@ -2,7 +2,7 @@
 import { execFile } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { auditGroups, chimeraCandidates, curationFromCsv, panelMethods, curationToCsv, parseCuration, parseFasta, parseProfile, reportMarkdown, sampleReport, type Result } from '@captiveorigins/onephylogeny-core'
+import { assessRead, auditGroups, checkPrimers, chimeraCandidates, readAbif, curationFromCsv, panelMethods, curationToCsv, parseCuration, parseFasta, parseProfile, reportMarkdown, sampleReport, type Result } from '@captiveorigins/onephylogeny-core'
 import { lookupPaper, NcbiClient, paced, suggestOutgroups } from '@captiveorigins/onephylogeny-acquire'
 import { buildPanelFromRun, comparePanelVersions, buildTree, EngineError, fetchAndAnchor, isCancelled, loadPanel, loadRunRecords, profilePaths, readCurationHistory, saveCuration, routeSample, runSample, testSample, traceArtifact, verifyDataset, writeDataset, type ArtifactType, type EngineContext, type ToolRunner } from '@captiveorigins/onephylogeny-engine'
 import { nodeStore } from './store.js'
@@ -33,6 +33,12 @@ const USAGE = `onephylogeny <command> --workspace DIR --profile ID [options]
                            Which panels under DIR apply to each sequence (no profile needed)
   report --dir DIR --result FILE [--json]
                            A self-contained report for one saved result, as Markdown (no profile needed)
+  sanger --ab1 FILE [--min-quality N] [--min-length N] [--json]
+                           Read a Sanger chromatogram: trim by quality, mask low bases as N, flag strong second peaks,
+                           and print the kept read as FASTA (no profile needed)
+  primers --dir DIR --forward SEQ --reverse SEQ [--reference FASTA --offset N] [--max-mismatches N]
+                           Which of a panel's windows a primer pair can cover. Give a longer reference and the marker's
+                           offset in it when the primers sit outside the marker (no profile needed)
 
 Options: --events (print JSON Lines events). Set NCBI_API_KEY to fetch faster.`
 
@@ -118,6 +124,34 @@ async function main() {
     }
     if (skipped.length) console.error(JSON.stringify({ skipped }, null, 2))
     for (const e of parseFasta(readFileSync(file, 'utf8'))) console.log(JSON.stringify({ sample: e.id, suggestions: routeSample(e.sequence, bundles) }, null, 2))
+    return
+  }
+  if (command === 'sanger') {
+    const file = flag('ab1')
+    if (!file) throw new Error('--ab1 is required')
+    const read = readAbif(new Uint8Array(readFileSync(file)))
+    const num = (name: string) => (flag(name) !== undefined ? Number(flag(name)) : undefined)
+    const a = assessRead(read, { ...(num('min-quality') !== undefined ? { minQuality: num('min-quality')! } : {}), ...(num('min-length') !== undefined ? { minLength: num('min-length')! } : {}) })
+    if (has('json')) return console.log(JSON.stringify({ sampleName: read.sampleName, instrument: read.instrument, ...a }, null, 2))
+    for (const n of a.notes) console.error(n)
+    if (a.status === 'failed') throw new Error(`${file}: the read failed, so there is no sequence to use`)
+    if (a.status === 'short') console.error(`Not usable: too short. The kept bases are printed anyway, for inspection.`)
+    process.stdout.write(`>${read.sampleName ?? file} status=${a.status} kept=${a.kept!.start + 1}-${a.kept!.end}\n${a.sequence.match(/.{1,70}/g)!.join('\n')}\n`)
+    return
+  }
+  if (command === 'primers') {
+    const dir = flag('dir')
+    const forward = flag('forward')
+    const reverse = flag('reverse')
+    if (!dir || !forward || !reverse) throw new Error('--dir, --forward and --reverse are required')
+    const bundle = await loadPanel(nodeStore(resolve(dir)), '.')
+    const given = flag('reference')
+    const reference = given ? parseFasta(readFileSync(given, 'utf8'))[0]?.sequence : bundle.referenceSequence
+    if (!reference) throw new Error('This panel carries no reference sequence; give one with --reference')
+    if (given && flag('offset') === undefined) throw new Error('With --reference, give --offset: where the marker starts in it (0-based)')
+    const result = checkPrimers({ forward, reverse, reference, windows: bundle.panel.windows, markerOffset: given ? Number(flag('offset')) : 0, ...(flag('max-mismatches') !== undefined ? { maxMismatches: Number(flag('max-mismatches')) } : {}) })
+    console.log(JSON.stringify(result, null, 2))
+    if (result.status === 'refused') process.exitCode = 1
     return
   }
   if (command === 'report') {
