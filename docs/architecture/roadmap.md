@@ -77,7 +77,7 @@ The techniques research changes what comes next, and the [analysis protocol](ana
 2. **Immutable tags and verify.** `onephylogeny verify` checks hashes and reruns the examples. *Built 2026-11-10 with example sequences and a file manifest ([ADR 0006](adr/0006-panel-dataset.md)); README, changelog, citations and a software range are still to come.*
 3. **Report export.** A self-contained report for one sample: conclusion, reasons, coverage, gaps, versions and citations. *Built 2026-11-10 as Markdown and JSON (`onephylogeny report`); a PDF or the Mac app's view can render the same report.*
 4. **Published JSON Schemas** for profiles, curation, panels and results. *Built 2026-11-10: generated from the types, checked for drift in tests, and shipped in the core and engine packages.*
-5. **Sample routing.** Given a sequence, suggest which installed panels apply.
+5. **Sample routing.** Given a sequence, suggest which installed panels apply. *Built 2026-11-10 (`onephylogeny route`). With this, stage 2's five items exist; the dataset still lacks a README, citations and a software range.*
 
 **Check:** a panel built on one Mac verifies and gives identical results on another machine and through the Payload plugin.
 

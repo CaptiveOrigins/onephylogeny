@@ -14,6 +14,7 @@ export type { EngineContext, Store, ToolRunner, Compute, ValidationReports } fro
 export { traceArtifact, loadArtifact, type ArtifactRef, type ArtifactType, type ArtifactManifest, type TraceNode } from './artifacts.js'
 export { ENGINE_VERSION, profilePaths } from './run.js'
 export * from './dataset.js'
+export * from './route.js'
 import { writeDataset } from './dataset.js'
 
 const cachePath = (version: string) => `cache/genbank/${version.replace(/[^A-Za-z0-9._-]/g, '_')}.gb`

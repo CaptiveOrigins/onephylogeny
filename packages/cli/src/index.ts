@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import { execFile } from 'node:child_process'
-import { mkdirSync, readFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { parseCuration, parseFasta, parseProfile, reportMarkdown, sampleReport, type Result } from '@captiveorigins/onephylogeny-core'
 import { NcbiClient, suggestOutgroups } from '@captiveorigins/onephylogeny-acquire'
-import { buildPanelFromRun, comparePanelVersions, buildTree, EngineError, fetchAndAnchor, isCancelled, loadPanel, profilePaths, runSample, testSample, traceArtifact, verifyDataset, writeDataset, type ArtifactType, type EngineContext, type ToolRunner } from '@captiveorigins/onephylogeny-engine'
+import { buildPanelFromRun, comparePanelVersions, buildTree, EngineError, fetchAndAnchor, isCancelled, loadPanel, profilePaths, routeSample, runSample, testSample, traceArtifact, verifyDataset, writeDataset, type ArtifactType, type EngineContext, type ToolRunner } from '@captiveorigins/onephylogeny-engine'
 import { nodeStore } from './store.js'
 
 const USAGE = `onephylogeny <command> --workspace DIR --profile ID [options]
@@ -19,6 +19,8 @@ const USAGE = `onephylogeny <command> --workspace DIR --profile ID [options]
   compare --a V --b V      Compare two built panel versions
   verify --dir DIR         Check a built panel folder: file hashes, seal, and its examples rerun (no profile needed)
   dataset --dir DIR        Add examples and a manifest to a panel built before they existed (no profile needed)
+  route --fasta FILE --panels DIR
+                           Which panels under DIR apply to each sequence (no profile needed)
   report --dir DIR --result FILE [--json]
                            A self-contained report for one saved result, as Markdown (no profile needed)
 
@@ -55,6 +57,31 @@ async function main() {
   if (!command || command === 'help' || has('help')) return console.log(USAGE)
   if (command === 'doctor') {
     console.log(JSON.stringify({ iqtree3: await tools.version('iqtree3'), note: 'Fetching, anchoring, panels and sample tests need no native tools.' }, null, 2))
+    return
+  }
+  if (command === 'route') {
+    const file = flag('fasta')
+    const root = flag('panels')
+    if (!file || !root) throw new Error('--fasta and --panels are required')
+    // Every folder under --panels holding a panel.json, at any depth up to three.
+    const found: string[] = []
+    const walk = (dir: string, depth: number) => {
+      if (existsSync(join(dir, 'panel.json'))) found.push(dir)
+      if (depth < 3) for (const e of readdirSync(dir, { withFileTypes: true })) if (e.isDirectory()) walk(join(dir, e.name), depth + 1)
+    }
+    walk(resolve(root), 0)
+    // A panel that can't be read (an older format, or one that fails its seal) is listed as skipped, never used.
+    const bundles = []
+    const skipped: { folder: string; reason: string }[] = []
+    for (const d of found) {
+      try {
+        bundles.push(await loadPanel(nodeStore(d), '.'))
+      } catch (e) {
+        skipped.push({ folder: d, reason: (e as Error).message })
+      }
+    }
+    if (skipped.length) console.error(JSON.stringify({ skipped }, null, 2))
+    for (const e of parseFasta(readFileSync(file, 'utf8'))) console.log(JSON.stringify({ sample: e.id, suggestions: routeSample(e.sequence, bundles) }, null, 2))
     return
   }
   if (command === 'report') {
