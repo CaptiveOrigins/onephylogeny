@@ -116,6 +116,10 @@ describe('the Mac app, clicked through', () => {
     await screen.findByRole('heading', { name: 'example-panel version 0.1.0' }, { timeout: 20_000 })
     expect(screen.queryByText(/Each testable pair/)).toBeNull()
     expect(screen.queryByRole('alert')).toBeNull()
+    // The haplotype network for the built panel, one window at a time.
+    const net = within(screen.getByRole('region', { name: 'Haplotype network' }))
+    expect(net.getByRole('img').getAttribute('aria-label')).toMatch(/^Haplotype network for window .*: \d+ haplotypes from \d+ records/)
+    expect(net.getByRole('list', { name: 'Groups' })).toBeTruthy()
   })
 
   it('tells you when a second job has to wait, instead of ignoring the click', async () => {

@@ -3,7 +3,7 @@ import { standaloneSvg, TreeCanvas } from '../src/canvas'
 import { Icon } from '../src/icons'
 import { describe, expect, it } from 'vitest'
 import { buildPanel, evaluateQuery, type Result } from '@captiveorigins/onephylogeny-core'
-import { CoverageBars, EventLog, LineageCard, OutgroupLadderView, parseNewickForDisplay, ResultView, StatusBadge, summarizeResult, TreeFigure, ValidationView } from '../src/index.js'
+import { CoverageBars, fitLayout, HaplotypeNetworkFigure, layoutNetwork, EventLog, LineageCard, OutgroupLadderView, parseNewickForDisplay, ResultView, StatusBadge, summarizeResult, TreeFigure, ValidationView } from '../src/index.js'
 
 const ref = 'ACGT'.repeat(50)
 const mut = (at: number[]) => [...ref].map((c, i) => (at.includes(i) ? (c === 'A' ? 'C' : 'A') : c)).join('')
@@ -77,5 +77,28 @@ describe('views', () => {
   })
   it('hides icons from screen readers so words do the naming', () => {
     expect(renderToStaticMarkup(<Icon name="fit" />)).toContain('aria-hidden="true"')
+  })
+})
+
+describe('haplotype network figure (roadmap stage 5)', () => {
+  const network = { window: 'w', columns: 6, partial: 1, nodes: [{ id: 'h1', records: ['a1', 'a2', 'b1'], byGroup: { a: 2, b: 1 } }, { id: 'h2', records: ['a3'], byGroup: { a: 1 } }, { id: 'h3', records: ['b2'], byGroup: { b: 1 } }], edges: [{ a: 'h1', b: 'h2', steps: 1 }, { a: 'h2', b: 'h3', steps: 3 }] }
+  it('draws the same way every time, inside the frame', () => {
+    const one = layoutNetwork(network)
+    expect([...layoutNetwork(network)]).toEqual([...one])
+    for (const p of one.values()) { expect(p.x).toBeGreaterThanOrEqual(24); expect(p.x).toBeLessThanOrEqual(496) }
+    // Fitted, every circle of radius up to the padding stays inside the frame.
+    const fit = [...fitLayout(one, 520, 30).values()]
+    for (const p of fit) for (const v of [p.x, p.y]) { expect(v).toBeGreaterThanOrEqual(30 - 1e-9); expect(v).toBeLessThanOrEqual(490 + 1e-9) }
+  })
+  it('names every group in a legend, labels multi-step links, and gives a table with the same numbers', () => {
+    const html = renderToStaticMarkup(<HaplotypeNetworkFigure network={network} panel={panel} />)
+    expect(html).toContain('Group A')
+    expect(html).toContain('Group B')
+    expect(html).not.toContain('Group C</li>')
+    expect(html).toContain('3 haplotypes from 5 records, 2 links')
+    expect(html).toMatch(/class="ophy-net-steps"[^>]*>3</)
+    expect(html).toContain('1 partial records left out')
+    expect(html).toContain('This is not a tree.')
+    expect(html).toContain('<th scope="row">h2 to h3</th><td>3</td>')
   })
 })

@@ -50,3 +50,9 @@
   html[data-ophy-printing] .ophy-canvas-content { transform: none !important; }
   .ophy-floating { display: none; }
 }
+.ophy-network svg { width: 100%; max-width: 560px; display: block; }
+.ophy-net-edge { stroke: var(--ophy-muted, #5b6577); stroke-width: 2; }
+.ophy-net-steps { font-size: 11px; fill: var(--ophy-muted, #5b6577); }
+.ophy-net-ring { fill: var(--ophy-surface, #fff); }
+.ophy-legend { list-style: none; display: flex; flex-wrap: wrap; gap: 12px; padding: 0; margin: 0 0 8px; font-size: 13px; }
+.ophy-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: baseline; }
