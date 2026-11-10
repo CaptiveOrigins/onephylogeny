@@ -176,7 +176,14 @@ export type Run = {
 }
 
 /** A named stretch of the reference, the same for every group. Half-open: `start` is included, `end` is not. */
-export type PanelWindow = { id: Id; label: string; start: number; end: number }
+export type PanelWindow = {
+  id: Id
+  label: string
+  start: number
+  end: number
+  /** For a gene window read from the reference's annotation (ADR 0009): the feature type and the strand it reads on. */
+  gene?: { kind: 'cds' | 'rrna' | 'trna'; strand: '+' | '-' }
+}
 
 /** What one group has in one window. A group short of depth is reported as data, never left out. */
 export type GroupCoverage = {
