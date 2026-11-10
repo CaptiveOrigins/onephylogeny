@@ -2,6 +2,17 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-10: group audit
+
+`packages/core/test/audit.test.ts` (5 tests) covers what the audit promises:
+
+- **p-distance counts unambiguous bases only.**
+- **A clean panel raises nothing** and reports each group's spread.
+- **It flags** a record closer to another group, a haplotype shared across groups, and a single-record group.
+- **Records that don't cover the whole window are left out and counted**, with the window's width and the best coverage.
+
+The CLI was run by hand on the real redfoot panel 0.7.1 (results in the changelog).
+
 ## 2026-11-10: curation history
 
 `engine.test.ts` ("curation history", 2 tests) covers what the history promises:
