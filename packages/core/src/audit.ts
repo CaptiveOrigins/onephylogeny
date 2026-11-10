@@ -93,3 +93,59 @@ export function auditGroups(bundle: PanelBundle): WindowAudit[] {
     return { window: w.id, groups, partial, columns: w.end - w.start, mostCovered, flags }
   })
 }
+
+/** A panel record whose windows point to different groups: a possible chimera, or two reads joined from different animals. */
+export type ChimeraCandidate = { record: Id; group: Id; windows: { window: Id; nearestGroups: Id[]; distance: number }[] }
+
+/** The majority base per column, ties broken alphabetically, so one odd record can't decide a group's consensus. */
+function consensus(slices: string[]): string {
+  if (!slices.length) return ''
+  let out = ''
+  for (let i = 0; i < slices[0]!.length; i++) {
+    const n = new Map<string, number>()
+    for (const s of slices) if (BASES.has(s[i]!)) n.set(s[i]!, (n.get(s[i]!) ?? 0) + 1)
+    out += [...n].sort(([a, x], [b, y]) => y - x || a.localeCompare(b))[0]?.[0] ?? 'N'
+  }
+  return out
+}
+
+/**
+ * Authenticity check (roadmap stage 4): for every record that covers at least two windows whole (the same strict rule as
+ * the group audit, ADR 0007), the group whose consensus it is nearest in each window. Consensus leaves the record itself
+ * out, so one odd record can't pull its neighbours with it. When two windows' nearest groups share none, the record is a
+ * candidate chimera, for a person to look at. Nothing is removed automatically.
+ */
+export function chimeraCandidates(bundle: PanelBundle): { candidates: ChimeraCandidate[]; checked: number } {
+  const { panel, sequences } = bundle
+  const groupOf = new Map<Id, Id>()
+  for (const g of panel.groups) for (const e of g.evidence) if (!groupOf.has(e.record)) groupOf.set(e.record, g.id)
+  const whole = (s: string | undefined, w: { start: number; end: number }) => {
+    if (!s) return null
+    const slice = s.slice(w.start, w.end)
+    return slice.length === w.end - w.start && !/[-.]/.test(slice) ? slice.toUpperCase() : null
+  }
+  const records = [...groupOf].sort(([a], [b]) => String(a).localeCompare(String(b)))
+  const candidates: ChimeraCandidate[] = []
+  let checked = 0
+  for (const [record, group] of records) {
+    const windows = panel.windows.map((w) => ({ w, slice: whole(sequences[record], w) })).filter((x): x is { w: typeof x.w; slice: string } => x.slice !== null)
+    if (windows.length < 2) continue
+    checked++
+    const near = windows.map(({ w, slice }) => {
+      let best = Infinity
+      let groups: Id[] = []
+      for (const g of panel.groups) {
+        const others = records.filter(([r, rg]) => rg === g.id && r !== record).map(([r]) => whole(sequences[r], w)).filter((x): x is string => x !== null)
+        if (!others.length) continue
+        const d = pDistance(slice, consensus(others))
+        if (d < best) { best = d; groups = [g.id] } else if (d === best) groups.push(g.id)
+      }
+      // A window where the record's own group has nothing to compare can't show a mismatch.
+      const own = records.some(([r, rg]) => rg === group && r !== record && whole(sequences[r], w) !== null)
+      return { window: w.id, nearestGroups: own ? groups.sort() : [], distance: round(best) }
+    }).filter((x) => x.nearestGroups.length)
+    const disjoint = near.some((a, i) => near.slice(i + 1).some((b) => !a.nearestGroups.some((g) => b.nearestGroups.includes(g))))
+    if (disjoint) candidates.push({ record, group, windows: near })
+  }
+  return { candidates, checked }
+}

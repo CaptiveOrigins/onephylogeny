@@ -2,7 +2,7 @@
 import { execFile } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { auditGroups, curationFromCsv, panelMethods, curationToCsv, parseCuration, parseFasta, parseProfile, reportMarkdown, sampleReport, type Result } from '@captiveorigins/onephylogeny-core'
+import { auditGroups, chimeraCandidates, curationFromCsv, panelMethods, curationToCsv, parseCuration, parseFasta, parseProfile, reportMarkdown, sampleReport, type Result } from '@captiveorigins/onephylogeny-core'
 import { lookupPaper, NcbiClient, paced, suggestOutgroups } from '@captiveorigins/onephylogeny-acquire'
 import { buildPanelFromRun, comparePanelVersions, buildTree, EngineError, fetchAndAnchor, isCancelled, loadPanel, loadRunRecords, profilePaths, readCurationHistory, saveCuration, routeSample, runSample, testSample, traceArtifact, verifyDataset, writeDataset, type ArtifactType, type EngineContext, type ToolRunner } from '@captiveorigins/onephylogeny-engine'
 import { nodeStore } from './store.js'
@@ -28,6 +28,7 @@ const USAGE = `onephylogeny <command> --workspace DIR --profile ID [options]
                            Propose DOI and PubMed links for a study from Crossref and Europe PMC (nothing is attached)
   methods --dir DIR        Methods text and citations for a built panel, from what it records
   audit --dir DIR          Check a built panel's groups against its sequences, window by window (flags only)
+  chimeras --dir DIR       Records whose windows point to different groups: possible chimeras (flags only)
   route --fasta FILE --panels DIR
                            Which panels under DIR apply to each sequence (no profile needed)
   report --dir DIR --result FILE [--json]
@@ -80,6 +81,12 @@ async function main() {
     if (!dir) throw new Error('--dir is required')
     const m = panelMethods((await loadPanel(nodeStore(resolve(dir)), '.')).panel)
     process.stdout.write(`${m.text}\n## Sources\n\n${m.citations.map((c) => `- ${c}`).join('\n')}\n`)
+    return
+  }
+  if (command === 'chimeras') {
+    const dir = flag('dir')
+    if (!dir) throw new Error('--dir is required')
+    console.log(JSON.stringify(chimeraCandidates(await loadPanel(nodeStore(resolve(dir)), '.')), null, 2))
     return
   }
   if (command === 'audit') {

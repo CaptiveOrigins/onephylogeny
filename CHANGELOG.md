@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Chimera candidates (roadmap stage 4):** `chimeraCandidates(panel)` in core and `onephylogeny chimeras --dir PANEL`. These are records whose windows are nearest to different groups' consensus: possible chimeras, or reads from two animals joined. It uses only records covering two or more windows whole (ADR 0007), compares against a consensus that leaves the record out so one odd record can't pull its neighbours, and counts a window only where the record's own group has something to compare. Candidates are flagged, never removed. On the redfoot panel 0.7.1 it can check none: no record covers the 5p window whole.
 - **Sample QC (roadmap stage 4):** every result now carries `qc`: five named rules (missing data, mixed sites, frame, stops, clustered differences against the nearest panel record), each good, mediocre or bad, and an overall status. QC describes the sequence and changes no status. A panel can seal its own thresholds (`qc` in its settings); otherwise OnePhylogeny's stated defaults apply, which are proposals, not calibrated. Reports gain a "Sequence quality" section, and the result schema is regenerated. On the redfoot panel 0.7.1, all its member examples rate good, and verify still passes.
 ## 0.1.0-alpha.6
 

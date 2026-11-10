@@ -99,7 +99,7 @@ This is where a real user currently gets stuck.
 Informed by the techniques research.
 
 1. **QC rules per panel.** Named rules (missing data, mixed sites, frame, stops, clustered differences) with an overall status. *Built 2026-11-10 (`sampleQc`, `result.qc`); the default thresholds are uncalibrated proposals.*
-2. **Better authenticity checks.** A NUMT screen against a genome, plus chimera and mislabel detection.
+2. **Better authenticity checks.** A NUMT screen against a genome, plus chimera and mislabel detection. *Chimera candidates built 2026-11-10 (`onephylogeny chimeras`); mislabels are the group audit's records closer to another group. On redfoot 0.7.1 neither can see 5p yet.*
 3. **Stronger validation.** Fragment simulation, leave-one-study-out, per-window reports and intervals for small groups.
 4. **Conflict reporting.** Report when evidence supports several groups or windows disagree. *Built 2026-11-10 (`resultConflicts`, in reports).*
 5. **Calibration.** Expect to refuse: at these site counts, report counts by evidence class, not probabilities. *Counts by status and single match are built; not yet run on real data.*
