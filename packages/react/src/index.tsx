@@ -331,3 +331,4 @@ export function OutgroupLadderView({ steps, suggested, caveat }: { steps: Ladder
   )
 }
 export * from './network.js'
+export * from './regionmap.js'

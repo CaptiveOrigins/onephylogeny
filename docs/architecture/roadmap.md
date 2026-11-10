@@ -110,8 +110,8 @@ Informed by the techniques research.
 
 ## Stage 5: Show the evidence
 
-1. Haplotype network and region map, from generalized regions only. *Haplotype network built 2026-11-10 (core, React and Mac app); the region map is next.*
-2. Tree view that reuses OneTaxonomy's viewers, including paired support.
+1. Haplotype network and region map, from generalized regions only. *Haplotype network built 2026-11-10 (core, React and Mac app). Region map built 2026-11-10 in React (ADR 0008); the Mac app and the platform still need to load the outlines and show it.*
+2. Tree view that reuses OneTaxonomy's viewers, including paired support. *Deferred by the owner, 2026-11-10.*
 3. Methods text and a citation list for each run, generated from provenance. *Built for panels 2026-11-10 (`onephylogeny methods`); Studies already had `studyMethods`.*
 4. Comparison of two runs or two panel versions.
 

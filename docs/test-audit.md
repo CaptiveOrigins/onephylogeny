@@ -2,6 +2,16 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-10: region map
+
+- **`react.test.tsx` (2 tests):**
+  - tagged ecoregions are shaded by group, with neighbours for context;
+  - shared ecoregions are outlined, and far ones aren't drawn;
+  - the credit is always shown, and the table lists names;
+  - a map with no matching tag says so, and missing tags are named.
+- **`methods.test.ts` (1 test):** ecoregion tags must be RESOLVE IDs.
+- **Looked at by hand:** a render with the real outlines and illustrative redfoot tags.
+
 ## 2026-11-10: haplotype network
 
 - **`packages/core/test/network.test.ts` (4 tests):**

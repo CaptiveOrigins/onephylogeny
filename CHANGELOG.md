@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Region map (roadmap stage 5, ADR 0008, owner 2026-11-10):** panel groups can carry `ecoregions` (RESOLVE Ecoregions 2017 IDs), validated and sealed, and `RegionMap` in the React package shades them by group, with neighbouring ecoregions for context, a legend, a table and the credit line. `scripts/ecoregions.mjs` builds the outlines from the official release, simplified to about 8 MB, with mapshaper (not a dependency). Rendered by hand with illustrative tags for the redfoot groups; no real panel is tagged yet.
 - **Haplotype network (roadmap stage 5):** `haplotypeNetwork(panel, window)` in core, `HaplotypeNetworkFigure` in the React package, and a section in the Mac app's Panel tab with a window chooser.
   - It's a minimum spanning network of one window's haplotypes, from records covering it whole (ADR 0007), keeping every equally short link.
   - Circle area counts records, slices show groups in the validated categorical palette, and multi-step links are labelled.

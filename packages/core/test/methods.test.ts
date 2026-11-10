@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { panelMethods, type Panel } from '../src/index.js'
+import { panelMethods, validatePanel, type Panel } from '../src/index.js'
 
 const ev = (record: string) => ({ record, use: 'lineage-and-location' as const, provenanceClass: 'wild-documented' as const })
 const panel = (over: Partial<Panel> = {}): Panel => ({
@@ -34,5 +34,14 @@ describe('panel methods text (roadmap stage 5)', () => {
 
   it('never writes a coordinate-like number', () => {
     expect(panelMethods(panel()).text).not.toMatch(/-?\d{1,3}\.\d{3,}/)
+  })
+})
+
+describe('ecoregion tags (ADR 0008)', () => {
+  it('accepts RESOLVE IDs on groups and refuses anything else', () => {
+    const ok = panel({ groups: [{ id: 'a', label: 'A', coverage: [], evidence: [], ecoregions: [572, 583] }] })
+    expect(validatePanel(ok).map((d) => d.code)).not.toContain('bad-ecoregion')
+    const bad = panel({ groups: [{ id: 'a', label: 'A', coverage: [], evidence: [], ecoregions: [572.5, -1] }] })
+    expect(validatePanel(bad).filter((d) => d.code === 'bad-ecoregion')).toHaveLength(2)
   })
 })

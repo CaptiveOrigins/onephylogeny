@@ -23,3 +23,5 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+Region map outlines (built by scripts/ecoregions.mjs, not included in the packages): RESOLVE Ecoregions 2017, CC BY 4.0. Dinerstein E. et al. (2017) An Ecoregion-Based Approach to Protecting Half the Terrestrial Realm. BioScience 67(6): 534-545. doi:10.1093/biosci/bix014

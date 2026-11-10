@@ -56,3 +56,7 @@
 .ophy-net-ring { fill: var(--ophy-surface, #fff); }
 .ophy-legend { list-style: none; display: flex; flex-wrap: wrap; gap: 12px; padding: 0; margin: 0 0 8px; font-size: 13px; }
 .ophy-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: baseline; }
+.ophy-regionmap svg { width: 100%; max-width: 600px; display: block; }
+.ophy-map-context { fill: var(--ophy-border, #eaddd6); stroke: var(--ophy-surface, #fff); stroke-width: 0.6; }
+.ophy-map-region { stroke: var(--ophy-surface, #fff); stroke-width: 1; }
+.ophy-map-shared { stroke: #1a1a1a; stroke-width: 1.6; }
