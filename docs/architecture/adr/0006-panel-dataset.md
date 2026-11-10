@@ -1,6 +1,6 @@
 # 0006: A panel is a dataset that proves itself
 
-**Status.** Built 2026-11-10 as the first part of roadmap stage 2 ("Make panels real datasets"). The rest of the format is still to come: README, changelog, citations and a compatible software range.
+**Status.** Built 2026-11-10 for roadmap stage 2 ("Make panels real datasets"). The dataset also carries a generated `README.md`, its citations and the software that built it (`builtWith`, in `dataset.json`). Compatibility is shown by rerunning the examples rather than declared as a version range, since a range can be wrong and a rerun can't. A per-panel changelog is left to the panel's maintainers.
 
 **Context.** A panel is a sealed `panel.json` plus `panel.fasta`. The seal shows the files weren't edited. It doesn't show that this copy, read by this version of the software, still gives the answers the panel gave when it was built. Nextclade's datasets carry example sequences with expected results for exactly that reason.
 

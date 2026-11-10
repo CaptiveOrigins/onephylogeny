@@ -497,7 +497,14 @@ describe('panel dataset (roadmap stage 2)', () => {
     expect(examples.examples.find((e) => e.id === 'control-not-marker')!.expected.outcome).toBe('refused')
     expect(examples.examples.find((e) => e.id === 'fragment-a')!.sequence).toHaveLength(300)
     const manifest = JSON.parse(ctx.store.files.get(`${dir}/dataset.json`)!) as DatasetManifest
-    expect(Object.keys(manifest.files).sort()).toEqual(['diagnostics.json', 'examples.json', 'panel.fasta', 'panel.json', 'validation.json'])
+    expect(Object.keys(manifest.files).sort()).toEqual(['README.md', 'diagnostics.json', 'examples.json', 'panel.fasta', 'panel.json', 'validation.json'])
+    expect(manifest.builtWith).toEqual([{ name: 'onephylogeny-engine', version: ENGINE_VERSION }])
+    const readme = ctx.store.files.get(`${dir}/README.md`)!
+    expect(readme).toMatch(/^# p 1\n/)
+    for (const h of ['## Groups', '## Limits', '## Checking a copy', '## Cite']) expect(readme).toContain(h)
+    expect(readme).toContain('Not covered: Elsewhere')
+    expect(readme).toContain('never proof of where an animal was collected')
+    expect(readme).not.toMatch(/-?\d{1,3}\.\d{3,}/)
     expect(manifest.panel.checksum).toBe(examples.panel.checksum)
   })
 
@@ -505,13 +512,15 @@ describe('panel dataset (roadmap stage 2)', () => {
     const { ctx, dir } = await built()
     const r = await verifyDataset(ctx.store, dir, loadPanel, testSample)
     expect(r.diagnostics).toEqual([])
-    expect(r.checked).toEqual({ files: 5, examples: 4 })
+    expect(r.checked).toEqual({ files: 6, examples: 4 })
   })
 
   it('catches an edited file, a missing file, and a broken seal', async () => {
     const { ctx, dir } = await built()
     ctx.store.files.set(`${dir}/validation.json`, ctx.store.files.get(`${dir}/validation.json`)!.replace('{', '{ '))
     expect(codes(await verifyDataset(ctx.store, dir, loadPanel, testSample))).toEqual(['file-changed'])
+    ctx.store.files.set(`${dir}/README.md`, 'edited')
+    expect(codes(await verifyDataset(ctx.store, dir, loadPanel, testSample))).toEqual(['file-changed', 'file-changed'])
     ctx.store.files.delete(`${dir}/diagnostics.json`)
     expect(codes(await verifyDataset(ctx.store, dir, loadPanel, testSample))).toContain('file-missing')
     const panel = JSON.parse(ctx.store.files.get(`${dir}/panel.json`)!)
