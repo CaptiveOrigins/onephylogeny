@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { curationFromCsv, curationToCsv, parseCuration, parseFasta, parseProfile, reportMarkdown, sampleReport, type Result } from '@captiveorigins/onephylogeny-core'
 import { NcbiClient, suggestOutgroups } from '@captiveorigins/onephylogeny-acquire'
-import { buildPanelFromRun, comparePanelVersions, buildTree, EngineError, fetchAndAnchor, isCancelled, loadPanel, loadRunRecords, profilePaths, routeSample, runSample, testSample, traceArtifact, verifyDataset, writeDataset, type ArtifactType, type EngineContext, type ToolRunner } from '@captiveorigins/onephylogeny-engine'
+import { buildPanelFromRun, comparePanelVersions, buildTree, EngineError, fetchAndAnchor, isCancelled, loadPanel, loadRunRecords, profilePaths, readCurationHistory, saveCuration, routeSample, runSample, testSample, traceArtifact, verifyDataset, writeDataset, type ArtifactType, type EngineContext, type ToolRunner } from '@captiveorigins/onephylogeny-engine'
 import { nodeStore } from './store.js'
 
 const USAGE = `onephylogeny <command> --workspace DIR --profile ID [options]
@@ -16,8 +16,10 @@ const USAGE = `onephylogeny <command> --workspace DIR --profile ID [options]
   test --fasta FILE        Test local sequences against the panel
   tree [--start N --end N] Build a tree from one window with IQ-TREE
   curation export          Print the curation sheet (CSV) for the latest run's records
-  curation import --file F [--apply]
-                           Check a filled-in sheet and show what would change; --apply saves it
+  curation import --file F [--apply --reason TEXT] [--by NAME]
+                           Check a filled-in sheet and show what would change; --apply saves it, with the reason in the history
+  curation history [--record ID]
+                           Every saved change, when, by whom and why
   trace --type T --key K   Show everything that produced an artifact
   compare --a V --b V      Compare two built panel versions
   verify --dir DIR         Check a built panel folder: file hashes, seal, and its examples rerun (no profile needed)
@@ -151,13 +153,17 @@ async function main() {
     const records = await loadRunRecords(store, profile.id)
     const curation = (await store.exists(P.curation)) ? parseCuration(await store.read(P.curation)) : { schemaVersion: 1 as const, records: {} }
     if (args[1] === 'export') return void process.stdout.write(curationToCsv(curation, records))
-    if (args[1] !== 'import') throw new Error('Use: curation export, or curation import --file F [--apply]')
+    if (args[1] === 'history') return void console.log(JSON.stringify(await readCurationHistory(store, profile.id, flag('record')), null, 2))
+    if (args[1] !== 'import') throw new Error('Use: curation export | import --file F [--apply --reason TEXT] | history [--record ID]')
     const file = flag('file')
     if (!file) throw new Error('--file is required')
     const r = curationFromCsv(readFileSync(file, 'utf8'), curation, { knownRecords: records.map((x) => x.version || x.accession), groups: profile.panel?.groups.map((g) => g.id) ?? [] })
     const errors = r.diagnostics.filter((d) => d.severity === 'error')
+    const reason = flag('reason')
+    if (has('apply') && !reason) throw new Error('--apply needs --reason, so the history says why these changes were made')
+    const by = flag('by')
     const applied = has('apply') && !errors.length && r.changes.length > 0
-    if (applied) await store.write(P.curation, `${JSON.stringify(r.curation, null, 2)}\n`)
+    if (applied) await saveCuration(store, profile.id, r.curation, { reason: reason!, ...(by ? { by } : {}) })
     console.log(JSON.stringify({ applied, changed: r.changes.length, changes: r.changes, diagnostics: r.diagnostics }, null, 2))
     if (errors.length) process.exitCode = 1
   } else if (command === 'tree') {

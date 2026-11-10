@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Curation history (roadmap stage 3):** every saved change to a curation is appended to `curation-history.jsonl` beside it, field by field, from and to, with when, who (optional) and why. The Mac app and the CLI both save through `saveCuration`, so nothing skips the history. `curation import --apply` now needs `--reason`. `onephylogeny curation history [--record ID]` reads it back and reports any damaged line rather than skipping it.
 - **Curation sheet (roadmap stage 3, bulk tools):** `onephylogeny curation export` prints every record of the latest run as a CSV, with its decision and read-only context (organism, length, title) and never a coordinate. `curation import --file F` checks a filled-in sheet and lists every change, and `--apply` saves it. A blank cell clears a field, a missing column or row keeps what was there, and any error refuses the whole sheet: an unknown group, class or use, a duplicate, an origin-reported record without its source, or coordinates in a site or note. Formulas are defused on the way out and restored on the way in. In core: `curationToCsv`, `curationFromCsv`, `parseCsv`, `bulkAssign` and `recordsOfStudy`, and in the engine `loadRunRecords`. Tried on the real redfoot curation: 296 records round-trip with no change, and a wrong group is refused.
 ## 0.1.0-alpha.5
 

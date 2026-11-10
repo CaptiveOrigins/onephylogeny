@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { Ajv } from 'ajv'
 import { describe, expect, it } from 'vitest'
 import type { Curation, Profile } from '@captiveorigins/onephylogeny-core'
-import { buildPanelFromRun, checkExamples, comparePanelVersions, panelVersions, EngineError, ENGINE_VERSION, fetchAndAnchor, loadArtifact, loadPanel, loadRunRecords, profilePaths, routeSample, runSample, testSample, traceArtifact, verifyDataset, writeDataset, type DatasetManifest, type EngineContext, type PanelExamples, type Store } from '../src/index.js'
+import { buildPanelFromRun, checkExamples, comparePanelVersions, panelVersions, EngineError, ENGINE_VERSION, fetchAndAnchor, loadArtifact, loadPanel, loadRunRecords, historyPath, profilePaths, readCurationHistory, routeSample, runSample, saveCuration, testSample, traceArtifact, verifyDataset, writeDataset, type DatasetManifest, type EngineContext, type PanelExamples, type Store } from '../src/index.js'
 
 const ajv = new Ajv({ allErrors: true, strict: false })
 const schemaRoot = fileURLToPath(new URL('../../', import.meta.url))
@@ -668,5 +668,35 @@ describe('run records for the curation sheet', () => {
     await fetchAndAnchor(ctx, profile)
     const records = await loadRunRecords(ctx.store, 'demo')
     expect(records.map((r) => r.version)).toEqual(expect.arrayContaining(['A1.1', 'A2.1', 'B1.1', 'B2.1', 'U1.1', 'W1.1']))
+  })
+})
+
+describe('curation history (roadmap stage 3)', () => {
+  const at = '2026-11-10T00:00:00.000Z'
+  it('records each saved change, field by field, with who and why, and nothing when nothing changed', async () => {
+    const store = memory()
+    const P = profilePaths('demo')
+    const first: Curation = { schemaVersion: 1, records: { 'A1.1': { group: 'a', site: 's1' } } }
+    const e1 = await saveCuration(store, 'demo', first, { at, by: 'curator-1', reason: 'First pass' })
+    expect(e1).toEqual({ at, by: 'curator-1', reason: 'First pass', changes: [{ record: 'A1.1', field: 'group', to: 'a' }, { record: 'A1.1', field: 'site', to: 's1' }] })
+    expect(JSON.parse(store.files.get(P.curation)!)).toEqual(first)
+    expect(await saveCuration(store, 'demo', first, { at })).toBeNull()
+    const second: Curation = { schemaVersion: 1, records: { 'A1.1': { group: 'b' }, 'B1.1': { exclude: true } } }
+    await saveCuration(store, 'demo', second, { at, reason: 'Paper says otherwise' })
+    const { entries, damagedLines } = await readCurationHistory(store, 'demo')
+    expect(damagedLines).toEqual([])
+    expect(entries).toHaveLength(2)
+    expect(entries[1]!.changes).toEqual([{ record: 'A1.1', field: 'group', from: 'a', to: 'b' }, { record: 'A1.1', field: 'site', from: 's1' }, { record: 'B1.1', field: 'exclude', to: true }])
+    expect((await readCurationHistory(store, 'demo', 'B1.1')).entries).toEqual([{ at, reason: 'Paper says otherwise', changes: [{ record: 'B1.1', field: 'exclude', to: true }] }])
+  })
+
+  it('appends rather than rewrites when the store can, and reports a damaged line', async () => {
+    const store = memory()
+    const appended: string[] = []
+    const appending = { ...store, append: async (p: string, t: string) => { appended.push(p); store.files.set(p, (store.files.get(p) ?? '') + t) } }
+    await saveCuration(appending, 'demo', { schemaVersion: 1, records: { 'A1.1': { group: 'a' } } }, { at })
+    expect(appended).toEqual([historyPath('demo')])
+    store.files.set(historyPath('demo'), `${store.files.get(historyPath('demo'))}{not json\n`)
+    expect((await readCurationHistory(store, 'demo')).damagedLines).toEqual([2])
   })
 })

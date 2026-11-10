@@ -1,6 +1,6 @@
 import { NcbiClient, suggestOutgroups, type OutgroupLadder } from '@captiveorigins/onephylogeny-acquire'
 import { DEFAULT_RULES, LOCATION_EVIDENCE, parseCuration, parseFasta, parseProfile, validateProfile, type Curation, type Diagnostic, type EvaluationRules, type EvidenceUse, type Panel, type PanelWindow, type Profile, type ProvenanceClass, type Result, type RunEvent, type SequenceRecord, type Snapshot } from '@captiveorigins/onephylogeny-core'
-import { buildPanelFromRun, buildTree, EngineError, fetchAndAnchor, isCancelled, loadPanel, profilePaths, runSample, type EngineContext, type RecordOutcome, type TreeOutcome } from '@captiveorigins/onephylogeny-engine'
+import { buildPanelFromRun, buildTree, EngineError, fetchAndAnchor, isCancelled, loadPanel, profilePaths, runSample, saveCuration, type EngineContext, type RecordOutcome, type TreeOutcome } from '@captiveorigins/onephylogeny-engine'
 import { EventLog, OutgroupLadderView, PanelSummary, ResultView, ValidationView } from '@captiveorigins/onephylogeny-react'
 import { TreeCanvas } from '@captiveorigins/onephylogeny-react/canvas'
 import { treeToPhylogeny } from '@captiveorigins/onephylogeny-onetaxonomy'
@@ -182,7 +182,8 @@ export function App({ platform }: { platform: Platform }) {
   })
   const edit = (p: Profile) => { setProfile(p); setSaved(false) }
   const save = async (p = profile) => { if (p) { await platform.store.write(profilePaths(p.id).profile, `${JSON.stringify(p, null, 2)}\n`); setSaved(true) } }
-  const decide = async (next: Curation) => { setCuration(next); if (P) await platform.store.write(P.curation, `${JSON.stringify(next, null, 2)}\n`) }
+  // Every decision goes through saveCuration, so the curation history records it (roadmap stage 3).
+  const decide = async (next: Curation) => { setCuration(next); if (P && profile) await saveCuration(platform.store, profile.id, next) }
 
   const header = (
     <aside className="side">
