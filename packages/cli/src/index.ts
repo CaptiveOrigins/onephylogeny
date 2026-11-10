@@ -2,7 +2,7 @@
 import { execFile } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { auditGroups, curationFromCsv, curationToCsv, parseCuration, parseFasta, parseProfile, reportMarkdown, sampleReport, type Result } from '@captiveorigins/onephylogeny-core'
+import { auditGroups, curationFromCsv, panelMethods, curationToCsv, parseCuration, parseFasta, parseProfile, reportMarkdown, sampleReport, type Result } from '@captiveorigins/onephylogeny-core'
 import { lookupPaper, NcbiClient, paced, suggestOutgroups } from '@captiveorigins/onephylogeny-acquire'
 import { buildPanelFromRun, comparePanelVersions, buildTree, EngineError, fetchAndAnchor, isCancelled, loadPanel, loadRunRecords, profilePaths, readCurationHistory, saveCuration, routeSample, runSample, testSample, traceArtifact, verifyDataset, writeDataset, type ArtifactType, type EngineContext, type ToolRunner } from '@captiveorigins/onephylogeny-engine'
 import { nodeStore } from './store.js'
@@ -26,6 +26,7 @@ const USAGE = `onephylogeny <command> --workspace DIR --profile ID [options]
   dataset --dir DIR        Add examples and a manifest to a panel built before they existed (no profile needed)
   lookup --title T [--authors A]
                            Propose DOI and PubMed links for a study from Crossref and Europe PMC (nothing is attached)
+  methods --dir DIR        Methods text and citations for a built panel, from what it records
   audit --dir DIR          Check a built panel's groups against its sequences, window by window (flags only)
   route --fasta FILE --panels DIR
                            Which panels under DIR apply to each sequence (no profile needed)
@@ -72,6 +73,13 @@ async function main() {
     if (!title) throw new Error('--title is required')
     const authors = flag('authors')
     console.log(JSON.stringify(await lookupPaper(paced((url, init) => fetch(url, init)), { title, ...(authors ? { authors } : {}) }), null, 2))
+    return
+  }
+  if (command === 'methods') {
+    const dir = flag('dir')
+    if (!dir) throw new Error('--dir is required')
+    const m = panelMethods((await loadPanel(nodeStore(resolve(dir)), '.')).panel)
+    process.stdout.write(`${m.text}\n## Sources\n\n${m.citations.map((c) => `- ${c}`).join('\n')}\n`)
     return
   }
   if (command === 'audit') {
