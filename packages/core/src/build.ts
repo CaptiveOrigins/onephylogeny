@@ -63,6 +63,7 @@ export function unsealedBundle(input: BuildPanelInput): PanelBundle {
       id: g.id,
       label: g.label,
       ...(g.region ? { region: g.region } : {}),
+      ...(g.ecoregions?.length ? { ecoregions: [...new Set(g.ecoregions)].sort((x, y) => x - y) } : {}),
       coverage: derived.coverage[g.id]!,
       evidence: input.members.filter((m) => m.group === g.id).map((m) => {
         const b = block(m)

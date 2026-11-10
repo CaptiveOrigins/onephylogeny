@@ -313,6 +313,13 @@
           "type": "string",
           "description": "A generalized named region. Panels never hold coordinates."
         },
+        "ecoregions": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "The RESOLVE Ecoregions 2017 IDs (`ECO_ID`) this group's region covers, for the region map (owner, 2026-11-10; ADR 0008). Whole ecoregions only, so a map never shows anything finer than the region already names."
+        },
         "coverage": {
           "type": "array",
           "items": {

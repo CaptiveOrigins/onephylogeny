@@ -9,3 +9,4 @@
 | [0005](0005-independent-tools.md) | Tools run independently; bridges are optional | Accepted (owner 2026-11-03) |
 | [0006](0006-panel-dataset.md) | A panel is a dataset that proves itself: examples, a file manifest and `verify` | Built (roadmap stage 2) |
 | [0007](0007-strict-group-audit.md) | The group audit uses only records that cover a window whole | Accepted (owner 2026-11-10) |
+| [0008](0008-ecoregion-map.md) | The region map shades whole RESOLVE ecoregions | Accepted (owner 2026-11-10) |

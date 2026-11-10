@@ -87,7 +87,7 @@ export type Profile = {
 export type PanelSettings = {
   id: Id
   version: string
-  groups: { id: Id; label: string; region?: string }[]
+  groups: { id: Id; label: string; region?: string; ecoregions?: number[] }[]
   notCovered: string[]
   validatedScope: string[]
   /** Named stretches of the reference, usually where amplicons fall. Without them the whole marker is one window. */
@@ -224,6 +224,11 @@ export type PanelGroup = {
   label: string
   /** A generalized named region. Panels never hold coordinates. */
   region?: string
+  /**
+   * The RESOLVE Ecoregions 2017 IDs (`ECO_ID`) this group's region covers, for the region map (owner, 2026-11-10;
+   * ADR 0008). Whole ecoregions only, so a map never shows anything finer than the region already names.
+   */
+  ecoregions?: number[]
   coverage: GroupCoverage[]
   /** `block` is an opaque label, so a panel doesn't reveal sampling sites. */
   evidence: { record: Id; use: EvidenceUse; provenanceClass: ProvenanceClass; originSource?: string; block?: string; study?: string }[]

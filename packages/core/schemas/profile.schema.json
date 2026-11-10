@@ -341,6 +341,12 @@
               },
               "region": {
                 "type": "string"
+              },
+              "ecoregions": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
               }
             },
             "required": [

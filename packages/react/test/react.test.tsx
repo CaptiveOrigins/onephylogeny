@@ -3,7 +3,7 @@ import { standaloneSvg, TreeCanvas } from '../src/canvas'
 import { Icon } from '../src/icons'
 import { describe, expect, it } from 'vitest'
 import { buildPanel, evaluateQuery, type Result } from '@captiveorigins/onephylogeny-core'
-import { CoverageBars, fitLayout, HaplotypeNetworkFigure, layoutNetwork, EventLog, LineageCard, OutgroupLadderView, parseNewickForDisplay, ResultView, StatusBadge, summarizeResult, TreeFigure, ValidationView } from '../src/index.js'
+import { CoverageBars, ECOREGIONS_CREDIT, fitLayout, RegionMap, HaplotypeNetworkFigure, layoutNetwork, EventLog, LineageCard, OutgroupLadderView, parseNewickForDisplay, ResultView, StatusBadge, summarizeResult, TreeFigure, ValidationView } from '../src/index.js'
 
 const ref = 'ACGT'.repeat(50)
 const mut = (at: number[]) => [...ref].map((c, i) => (at.includes(i) ? (c === 'A' ? 'C' : 'A') : c)).join('')
@@ -100,5 +100,26 @@ describe('haplotype network figure (roadmap stage 5)', () => {
     expect(html).toContain('1 partial records left out')
     expect(html).toContain('This is not a tree.')
     expect(html).toContain('<th scope="row">h2 to h3</th><td>3</td>')
+  })
+})
+
+describe('region map (roadmap stage 5)', () => {
+  const square = (id: number, name: string, x: number, y: number) => ({ type: 'Feature' as const, properties: { ECO_ID: id, ECO_NAME: name }, geometry: { type: 'Polygon' as const, coordinates: [[[x, y], [x + 1, y], [x + 1, y + 1], [x, y + 1], [x, y]] as [number, number][]] } })
+  const outlines = { type: 'FeatureCollection' as const, features: [square(1, 'North forests', 0, 2), square(2, 'South plains', 0, 0), square(3, 'Neighbour', 1, 0), square(9, 'Far away', 60, 60)] }
+  const groups = [{ id: 'a', label: 'Group A', ecoregions: [1] }, { id: 'b', label: 'Group B', ecoregions: [2, 1] }, { id: 'c', label: 'Group C' }]
+  it('shades tagged ecoregions by group, shows neighbours for context, and always credits the source', () => {
+    const html = renderToStaticMarkup(<RegionMap panel={{ groups } as never} ecoregions={outlines} />)
+    expect(html).toContain('Group A')
+    expect(html).not.toContain('Group C</li>')
+    expect(html).toContain('<title>North forests: Group A and Group B</title>')
+    expect(html).toContain('ophy-map-shared')
+    expect(html).toContain('<title>Neighbour</title>')
+    expect(html).not.toContain('Far away')
+    expect(html).toContain(ECOREGIONS_CREDIT)
+    expect(html).toContain('<th scope="row">Group B</th><td>South plains; North forests</td>')
+  })
+  it('says so when no tag matches, and names tags missing from the outlines', () => {
+    expect(renderToStaticMarkup(<RegionMap panel={{ groups: [{ id: 'a', label: 'A', ecoregions: [77] }] } as never} ecoregions={outlines} />)).toContain('no map to draw')
+    expect(renderToStaticMarkup(<RegionMap panel={{ groups: [{ id: 'a', label: 'A', ecoregions: [1, 77] }] } as never} ecoregions={outlines} />)).toContain('Not in these outlines: 77.')
   })
 })
