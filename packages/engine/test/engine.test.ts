@@ -586,6 +586,25 @@ describe('panel dataset (roadmap stage 2)', () => {
     expect(validate('core', 'result')({ ...result, findings: [{ ...result.findings[0], status: 'probably' }] })).toBe(false)
   })
 
+  it('keeps a record\'s coordinates out of every published file and every result', async () => {
+    // Made-up coordinates on one record. They may sit in the run's raw data, never in a panel or a result.
+    const original = DB['A1.1']!
+    DB['A1.1'] = original.replace('/db_xref', '/lat_lon="12.3456 N 98.7654 W"\n                     /db_xref')
+    try {
+      const { ctx, dir } = await built()
+      expect((await loadRunRecords(ctx.store, 'demo')).find((r) => r.version === 'A1.1')!.latLon).toBe('12.3456 N 98.7654 W')
+      const published = [...ctx.store.files].filter(([p]) => p.startsWith(`${dir}/`))
+      expect(published.length).toBeGreaterThanOrEqual(6)
+      const sample = testSample(mutate([10, 200, 450], 0, 500), 's', await loadPanel(ctx.store, dir))
+      expect(sample.result).toBeTruthy()
+      for (const text of [...published.map(([, t]) => t), JSON.stringify(sample)]) {
+        expect(text).not.toMatch(/12\.3456|98\.7654|lat_?lon/i)
+      }
+    } finally {
+      DB['A1.1'] = original
+    }
+  })
+
   it('chooses the same examples every time', async () => {
     const a = await built()
     const b = await built()
