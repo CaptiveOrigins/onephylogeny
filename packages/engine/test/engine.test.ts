@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { Ajv } from 'ajv'
 import { describe, expect, it } from 'vitest'
 import type { Curation, Profile } from '@captiveorigins/onephylogeny-core'
-import { buildPanelFromRun, checkExamples, comparePanelVersions, panelVersions, EngineError, ENGINE_VERSION, fetchAndAnchor, loadArtifact, loadPanel, profilePaths, runSample, testSample, traceArtifact, verifyDataset, writeDataset, type DatasetManifest, type EngineContext, type PanelExamples, type Store } from '../src/index.js'
+import { buildPanelFromRun, checkExamples, comparePanelVersions, panelVersions, EngineError, ENGINE_VERSION, fetchAndAnchor, loadArtifact, loadPanel, profilePaths, routeSample, runSample, testSample, traceArtifact, verifyDataset, writeDataset, type DatasetManifest, type EngineContext, type PanelExamples, type Store } from '../src/index.js'
 
 const ajv = new Ajv({ allErrors: true, strict: false })
 const schemaRoot = fileURLToPath(new URL('../../', import.meta.url))
@@ -581,5 +581,73 @@ describe('panel dataset (roadmap stage 2)', () => {
     const a = await built()
     const b = await built()
     expect(a.ctx.store.files.get(`${a.dir}/examples.json`)).toBe(b.ctx.store.files.get(`${b.dir}/examples.json`))
+  })
+})
+
+describe('sample routing (roadmap stage 2)', () => {
+  const curation: Curation = { schemaVersion: 1, records: {
+    'A1.1': { group: 'a', provenanceClass: 'wild-documented', site: 's1' }, 'A2.1': { group: 'a', provenanceClass: 'wild-documented', site: 's2' },
+    'B1.1': { group: 'b', provenanceClass: 'wild-documented', site: 's3' },
+  } }
+  const bundles = async () => {
+    const ctx = makeContext()
+    await fetchAndAnchor(ctx, profile)
+    await buildPanelFromRun(ctx, profile, curation)
+    const p = await loadPanel(ctx.store, profilePaths('demo').panel('p', '1'))
+    // Another marker's panel: an unrelated reference, so nothing of this marker aligns to it.
+    const other: typeof p = { ...p, panel: { ...p.panel, id: 'other-marker' }, referenceSequence: randomSeq(600, 4242) }
+    const superseded: typeof p = { ...p, panel: { ...p.panel, id: 'old', status: 'superseded' } }
+    return { p, other, superseded }
+  }
+
+  it('suggests the panel the sequence belongs to, first, and says why the others don\'t apply', async () => {
+    const { p, other, superseded } = await bundles()
+    const r = routeSample(mutate([10, 200, 450], 0, 500), [other, superseded, p])
+    expect(r.map((s) => [s.panel.id, s.applies])).toEqual([['p', true], ['old', false], ['other-marker', false]])
+    expect(r[0]!.reason).toMatch(/^Aligns at \d+\.\d% identity over \d+ columns, covering \d of \d windows$/)
+    expect(r[0]!.windows.length).toBeGreaterThan(0)
+    expect(r[1]!.reason).toMatch(/superseded/)
+    expect(r[2]!.reason).toMatch(/different gene|reference/)
+  })
+
+  it('a suggested panel accepts the sequence, and a refused one would refuse it too', async () => {
+    const { p, other } = await bundles()
+    const seq = mutate([10, 200, 450], 0, 500)
+    const [first] = routeSample(seq, [p])
+    expect(first!.applies).toBe(true)
+    expect(testSample(seq, 's', p).result).not.toBeNull()
+    const junk = randomSeq(500, 77)
+    expect(routeSample(junk, [p])[0]!.applies).toBe(false)
+    expect(testSample(junk, 's', p).result).toBeNull()
+    expect(routeSample(seq, [other])[0]!.applies).toBe(false)
+  })
+
+  it('a fragment outside every window is not suggested', async () => {
+    const { p } = await bundles()
+    const tiny = { ...p, panel: { ...p.panel, rules: { ...p.panel.rules, minSharedColumns: 10_000 } } }
+    const [s] = routeSample(mutate([10, 200, 450], 0, 500), [tiny])
+    expect(s).toMatchObject({ applies: false, windows: [] })
+    expect(s!.reason).toMatch(/covers none of this panel's windows/)
+  })
+
+  it('checks a taxon claim when the sample carries one', async () => {
+    const { p } = await bundles()
+    const seq = mutate([10, 200, 450], 0, 500)
+    expect(routeSample(seq, [p])[0]!.taxonMatches).toBe('unknown')
+    expect(routeSample(seq, [p], { taxonClaim: { source: 'ncbi-taxonomy', id: '1' } })[0]).toMatchObject({ applies: true, taxonMatches: true })
+    expect(routeSample(seq, [p], { taxonClaim: { source: 'ncbi-taxonomy', id: '999' } })[0]).toMatchObject({ applies: false, taxonMatches: false })
+  })
+
+  it('lists the newest version of a panel first when versions tie', async () => {
+    const { p } = await bundles()
+    const v = (version: string) => ({ ...p, panel: { ...p.panel, version } })
+    expect(routeSample(mutate([10, 200, 450], 0, 500), [v('0.9.1'), v('0.10.0'), v('0.2.0')]).map((s) => s.panel.version)).toEqual(['0.10.0', '0.9.1', '0.2.0'])
+  })
+
+  it('ranks active panels above candidates', async () => {
+    const { p } = await bundles()
+    const candidate = { ...p, panel: { ...p.panel, id: 'cand', status: 'candidate' as const } }
+    const active = { ...p, panel: { ...p.panel, id: 'act', status: 'active' as const } }
+    expect(routeSample(mutate([10, 200, 450], 0, 500), [candidate, active]).map((s) => s.panel.id)).toEqual(['act', 'cand'])
   })
 })

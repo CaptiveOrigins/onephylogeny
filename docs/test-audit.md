@@ -2,6 +2,16 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-10: sample routing
+
+`engine.test.ts` ("sample routing", 6 tests) covers what routing promises:
+
+- **It suggests the right panel first** and says why the others don't apply: superseded, another marker, a fragment outside every window, a taxon claim the panel isn't for.
+- **A suggested panel accepts the sequence, and a refused one refuses it**, because both use the same checks as `testSample`.
+- **It ranks** active before candidate, and the newest version first.
+
+The CLI's folder walk and its skipping of unreadable panels were checked by hand on the bio repo's panels: 4 older formats were skipped, and the cytb records and a random sequence routed as expected.
+
 ## 2026-11-10: sample reports
 
 `packages/core/test/report.test.ts` (8 tests) covers what the report promises:
