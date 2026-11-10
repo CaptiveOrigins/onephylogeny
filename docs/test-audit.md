@@ -2,6 +2,18 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-10: curation history
+
+`engine.test.ts` ("curation history", 2 tests) covers what the history promises:
+
+- **Every save is recorded** field by field, with from, to, who and why.
+- **A save that changes nothing writes nothing.**
+- **History can be read back for one record.**
+- **It appends rather than rewrites** when the store can.
+- **A damaged line is reported.**
+
+The Mac app's `decide` now saves through `saveCuration`; no UI test covers the wiring, only the typecheck. The CLI's refusal of `--apply` without `--reason` was checked by hand on the real workspace, and nothing was written.
+
 ## 2026-11-10: curation sheet
 
 `packages/core/test/curation-sheet.test.ts` (8 tests) covers what the sheet promises:

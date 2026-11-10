@@ -88,7 +88,7 @@ This is where a real user currently gets stuck.
 1. **Group audit.** Cluster haplotypes per window, on full-window records, as an audit of proposed groups. Clusters don't define groups, because on fragmented data they may just recover amplicons.
 2. **Bulk tools.** Assign by study, clade or selection. Import and export the curation sheet as CSV. *Sheet import and export and assigning by study or selection built 2026-11-10 (`onephylogeny curation`); by clade waits for the group audit.*
 3. **Paper lookup.** Find each study through Europe PMC and Crossref, and link supplements. Every extracted field records its source and needs approval.
-4. **Decision history.** Who changed what, when and why.
+4. **Decision history.** Who changed what, when and why. *Built 2026-11-10: `curation-history.jsonl`, written by every save in the app and the CLI.*
 5. **Guided setup.** Suggest a reference for the species and marker, with defaults a newcomer can trust and change.
 6. **First-run session.** A person runs a new species end to end, and we fix what goes wrong.
 
