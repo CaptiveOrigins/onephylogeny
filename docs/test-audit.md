@@ -2,6 +2,12 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-10: mitogenome gene windows
+
+- **Promises:** windows come only from the reference's annotation; anything that can't be placed plainly is left out with a reason; no control region is invented; overlapping genes count once.
+- **Covered** (`packages/core/test/mitogenome.test.ts`, 7 tests): the real redfoot reference gives 13, 2 and 22 windows in order with unique ids, ND6 on the minus strand, ND3's two-part annotation kept as one window with a note, and a note that the control region isn't annotated. Made-up records cover each left-out case and same-named tRNAs.
+- **Gaps left:** a reference with `complement(join(...))` genes isn't in the fixtures. Nothing uses the windows to build a panel yet.
+
 ## 2026-11-10: Sanger chromatograms and primers
 
 - **Promises:** `.ab1` files are read exactly; nothing unreadable is guessed at; low-quality bases become N and are counted; second peaks are flagged without changing calls; primer placement refuses rather than guesses.

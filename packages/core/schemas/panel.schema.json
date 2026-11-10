@@ -289,6 +289,32 @@
         },
         "end": {
           "type": "number"
+        },
+        "gene": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "cds",
+                "rrna",
+                "trna"
+              ]
+            },
+            "strand": {
+              "type": "string",
+              "enum": [
+                "+",
+                "-"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "strand"
+          ],
+          "additionalProperties": false,
+          "description": "For a gene window read from the reference's annotation (ADR 0009): the feature type and the strand it reads on."
         }
       },
       "required": [
