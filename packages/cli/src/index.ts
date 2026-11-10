@@ -2,7 +2,7 @@
 import { execFile } from 'node:child_process'
 import { mkdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { parseCuration, parseFasta, parseProfile } from '@captiveorigins/onephylogeny-core'
+import { parseCuration, parseFasta, parseProfile, reportMarkdown, sampleReport, type Result } from '@captiveorigins/onephylogeny-core'
 import { NcbiClient, suggestOutgroups } from '@captiveorigins/onephylogeny-acquire'
 import { buildPanelFromRun, comparePanelVersions, buildTree, EngineError, fetchAndAnchor, isCancelled, loadPanel, profilePaths, runSample, testSample, traceArtifact, verifyDataset, writeDataset, type ArtifactType, type EngineContext, type ToolRunner } from '@captiveorigins/onephylogeny-engine'
 import { nodeStore } from './store.js'
@@ -19,6 +19,8 @@ const USAGE = `onephylogeny <command> --workspace DIR --profile ID [options]
   compare --a V --b V      Compare two built panel versions
   verify --dir DIR         Check a built panel folder: file hashes, seal, and its examples rerun (no profile needed)
   dataset --dir DIR        Add examples and a manifest to a panel built before they existed (no profile needed)
+  report --dir DIR --result FILE [--json]
+                           A self-contained report for one saved result, as Markdown (no profile needed)
 
 Options: --events (print JSON Lines events). Set NCBI_API_KEY to fetch faster.`
 
@@ -53,6 +55,19 @@ async function main() {
   if (!command || command === 'help' || has('help')) return console.log(USAGE)
   if (command === 'doctor') {
     console.log(JSON.stringify({ iqtree3: await tools.version('iqtree3'), note: 'Fetching, anchoring, panels and sample tests need no native tools.' }, null, 2))
+    return
+  }
+  if (command === 'report') {
+    const dir = flag('dir')
+    const file = flag('result')
+    if (!dir || !file) throw new Error('--dir and --result are required')
+    const { panel } = await loadPanel(nodeStore(resolve(dir)), '.')
+    // A saved outcome holds the result beside its diagnostics; a bare result works too.
+    const saved = JSON.parse(readFileSync(file, 'utf8')) as { result?: Result | null; diagnostics?: { message: string }[] } & Partial<Result>
+    const result = 'findings' in saved ? (saved as Result) : saved.result
+    if (!result) throw new Error(`This sample was refused, so there is no result to report: ${(saved.diagnostics ?? []).map((d) => d.message).join('; ')}`)
+    const report = sampleReport(panel, result)
+    process.stdout.write(has('json') ? `${JSON.stringify(report, null, 2)}\n` : reportMarkdown(report))
     return
   }
   if (command === 'verify' || command === 'dataset') {
