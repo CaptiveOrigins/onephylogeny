@@ -47,9 +47,12 @@ onephylogeny panel     --workspace DIR --profile ID   # build and validate a pan
 onephylogeny test      --workspace DIR --profile ID --fasta sample.fasta
 onephylogeny tree      --workspace DIR --profile ID   # needs IQ-TREE
 onephylogeny trace     --workspace DIR --profile ID --type T --key K   # everything that produced an artifact
+onephylogeny sources   --taxon NAME_OR_TAXID   # what SRA, NCBI Datasets, GBIF, iDigBio and BOLD list; counts only, never coordinates
 ```
 
 A profile is plain JSON and holds every choice: taxa, marker, reference, filters, outgroups, groups and rules.
+
+`sources` needs the network and no profile. It lists and counts, and downloads nothing: SRA runs, genome assemblies, and how many GBIF, iDigBio and BOLD records there are by country. These say what exists, not where any animal came from. A service that doesn't answer is named and the command exits 1, so a missing count never reads as zero. The Mac app shows the same under Public data in the Study tab, when you press its button.
 
 ## Install the Mac app
 

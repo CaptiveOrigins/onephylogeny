@@ -3,10 +3,11 @@ import { execFile } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { assessRead, auditGroups, checkPrimers, chimeraCandidates, compareWithGroups, comparisonMarkdown, parseVcf, readAbif, curationFromCsv, panelMethods, curationToCsv, parseCuration, parseFasta, parseProfile, reportMarkdown, sampleReport, type Result } from '@captiveorigins/onephylogeny-core'
-import { lookupPaper, NcbiClient, paced, suggestOutgroups } from '@captiveorigins/onephylogeny-acquire'
+import { lookupPaper, NcbiClient, paced, publicListings, suggestOutgroups } from '@captiveorigins/onephylogeny-acquire'
 import { buildPanelFromRun, comparePanelVersions, panelVersionComparison, buildTree, EngineError, fetchAndAnchor, isCancelled, loadPanel, loadRunRecords, profilePaths, readCurationHistory, saveCuration, routeSample, runSample, testSample, traceArtifact, verifyDataset, writeDataset, type ArtifactType, type EngineContext, type ToolRunner } from '@captiveorigins/onephylogeny-engine'
 import { joinPair, type AssessedRead } from './sanger.js'
 import { parseGroups, snpsTable } from './snps.js'
+import { chosenKinds, sourcesText } from './sources.js'
 import { nodeStore } from './store.js'
 
 const USAGE = `onephylogeny <command> --workspace DIR --profile ID [options]
@@ -47,6 +48,11 @@ const USAGE = `onephylogeny <command> --workspace DIR --profile ID [options]
                            Compare SNP genotypes with groups: per group, how many samples' nearest SNP neighbour shares
                            their group, and mean distances within and between. GROUPS is CSV (sample,group) or a JSON
                            object. Default --min-shared 100. Descriptions, never probabilities (no profile needed)
+  sources --taxon NAME_OR_TAXID [--sra] [--genomes] [--occurrences] [--bold] [--json]
+                           What public services list for a taxon: SRA runs, NCBI Datasets genomes, GBIF and iDigBio
+                           occurrence counts, BOLD counts (default: all). Listings and counts only, never coordinates
+                           or downloads. Needs the network. A service that fails is named, and the exit code is 1
+                           (no profile needed)
   primers --dir DIR --forward SEQ --reverse SEQ [--reference FASTA --offset N] [--max-mismatches N]
                            Which of a panel's windows a primer pair can cover. Give a longer reference and the marker's
                            offset in it when the primers sit outside the marker (no profile needed)
@@ -91,6 +97,17 @@ async function main() {
     if (!title) throw new Error('--title is required')
     const authors = flag('authors')
     console.log(JSON.stringify(await lookupPaper(paced((url, init) => fetch(url, init)), { title, ...(authors ? { authors } : {}) }), null, 2))
+    return
+  }
+  if (command === 'sources') {
+    const taxon = flag('taxon')
+    if (!taxon || taxon.startsWith('--')) throw new Error('--taxon is required: an NCBI Taxonomy ID or a scientific name')
+    const http = (url: string, init?: RequestInit) => fetch(url, init)
+    // The tool name only: never an email. NCBI_API_KEY, if set, is sent to NCBI and never printed.
+    const client = new NcbiClient({ fetch: http, tool: 'onephylogeny', ...(process.env.NCBI_API_KEY ? { apiKey: process.env.NCBI_API_KEY } : {}) })
+    const listing = await publicListings({ fetch: http, client }, taxon, { only: chosenKinds(has) })
+    process.stdout.write(has('json') ? `${JSON.stringify(listing, null, 2)}\n` : sourcesText(listing))
+    if (listing.failed.length) process.exitCode = 1
     return
   }
   if (command === 'methods') {
