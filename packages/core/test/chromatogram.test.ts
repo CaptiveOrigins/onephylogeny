@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
-import { assessRead, checkPrimers, ChromatogramError, mottTrim, readAbif, reverseComplement, type ChromatogramRead } from '../src'
+import { alignToReference, assessRead, checkPrimers, ChromatogramError, joinReads, mottTrim, readAbif, reverseComplement, type ChromatogramRead } from '../src'
 
 const fixture = (name: string) => new Uint8Array(readFileSync(new URL(`../../../fixtures/abi/${name}`, import.meta.url)))
 const expected = JSON.parse(readFileSync(new URL('../../../fixtures/abi/expected.json', import.meta.url), 'utf8')) as Record<string, { bases: string; quality: number[]; sampleName: string }>
@@ -148,5 +148,38 @@ describe('checkPrimers', () => {
     const c = checkPrimers({ forward: repeat, reverse: reverseComplement(ref.slice(-30, -10)), reference: ref, windows: [] })
     expect(c.status).toBe('refused')
     if (c.status === 'refused') expect(c.reason).toMatch(/2 places/)
+  })
+})
+
+describe('joinReads', () => {
+  let x = 7
+  const reference = Array.from({ length: 600 }, () => {
+    x ^= x << 13
+    x ^= x >>> 17
+    x ^= x << 5
+    return 'ACGT'[(x >>> 0) % 4]
+  }).join('')
+  const align = (seq: string, ref: string) => alignToReference(seq, ref)
+
+  it('joins an overlapping forward and reverse read, fills gaps from either, and turns good disagreements into N', () => {
+    const forward = reference.slice(0, 400)
+    // A different good base at column 300 in the reverse read, and an N (low quality) at column 350.
+    const rev = reference.slice(200, 300) + (reference[300] === 'A' ? 'C' : 'A') + reference.slice(301, 350) + 'N' + reference.slice(351, 600)
+    const j = joinReads(forward, reverseComplement(rev), reference, align)
+    expect(j.status).toBe('joined')
+    if (j.status !== 'joined') return
+    expect(j.conflicts).toEqual([300])
+    expect(j.aligned[300]).toBe('N')
+    expect(j.aligned[350]).toBe(reference[350])
+    expect(j.aligned.replace('N', reference[300]!)).toBe(reference)
+    // Column 350 is N in the reverse read, so it counts as forward only.
+    expect(j.columns).toEqual({ both: 199, forwardOnly: 201, reverseOnly: 200 })
+  })
+
+  it('uses one read alone when the other doesn\'t align, and says so; refuses when neither does', () => {
+    const j = joinReads(reference.slice(0, 400), 'ACGT'.repeat(50), reference, align)
+    expect(j.status).toBe('single')
+    if (j.status === 'single') expect(j.notes[0]).toMatch(/Only the forward read/)
+    expect(joinReads('ACGT'.repeat(50), 'TTTT'.repeat(50), reference, align).status).toBe('refused')
   })
 })

@@ -8,6 +8,11 @@ Each audit lists what this repo promises, the tests that prove it, and the gaps:
 - **Covered** (`packages/core/test/validation.test.ts`, 16 tests, made-up panels whose counts follow from how they're built): Clopper-Pearson against R's `binom.test` for 0/10, 5/10, 10/10 and 1/4; all nine branches of the outcome order, including a truth that can't be compared while another group is consistent (wrong); a single-study group and a study whose removal leaves one record (both not testable, with reasons, in rows and totals, with no interval); a study whose labels disagree with the rest (2 of 2 wrong); named-but-not-all-compared when another group falls below depth; a window identical in every group (kept, never named) and an unsequenced window (no tests, no intervals); a site whose removal leaves its group below depth; totals and intervals summed over studies; a repeat run giving identical JSON; `fullValidation` carrying both reports.
 - **Gaps left:** not run on real data, so the protocol's stated expectation is untested. The Mac app and React `ValidationView` don't show the new reports yet. The site report doesn't list sites by name, by design, since block names can name places.
 
+## 2026-11-11: joining forward and reverse reads
+
+- **Promises:** a disagreement between two good bases is never resolved by choosing; each read fills the other's gaps; a read that doesn't align is left out and said so.
+- **Covered** (`packages/core/test/chromatogram.test.ts`, 2 tests, with the real aligner): an overlapping pair with one planted disagreement (listed, written as N) and one low-quality base filled from the other read, giving the reference back exactly otherwise; one read not aligning; neither aligning.
+- **Gaps left:** no real forward and reverse pair from a tortoise yet.
 ## 2026-11-11: SNPs from a prepared VCF
 
 - **Promises:** genotypes are read exactly; missing calls are never differences; filtered sites are counted; malformed files are refused with the line; nearest-neighbour agreement counts only pairs sharing enough sites.
