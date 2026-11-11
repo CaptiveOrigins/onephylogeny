@@ -1,6 +1,6 @@
 # 0013: Hypothesis chat is a deterministic core with an optional language layer
 
-**Status.** Proposed by Science, 2026-11-11, for roadmap stage 9 (task K232). Part 1 is built: decisions 1 to 6, as `planTest` and `runTest` in `packages/core/src/hypothesis.ts`, with tests on made-up panels. Nothing is in the CLI or the Mac app yet. Decision 7, the language layer, is not built and needs its own design.
+**Status.** The deterministic core is accepted by Science (the area lead), 2026-11-11. The optional language layer is not decided: it needs its own design and the owner's explicit yes before any model is called.
 
 ## Context
 
