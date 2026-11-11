@@ -102,6 +102,10 @@
         "qc": {
           "$ref": "#/definitions/SampleQc",
           "description": "The sequence's quality by named rules (roadmap stage 4). It describes the sequence; it changes no status."
+        },
+        "geneSummary": {
+          "$ref": "#/definitions/GeneSummary",
+          "description": "Panels whose windows are genes only (ADR 0009, decision 5): what the gene windows say side by side. Counts and lists, never a combined probability or a single score. Absent for panels without gene windows, such as a single-gene panel."
         }
       },
       "required": [
@@ -456,6 +460,121 @@
         "detail"
       ],
       "additionalProperties": false
+    },
+    "GeneSummary": {
+      "type": "object",
+      "properties": {
+        "geneWindows": {
+          "type": "number",
+          "description": "Gene windows in the panel."
+        },
+        "comparedWindows": {
+          "type": "number",
+          "description": "Gene windows where at least one group could be compared with this sequence."
+        },
+        "columns": {
+          "type": "number",
+          "description": "Reference columns in the compared gene windows, each counted once where genes overlap."
+        },
+        "queryColumns": {
+          "type": "number",
+          "description": "Of those columns, the ones where this sequence has a base."
+        },
+        "windows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GeneSummaryWindow"
+          },
+          "description": "Each compared gene window, in reference order."
+        },
+        "nearest": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "group": {
+                "$ref": "#/definitions/Id"
+              },
+              "windows": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/Id"
+                }
+              }
+            },
+            "required": [
+              "group",
+              "windows"
+            ],
+            "additionalProperties": false
+          },
+          "description": "For each group nearest in at least one gene: the genes where it is nearest. A tied gene counts for each tied group."
+        },
+        "disagreeing": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Id"
+          },
+          "description": "Genes whose nearest groups share none with another compared gene's. Empty when the genes don't disagree."
+        }
+      },
+      "required": [
+        "geneWindows",
+        "comparedWindows",
+        "columns",
+        "queryColumns",
+        "windows",
+        "nearest",
+        "disagreeing"
+      ],
+      "additionalProperties": false,
+      "description": "The gene windows of one result, side by side (ADR 0009, decision 5). It describes; it changes no status."
+    },
+    "GeneSummaryWindow": {
+      "type": "object",
+      "properties": {
+        "window": {
+          "$ref": "#/definitions/Id"
+        },
+        "label": {
+          "type": "string"
+        },
+        "compared": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Id"
+          },
+          "description": "Groups that could be compared with this sequence in this gene."
+        },
+        "withinSpread": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Id"
+          },
+          "description": "Of those, the groups whose differences here are within their spread in this gene."
+        },
+        "nearest": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Id"
+          },
+          "description": "Of those compared, the groups with the fewest differences per shared column here. A tie lists each tied group."
+        },
+        "sharedColumns": {
+          "type": "number",
+          "description": "The most columns any group shared with this sequence in this gene."
+        }
+      },
+      "required": [
+        "window",
+        "label",
+        "compared",
+        "withinSpread",
+        "nearest",
+        "sharedColumns"
+      ],
+      "additionalProperties": false,
+      "description": "One gene window in a result's summary across genes."
     }
   }
 }
