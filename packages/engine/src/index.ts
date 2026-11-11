@@ -1,7 +1,8 @@
 import {
   ALIGNER, alignToReference, LOCATE_FLANK, locateMarker, assessAlignment, buildPanel, canonicalJson, checkNumts, collapseHaplotypes, compareRuns, DEFAULT_GATES, extractLocation, findGeneFeatures, fullValidation, gatesForRecord, parseFasta, parseGenBank,
   evaluateQuery, sampleQc, toRecordSheet, toSequenceRecord, validatePanel, verifyBundle, validatedScopeFromReport, validateProfile, validateResult, writeFasta,
-  type Alignment, type Curation, type Diagnostic, type GateSettings, type GenBankRecord, type LinkedRecord, type MarkerPlace, type Panel, type PanelBundle, type PanelMember, type Profile, type Result, type Run, type RunComparison, type SequenceRecord, type Snapshot, type ValidationInput,
+  geneChecks, geneWindows, rotateToReference,
+  type Alignment, type Curation, type Diagnostic, type GateSettings, type GenBankRecord, type GeneCheck, type GeneWindows, type GeneticCode, type LinkedRecord, type MarkerPlace, type Panel, type PanelBundle, type PanelMember, type PanelSettings, type PanelWindow, type Profile, type Result, type Run, type RunComparison, type SequenceRecord, type Snapshot, type ValidationInput,
 } from '@captiveorigins/onephylogeny-core'
 import { classifyAccessions, genomesHoldingMarkerQuery, linkedAccessions, NcbiClient, selectionQuery, studiesFromRecords, type FoundPaper } from '@captiveorigins/onephylogeny-acquire'
 import { hashText, loadArtifact, type Artifact, type ArtifactRef } from './artifacts.js'
@@ -27,7 +28,43 @@ export type RecordOutcome = { record: string; organism?: string; status: 'passed
 
 export type FetchOutcome = { run: Run; records: SequenceRecord[]; outcomes: RecordOutcome[] }
 
-type Anchored = { record: string; organism?: string; alignment: Alignment | null; extractedFrom: RecordOutcome['extractedFrom']; length: number; ambiguous: number; unverified: boolean; located?: MarkerPlace; manyPlaces?: MarkerPlace[] }
+type Anchored = {
+  record: string; organism?: string; alignment: Alignment | null; extractedFrom: RecordOutcome['extractedFrom']; length: number; ambiguous: number; unverified: boolean; located?: MarkerPlace; manyPlaces?: MarkerPlace[]
+  /** Mitogenome profiles only: how a circular, complete record was turned before alignment, or why it couldn't be. */
+  rotation?: { strand: '+' | '-'; shift: number } | { refused: string } | { notTurned: string }
+}
+
+const isMitogenome = (profile: Pick<Profile, 'selection'>) => profile.selection.marker.kind === 'mitogenome'
+
+/** A circular record at least this share of the reference's length is taken as complete, and turned to start where the reference starts. */
+const COMPLETE_SHARE = 0.9
+
+/**
+ * Gene-level checks as diagnostics (ADR 0009, decision 4). They describe a record or sample and never change its status:
+ * a frameshift or stop is a warning, a gene covered only in part is one info line for all such genes.
+ */
+function geneDiagnostics(checks: GeneCheck[]): Diagnostic[] {
+  const out: Diagnostic[] = []
+  for (const c of checks) {
+    if (c.status === 'frame') out.push({ severity: 'warning', code: 'gene-frame', message: `${c.label}: ${c.detail}`, path: `genes.${c.window}` })
+    else if (c.status === 'stops') out.push({ severity: 'warning', code: 'gene-stops', message: `${c.label}: ${c.detail}`, path: `genes.${c.window}` })
+    else if (c.status === 'not-checked') out.push({ severity: 'info', code: 'gene-not-checked', message: `${c.label}: ${c.detail}`, path: `genes.${c.window}` })
+  }
+  const partial = checks.filter((c) => c.status === 'partial')
+  if (partial.length) out.push({ severity: 'info', code: 'gene-partial', message: `${partial.length} protein-coding gene${partial.length === 1 ? ' is' : 's are'} covered only in part, so frame and stops weren't judged there: ${partial.map((c) => `${c.label} (${Math.round(c.coverage * 100)}%)`).join(', ')}` })
+  return out
+}
+
+/** Per-gene checks need the genetic code. Without one in the profile, nothing is assumed: the checks are skipped and that is said. */
+function checkGenes(aligned: string, reference: string, windows: readonly PanelWindow[], code: GeneticCode | undefined): { checks: GeneCheck[]; diagnostics: Diagnostic[] } {
+  if (!windows.some((w) => w.gene?.kind === 'cds')) return { checks: [], diagnostics: [] }
+  if (!code) return { checks: [], diagnostics: [{ severity: 'info', code: 'gene-not-checked', message: 'No genetic code is set for the reference, so protein-coding genes weren\'t checked for frame or stops' }] }
+  const checks = geneChecks(aligned, reference, windows, code)
+  return { checks, diagnostics: geneDiagnostics(checks) }
+}
+
+/** The panel's `notCovered` lines for genes the reference's annotation left out, in plain words. */
+const leftOutLines = (gw: GeneWindows) => [...gw.leftOut.map((g) => `${g.name} (reference ${g.location}): ${g.reason}`), ...gw.notes]
 
 function geneSequence(rec: GenBankRecord, profile: Profile): { sequence: string; from: RecordOutcome['extractedFrom'] } {
   const marker = profile.selection.marker
@@ -123,7 +160,8 @@ const markerParameters = (profile: Profile) => ({ marker: profile.selection.mark
 function anchorStep(scope: RunScope, profile: Profile, raw: Artifact) {
   const { store } = scope.ctx
   return scope.step({
-    type: 'anchored-records', step: { name: 'anchor', version: 2 }, inputs: [ref(raw)], parameters: markerParameters(profile), tools: [ALIGNER],
+    // A mitogenome profile adds its rotation rule, so a change to it is a new artifact. Gene profiles keep their keys.
+    type: 'anchored-records', step: { name: 'anchor', version: 2 }, inputs: [ref(raw)], parameters: { ...markerParameters(profile), ...(isMitogenome(profile) ? { mitogenome: { rotate: 'exact k-mer anchor', completeShare: COMPLETE_SHARE } } : {}) }, tools: [ALIGNER],
     run: async (put) => {
       const index = JSON.parse(await raw.read('index.json')) as Record<string, string>
       const parsed = new Map<string, GenBankRecord>()
@@ -139,16 +177,35 @@ function anchorStep(scope: RunScope, profile: Profile, raw: Artifact) {
       if (!refRec) throw new EngineError('reference-missing', `The reference ${accession} wasn't retrieved`, 'Check the reference accession in Setup')
       const reference = geneSequence(refRec, profile).sequence
       scope.log('info', 'anchor', `Reference ${refRec.version}: ${reference.length} columns`)
+      const mito = isMitogenome(profile)
+      if (mito) {
+        // The panel's windows are read from this annotation (ADR 0009, decision 2), kept beside the records it anchored.
+        const gw = geneWindows(refRec)
+        scope.log(gw.windows.length ? 'info' : 'warning', 'anchor', `Reference ${refRec.version}: ${gw.windows.length} gene windows, ${gw.leftOut.length} features left out`)
+        await put('gene-windows.json', json(gw))
+      }
       const anchored: Anchored[] = []
       const records: SequenceRecord[] = []
       let done = 0
       for (const [version, rec] of parsed) {
         await scope.breathe()
-        const { sequence, from, located, manyPlaces } = locatedSequence(rec, reference, profile, geneSequence(rec, profile))
+        const { sequence: found, from, located, manyPlaces } = locatedSequence(rec, reference, profile, geneSequence(rec, profile))
+        let sequence = found
+        let rotation: Anchored['rotation']
+        if (mito && rec.circular) {
+          // Turned before alignment so columns are reference positions. A refusal is kept as the reason, never guessed past.
+          if (sequence.length >= COMPLETE_SHARE * reference.length) {
+            const turned = rotateToReference(sequence, reference)
+            if (turned.status === 'rotated') { sequence = turned.sequence; rotation = { strand: turned.strand, shift: turned.shift } }
+            else rotation = { refused: turned.reason }
+          } else rotation = { notTurned: `Circular, but ${sequence.length} bp is under ${Math.round(COMPLETE_SHARE * 100)}% of the reference's ${reference.length}, so it was aligned as it is, without turning` }
+        }
+        const refused = rotation && 'refused' in rotation
         anchored.push({
           ...(located ? { located } : {}), ...(manyPlaces ? { manyPlaces } : {}),
-          record: rec.version || version, ...(rec.organism ? { organism: rec.organism } : {}), alignment: alignToReference(sequence, reference), extractedFrom: from, length: sequence.length,
+          record: rec.version || version, ...(rec.organism ? { organism: rec.organism } : {}), alignment: refused ? null : alignToReference(sequence, reference), extractedFrom: from, length: sequence.length,
           ambiguous: (sequence.match(/[^ACGTacgt]/g) ?? []).length, unverified: rec.definition.startsWith('UNVERIFIED'),
+          ...(rotation ? { rotation } : {}),
         })
         records.push(toSequenceRecord(rec))
         if (++done % 100 === 0) scope.log('debug', 'anchor', `Anchored ${done} of ${parsed.size}`, { done, total: parsed.size })
@@ -162,7 +219,16 @@ function anchorStep(scope: RunScope, profile: Profile, raw: Artifact) {
 }
 
 /** The checks for records that may enter a panel, where a frame problem excludes rather than warns. */
-const panelGates = (profile: Profile): GateSettings => ({ ...DEFAULT_GATES, ...profile.gates, frameErrors: true, ...(profile.reference?.codonStart !== undefined ? { codonStart: profile.reference.codonStart } : {}), ...(profile.reference?.geneticCode ? { geneticCode: profile.reference.geneticCode } : {}) })
+const panelGates = (profile: Profile): GateSettings => (isMitogenome(profile) ? mitogenomeGates(profile) : { ...DEFAULT_GATES, ...profile.gates, frameErrors: true, ...(profile.reference?.codonStart !== undefined ? { codonStart: profile.reference.codonStart } : {}), ...(profile.reference?.geneticCode ? { geneticCode: profile.reference.geneticCode } : {}) })
+
+/**
+ * A whole mitogenome has no single reading frame, and indels in tRNAs, rRNAs and the control region are ordinary, so
+ * the whole-record frame and stop checks don't apply. Frame and stops are judged per gene instead, as descriptions.
+ */
+function mitogenomeGates(profile: Profile): GateSettings {
+  const { codonStart: _start, ...rest } = { ...DEFAULT_GATES, ...profile.gates }
+  return { ...rest, frameErrors: false, ...(profile.reference?.geneticCode ? { geneticCode: profile.reference.geneticCode } : {}) }
+}
 
 /** Step: which records pass, and why the others don't. Every record gets an outcome. */
 function gateStep(scope: RunScope, profile: Profile, anchoredArtifact: Artifact) {
@@ -176,11 +242,21 @@ function gateStep(scope: RunScope, profile: Profile, anchoredArtifact: Artifact)
       const records = JSON.parse(await anchoredArtifact.read('records.json')) as SequenceRecord[]
       const outcomes: RecordOutcome[] = []
       const aligned: { id: string; sequence: string }[] = []
+      const mito = isMitogenome(profile)
+      const genes = mito ? (JSON.parse(await anchoredArtifact.read('gene-windows.json')) as GeneWindows).windows : []
+      const referenceSequence = mito ? parseFasta(await anchoredArtifact.read('reference.fasta'))[0]!.sequence : ''
       for (const a of anchored) {
-        const assessed = assessAlignment(a.alignment, gatesForRecord(gates, { wholeRecord: a.extractedFrom === 'whole-record', length: a.length, referenceLength: a.alignment?.aligned.length ?? 0 }))
+        const refusal = a.rotation && 'refused' in a.rotation ? a.rotation.refused : undefined
+        const assessed: Diagnostic[] = refusal !== undefined
+          ? [{ severity: 'error', code: 'rotation-refused', message: `A circular, complete record that couldn't be turned to start where the reference starts, so it wasn't aligned: ${refusal}` }]
+          : assessAlignment(a.alignment, gatesForRecord(gates, { wholeRecord: a.extractedFrom === 'whole-record', length: a.length, referenceLength: a.alignment?.aligned.length ?? 0 }))
         // The flank kept when cutting a marker out always clips. Clipping beyond it is still reported.
         const onlyFlank = a.located && a.alignment && a.alignment.clipped.start <= LOCATE_FLANK && a.alignment.clipped.end <= LOCATE_FLANK
-        const diagnostics = onlyFlank ? assessed.filter((d) => d.code !== 'clipped-ends') : assessed
+        // In a mitogenome the whole-record frame check is replaced by the per-gene one below.
+        const diagnostics = onlyFlank ? assessed.filter((d) => d.code !== 'clipped-ends') : mito ? assessed.filter((d) => d.code !== 'frame-shifting-indel') : assessed
+        if (a.rotation && 'shift' in a.rotation) diagnostics.push({ severity: 'info', code: 'rotated-to-reference', message: a.rotation.shift === 0 && a.rotation.strand === '+' ? 'Circular and complete, and already starts where the reference starts' : `Circular and complete, so it was turned to start where the reference starts: moved by ${a.rotation.shift} bases${a.rotation.strand === '-' ? ' and read on the other strand' : ''}` })
+        if (a.rotation && 'notTurned' in a.rotation) diagnostics.push({ severity: 'info', code: 'not-rotated', message: a.rotation.notTurned })
+        if (mito && a.alignment) diagnostics.push(...checkGenes(a.alignment.aligned, referenceSequence, genes, gates.geneticCode).diagnostics)
         const fail = (code: string, message: string) => diagnostics.push({ severity: 'error', code, message })
         const reason = excluded.get(a.record) ?? excluded.get(a.record.split('.')[0]!)
         if (reason) fail('excluded-by-profile', reason)
@@ -353,7 +429,9 @@ export async function buildPanelFromRun(ctx: EngineContext, profile: Profile, cu
     const aligned = parseFasta(await gated.read('aligned.fasta'))
     const reference = parseFasta(await gated.read('reference.fasta'))[0]!
     const groupIds = new Set(settings.groups.map((g) => g.id))
-    const records = JSON.parse(await (await loadArtifact(ctx.store, gated.manifest.inputs[0]!)).read('records.json')) as SequenceRecord[]
+    const anchoredArtifact = await loadArtifact(ctx.store, gated.manifest.inputs[0]!)
+    const records = JSON.parse(await anchoredArtifact.read('records.json')) as SequenceRecord[]
+    const panelSettings = isMitogenome(profile) && !settings.windows?.length ? await geneWindowSettings(settings, anchoredArtifact, reference.id) : settings
     const studyOf = new Map(records.map((r) => [r.version, r.publications.find((p) => p.title && p.title !== 'Direct Submission')?.title]))
     const members: PanelMember[] = []
     const diagnostics: Diagnostic[] = []
@@ -374,7 +452,7 @@ export async function buildPanelFromRun(ctx: EngineContext, profile: Profile, cu
     const numtPath = `profiles/${profile.id}/numt-screen/numt-library.fasta`
     const numtCopies = (await ctx.store.exists(numtPath)) ? parseFasta(await ctx.store.read(numtPath)).map((e) => ({ id: e.id, aligned: e.sequence })) : []
     const input = {
-      settings, taxa: profile.selection.taxa, marker: profile.selection.marker,
+      settings: panelSettings, taxa: profile.selection.taxa, marker: profile.selection.marker,
       reference: { accession: reference.id, length: reference.sequence.length, ...(profile.reference?.codonStart !== undefined ? { codonStart: profile.reference.codonStart } : {}), ...(profile.reference?.geneticCode ? { geneticCode: profile.reference.geneticCode } : {}) },
       sources: [...citations.values()], builtBy: gated.manifest.key, referenceSequence: reference.sequence, builtWith: [ENGINE, ALIGNER],
       // The checks that actually ran on these records, even if the profile has changed since.
@@ -390,7 +468,7 @@ export async function buildPanelFromRun(ctx: EngineContext, profile: Profile, cu
     const hasErrors = diagnostics.some((d) => d.severity === 'error')
     if (hasErrors) return { bundle: draft, diagnostics, validation: { blocks: empty, groups: { ...empty, scheme: 'leave-one-group-out' as const }, ladder: [], claims: [], controls: { shuffles: 0, simulations: 0, seed: 0 } }, unassigned, published: false }
     // Validation comes first, because a panel's scope is whatever passes it. The folds ignore scope, so nothing is circular.
-    const fingerprint = hashText(canonicalJson({ settings: { ...settings, version: '', id: '' }, members: members.map(({ aligned, ...m }) => ({ ...m, aligned: hashText(aligned) })) }))
+    const fingerprint = hashText(canonicalJson({ settings: { ...panelSettings, version: '', id: '' }, members: members.map(({ aligned, ...m }) => ({ ...m, aligned: hashText(aligned) })) }))
     const validationArtifact = await scope.step({
       type: 'validation', step: { name: 'validate', version: 3 }, inputs: [ref(gated)], parameters: { fingerprint },
       run: async (put) => {
@@ -423,6 +501,21 @@ export async function buildPanelFromRun(ctx: EngineContext, profile: Profile, cu
     return { bundle, diagnostics, validation, unassigned, published: true }
   })
   return { ...value, run }
+}
+
+/**
+ * A mitogenome panel's windows when the profile gives none: one per gene in the reference's annotation (ADR 0009,
+ * decision 2). Genes the annotation leaves out, and the control region, go into `notCovered` in plain words.
+ */
+async function geneWindowSettings(settings: PanelSettings, anchored: Artifact, accession: string): Promise<PanelSettings> {
+  let gw: GeneWindows
+  try {
+    gw = JSON.parse(await anchored.read('gene-windows.json')) as GeneWindows
+  } catch {
+    throw new EngineError('reference-unannotated', `The gene annotation of the reference ${accession} couldn't be read from this fetch run, so the panel has no gene windows`, 'Fetch records again with this mitogenome profile, then build the panel')
+  }
+  if (!gw.windows.length) throw new EngineError('reference-unannotated', `The reference ${accession} has no usable gene annotation, so a mitogenome panel would have no windows${gw.leftOut.length ? `. Left out: ${gw.leftOut.map((g) => `${g.name} (${g.reason})`).join('; ')}` : ''}`, 'Choose an annotated, complete RefSeq mitogenome as the reference in Setup')
+  return { ...settings, windows: gw.windows, notCovered: [...new Set([...settings.notCovered, ...leftOutLines(gw)])] }
 }
 
 export async function loadPanel(store: Store, dir: string): Promise<PanelBundle> {
@@ -461,13 +554,25 @@ export async function comparePanelVersions(store: Store, profile: Profile, a: st
 
 export type SampleOutcome = { result: Result; diagnostics: Diagnostic[]; aligned: string; insertions: number; deletions: number; identity: number; clipped: { start: number; end: number } } | { result: null; diagnostics: Diagnostic[] }
 
+/** Sample QC's frame and stops rules read the record checks. For a mitogenome, they read the per-gene checks instead. */
+const geneQcDiagnostics = (diagnostics: Diagnostic[]): Diagnostic[] => [
+  ...diagnostics.filter((d) => d.code !== 'internal-stop'),
+  ...(diagnostics.some((d) => d.code === 'gene-frame') ? [{ severity: 'warning' as const, code: 'frame-shifting-indel', message: 'A protein-coding gene is out of frame' }] : []),
+  ...(diagnostics.some((d) => d.code === 'gene-stops') ? [{ severity: 'warning' as const, code: 'internal-stop', message: 'A protein-coding gene has an internal stop' }] : []),
+]
+
 /** Tests one sequence against one panel. Pure TypeScript: runs in the app, the CLI or a hosted site. */
 export function testSample(sequence: string, queryId: string, bundle: PanelBundle, options: { runId?: string } = {}): SampleOutcome {
   if (!bundle.referenceSequence) throw new EngineError('panel-outdated', 'This panel has no reference sequence', 'Build it again')
   const a = alignToReference(sequence, bundle.referenceSequence)
   // The panel's own checks. A frame problem in a sample warns rather than refuses: it's shown with the result, for a person to weigh.
-  const diagnostics = assessAlignment(a, { ...bundle.panel.gates, frameErrors: false })
+  const mito = bundle.panel.marker.kind === 'mitogenome'
+  const assessed = assessAlignment(a, { ...bundle.panel.gates, frameErrors: false })
+  // In a mitogenome panel the whole-sequence frame check is replaced by the per-gene one (ADR 0009, decision 4).
+  const diagnostics = mito ? assessed.filter((d) => d.code !== 'frame-shifting-indel') : assessed
   if (!a || diagnostics.some((d) => d.severity === 'error')) return { result: null, diagnostics }
+  const genes = mito ? checkGenes(a.aligned, bundle.referenceSequence, bundle.panel.windows, bundle.panel.reference.geneticCode) : undefined
+  if (genes) diagnostics.push(...genes.diagnostics)
   // The check runs before the result so a flag is part of what the result says about itself.
   const numtCaveats: string[] = []
   if (bundle.panel.numtCopies?.length) {
@@ -480,7 +585,8 @@ export function testSample(sequence: string, queryId: string, bundle: PanelBundl
     caveats: ['Rules are configured values and these statuses are not probabilities', ...diagnostics.filter((d) => d.severity === 'warning').map((d) => d.message), ...numtCaveats],
   })
   // Quality by named rules, beside the statuses, never changing them (roadmap stage 4).
-  result.qc = sampleQc(a.aligned, diagnostics, bundle.sequences, bundle.panel.qc)
+  result.qc = sampleQc(a.aligned, genes ? geneQcDiagnostics(diagnostics) : diagnostics, bundle.sequences, bundle.panel.qc)
+  if (genes?.checks.length) result.qc.genes = genes.checks
   diagnostics.push(...validateResult(result, bundle.panel))
   return { result, diagnostics, aligned: a.aligned, insertions: a.insertions.reduce((s, x) => s + x.length, 0), deletions: a.deletions.reduce((s, x) => s + x.length, 0), identity: a.identity, clipped: a.clipped }
 }

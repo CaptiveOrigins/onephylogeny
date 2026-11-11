@@ -386,6 +386,13 @@
         },
         "nearest": {
           "$ref": "#/definitions/Id"
+        },
+        "genes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GeneCheck"
+          },
+          "description": "Mitogenome panels: frame and stops for each protein-coding gene, on its own strand (ADR 0009, decision 4). The frame and stops rules summarise these."
         }
       },
       "required": [
@@ -413,6 +420,42 @@
         "stops",
         "clustered-differences"
       ]
+    },
+    "GeneCheck": {
+      "type": "object",
+      "properties": {
+        "window": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "coverage": {
+          "type": "number",
+          "description": "Share of the gene's reference columns where the query has a base."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "ok",
+            "stops",
+            "frame",
+            "partial",
+            "not-checked"
+          ]
+        },
+        "detail": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "window",
+        "label",
+        "coverage",
+        "status",
+        "detail"
+      ],
+      "additionalProperties": false
     }
   }
 }
