@@ -46,7 +46,17 @@ export function createPreviewPlatform(): Platform {
       if (url.includes('crossref')) return respond(JSON.stringify({ message: { items: [{ DOI: '10.1/SOUTH', title: ['A study of the south'], issued: { 'date-parts': [[2021]] }, 'container-title': ['Example Journal'] }] } }))
       if (url.includes('europepmc') && url.includes('TITLE')) return respond(JSON.stringify({ resultList: { result: [] } }))
       if (url.includes('europepmc')) return respond(JSON.stringify({ hitCount: 1, resultList: { result: [{ id: '7', pmid: '7', doi: '10.1/north', title: 'A study of the north', authorString: 'Author A.', pubYear: '2020', isOpenAccess: 'Y' }] } }))
+      // Public data listings, made up: shaped like NCBI Datasets, GBIF, iDigBio, BOLD and SRA, with no coordinates.
+      if (url.includes('api.ncbi.nlm.nih.gov/datasets/')) return respond(JSON.stringify({ total_count: 1, reports: [{ accession: 'GCA_000000001.1', source_database: 'SOURCE_DATABASE_GENBANK', organism: { tax_id: 1, organism_name: 'Example taxon' }, assembly_info: { assembly_level: 'Scaffold', release_date: '2024-01-01' }, assembly_stats: { total_sequence_length: '2100000000' }, organelle_info: [{ description: 'Mitochondrion' }] }] }))
+      if (url.includes('api.gbif.org/v1/species/match')) return respond(JSON.stringify({ usageKey: 1, scientificName: 'Example taxon', rank: 'SPECIES', matchType: 'EXACT' }))
+      if (url.includes('api.gbif.org/v1/occurrence/search')) return respond(JSON.stringify({ count: 120, facets: [{ field: 'COUNTRY', counts: [{ name: 'XA', count: 80 }, { name: 'XB', count: 30 }] }, { field: 'BASIS_OF_RECORD', counts: [{ name: 'PRESERVED_SPECIMEN', count: 100 }, { name: 'LIVING_SPECIMEN', count: 20 }] }, { field: 'LICENSE', counts: [{ name: 'CC_BY_4_0', count: 120 }] }, { field: 'DATASET_KEY', counts: [{ name: 'a', count: 120 }] }] }))
+      if (url.includes('search.idigbio.org')) return respond(JSON.stringify(url.includes('basisofrecord') ? { itemCount: 9, basisofrecord: { preservedspecimen: { itemCount: 9 } } } : { itemCount: 9, country: { northland: { itemCount: 6 }, southland: { itemCount: 3 } } }))
+      if (url.includes('boldsystems.org/api/query/preprocessor')) return respond(JSON.stringify({ successful_terms: [{ matched: 'tax:species:Example taxon' }] }))
+      if (url.includes('boldsystems.org/api/summary')) return respond(JSON.stringify({ 'country/ocean': { Northland: 4 }, marker_code: { 'COI-5P': 4 } }))
       const p = new URLSearchParams(init?.body)
+      if (p.get('db') === 'sra') return respond(JSON.stringify(url.includes('esummary')
+        ? { result: { 5: { expxml: '<Platform instrument_model="Example sequencer">ILLUMINA</Platform><Library_descriptor><LIBRARY_STRATEGY>WGS</LIBRARY_STRATEGY><LIBRARY_LAYOUT><PAIRED/></LIBRARY_LAYOUT></Library_descriptor><Bioproject>PRJNA0</Bioproject><Biosample>SAMN0</Biosample>', runs: '<Run acc="SRR0000001" total_bases="900000"/>', createdate: '2024/01/01' } } }
+        : { esearchresult: { count: '1', idlist: ['5'] } }))
       if (p.get('db') === 'pubmed') return respond(JSON.stringify(url.includes('esummary') ? { result: {} } : { esearchresult: { count: '0', idlist: [] } }))
       if (url.includes('elink')) return respond(JSON.stringify({ linksets: [{}] }))
       if (p.get('db') === 'taxonomy') {

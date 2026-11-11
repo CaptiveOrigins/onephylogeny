@@ -26,4 +26,6 @@ What it won't do:
 
 Etiquette: Datasets, GBIF, iDigBio and BOLD calls are paced inside each function, one request at a time and at least a second apart, with a User-Agent naming this tool and its repository and never a person. A refusal (HTTP 403 or 429) is reported and not retried. The E-utilities calls go through `NcbiClient`, which keeps to NCBI's three requests a second and retries a few times with growing waits before giving up. The reported `query` never includes an email or API key.
 
+`publicListings({ fetch, client }, taxon, { only })` runs the listings above for one taxon, one after another, with one retrieval time. A Taxonomy ID is named by NCBI Taxonomy first, since GBIF, iDigBio and BOLD take names; if it can't be named, they're listed as failed rather than asked about the digits. A service that fails is in `failed` by name and its slot is `null`. The `onephylogeny sources` command and the Mac app's Public data section use it.
+
 Dryad, Figshare and Zenodo aren't searched: they stay flagged for a person to review.

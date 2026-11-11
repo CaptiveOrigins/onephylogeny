@@ -1,5 +1,6 @@
 import { type FoundPaper, type LinkProposal, lookupPaper, NcbiClient, paced, searchPapers } from '@captiveorigins/onephylogeny-acquire'
 import { CompareRuns } from './CompareRuns'
+import { PublicDataSection } from './PublicDataSection'
 import { confirmOutgroup, coverageTrack, dropOn, linkPaper, moveItem, newStudy, parseStudy, postHocOmissions, recordRun, restoreOmitted, studyMethods, studyUse, duplicateStudy, withoutPostHoc, type Curation, type MoveResult, type PanelWindow, type Profile, type Study, type StudyColumn, type StudyItem, type StudyPaper, type StudyRecord } from '@captiveorigins/onephylogeny-core'
 import { findPaperRecords, findRecordStudies, isCancelled, profilePaths, type EngineContext } from '@captiveorigins/onephylogeny-engine'
 import { useEffect, useMemo, useState, type DragEvent, type ReactNode } from 'react'
@@ -470,6 +471,8 @@ export function StudyTab({ profile, platform, session, setSession, attempt, cont
         <span className="muted">{use.blocked.length ? use.blocked.join('. ') : `${use.include.length} ingroup and ${use.outgroups.length} outgroup records. The profile will fetch exactly these, and they'll pass the same checks as any record.`}</span>
         <button disabled={busy} onClick={() => copyWith(duplicateStudy, 'copy', 'This is a copy, with the runs it came from still listed. Omissions in it are labeled post hoc too, because those results were seen.')}>Duplicate this Study</button>
       </div>}
+
+      <PublicDataSection profile={profile} platform={platform} context={context} attempt={attempt} busy={busy} />
 
       <CompareRuns profile={profile} platform={platform} attempt={attempt} busy={busy} />
     </div>

@@ -118,3 +118,10 @@ main { overflow-y: auto; min-width: 0; }
 .gene-empty { fill: var(--panel); }
 .gene-depth { fill: var(--muted); }
 .gene-shared { fill: var(--text); }
+.public-data .public-source h4 { margin: 18px 0 4px; font-size: 14px; }
+.public-data caption { caption-side: top; text-align: start; font-weight: 600; padding: 4px 0; }
+.public-data .num { text-align: end; font-variant-numeric: tabular-nums; }
+.public-data .query { word-break: break-all; }
+.public-data .plain-fieldset { border: 0; padding: 0; margin: 8px 0; display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.public-data .plain-fieldset legend { font-size: 13px; font-weight: 600; padding: 0; margin-bottom: 4px; }
+.public-data .error ul { margin: 4px 0 0; }

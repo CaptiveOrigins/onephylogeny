@@ -47,6 +47,18 @@
         },
         {
           "url": "https://api.crossref.org/works*"
+        },
+        {
+          "url": "https://api.ncbi.nlm.nih.gov/datasets/v2/*"
+        },
+        {
+          "url": "https://api.gbif.org/v1/*"
+        },
+        {
+          "url": "https://search.idigbio.org/v2/*"
+        },
+        {
+          "url": "https://portal.boldsystems.org/api/*"
         }
       ]
     },

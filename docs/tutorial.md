@@ -749,7 +749,7 @@ rm -rf "$WS"
 
 ## What this tutorial leaves out
 
-- **Real NCBI.** Everything above ran offline. On real data, `fetch` takes longer and finds more, and `outgroups` and `lookup` need the network. They aren't shown here.
+- **Real NCBI.** Everything above ran offline. On real data, `fetch` takes longer and finds more, and `outgroups`, `lookup` and `sources` need the network. They aren't shown here. `sources --taxon NAME_OR_TAXID` lists what SRA, NCBI Datasets, GBIF, iDigBio and BOLD hold for a taxon: listings and counts, never coordinates.
 - **A real pair of Sanger reads.** The repository has no forward and reverse read of one sample, so `sanger --reverse` is shown only with a failed partner.
 - **Real SNP data.** The VCF is made up and tiny. Calling a VCF from reads is done outside OnePhylogeny.
 - **Trees.** `tree` needs IQ-TREE installed (`onephylogeny doctor` says whether it is), so it isn't part of this offline run.

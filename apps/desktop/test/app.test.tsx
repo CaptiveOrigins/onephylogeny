@@ -206,6 +206,19 @@ describe('the Mac app, clicked through', () => {
       return screen.findByText(/papers\. PubMed/, undefined, { timeout: 20_000 })
     }
     const column = (name: string) => within(screen.getByRole('region', { name }))
+
+    it("offers public data for the profile's taxon through the app's one-job guard, and asks nothing until asked", async () => {
+      const fetch = vi.spyOn(platform, 'fetch')
+      await openProfile()
+      tab('Study')
+      const section = within(screen.getByRole('region', { name: 'Public data' }))
+      expect(section.getByText('For NCBI Taxonomy 1 and its subtaxa.')).toBeTruthy()
+      expect(fetch.mock.calls.some(([u, init]) => /gbif|idigbio|boldsystems|datasets/.test(u) || /db=sra/.test(init?.body ?? ''))).toBe(false)
+      fireEvent.click(section.getByRole('button', { name: 'List public data' }))
+      expect(await screen.findByText(/Listing public data…/)).toBeTruthy()
+      expect(await section.findByRole('table', { name: 'BOLD records by marker' }, { timeout: 20_000 })).toBeTruthy()
+    }, 60_000)
+
     const addNorth = async () => {
       await openStudy()
       fireEvent.click(screen.getByRole('button', { name: 'Add A study of the north' }))
