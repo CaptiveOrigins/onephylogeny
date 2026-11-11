@@ -1,16 +1,20 @@
 import { invoke } from '@tauri-apps/api/core'
+import { resolveResource } from '@tauri-apps/api/path'
 import { open } from '@tauri-apps/plugin-dialog'
 import { exists, mkdir, readDir, readTextFile, rename, writeTextFile } from '@tauri-apps/plugin-fs'
 import { fetch as nativeFetch } from '@tauri-apps/plugin-http'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { load } from '@tauri-apps/plugin-store'
 import type { Platform } from './platform'
+import { parseEcoregions } from './RegionMapSection'
 import { loadSettings, saveSettings } from './updates'
 
 const settings = () => load('settings.json', { autoSave: true, defaults: {} })
 
 export async function createMacPlatform(): Promise<Platform> {
   let root = (await (await settings()).get<string>('workspace')) ?? null
+  // About 8 MB, so it's read once, and only when a panel with ecoregion tags is shown. A failure isn't cached.
+  let outlines: ReturnType<NonNullable<Platform['ecoregions']>> | null = null
   const full = (p: string) => {
     if (!root) throw new Error('Choose a workspace folder first')
     return `${root}/${p}`
@@ -60,5 +64,21 @@ export async function createMacPlatform(): Promise<Platform> {
     },
     reveal: (p) => revealItemInDir(full(p)),
     print: () => invoke('print_window'),
+    // The outlines ship inside the app (ADR 0008), built from the RESOLVE release when the app is built. Nothing is fetched.
+    ecoregions: () => {
+      outlines ??= (async () => {
+        const file = await resolveResource('resources/ecoregions.json')
+        if (!(await exists(file))) throw new Error("the outlines aren't in this copy of the app")
+        let text: string
+        try {
+          text = await readTextFile(file)
+        } catch (e) {
+          throw new Error(`the outlines file couldn't be read (${e instanceof Error ? e.message : String(e)})`)
+        }
+        return parseEcoregions(text)
+      })()
+      outlines.catch(() => { outlines = null })
+      return outlines
+    },
   }
 }

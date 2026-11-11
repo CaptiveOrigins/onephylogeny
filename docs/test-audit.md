@@ -2,6 +2,11 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-10: region map in the Mac app
+
+- **Promises:** the Panel tab shows the region map only for a panel whose groups carry ecoregion tags, and otherwise says no group is tagged yet; the map keeps its legend, table and credit line; the outlines come from inside the app, never the network, and are read only when a map shows; a missing, unreadable or wrong outlines file gets a plain reason and no crash.
+- **Covered** (`apps/desktop/test/regionmap.test.tsx`, 7 tests, mocked Tauri file system and resource path): no tags gives the note, no map and no read of the outlines; tags and outlines give the map with its accessible name, legend, table (a native disclosure, so it opens from the keyboard) and credit line; missing outlines give an alert and still list the tagged IDs; the browser preview, which has none, says so; the Mac platform reads the bundled file once, refuses a missing, unreadable, non-JSON or wrong-shape file with a reason, and doesn't remember a failure. `app.test.tsx` now checks a real build of the untagged example panel shows the note and no map.
+- **Gaps left:** the outlines are made-up squares; the real 8 MB file hasn't been read by the app, and the release workflow's build step hasn't run yet (it runs on the next `desktop-v*` tag). Nobody has seen the map in the running Mac app; that needs a tagged panel, and none is tagged yet.
 ## 2026-11-10: mitogenome turning and gene checks
 
 - **Promises:** a record is turned to the reference's start exactly, or refused; each protein-coding gene is read on its own strand; frameshifts and internal stops are flagged; partial genes and genes the reference itself can't read cleanly aren't judged.

@@ -7,6 +7,7 @@ import { treeToPhylogeny } from '@captiveorigins/onephylogeny-onetaxonomy'
 import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Platform, Settings } from './platform'
 import { PREVIEW_SAMPLE } from './platform-preview'
+import { RegionMapSection } from './RegionMapSection'
 import { emptyStudySession, StudyTab, type StudySession } from './StudyTab'
 import { validateInWorker } from './validate'
 
@@ -461,6 +462,7 @@ function PanelTab({ profile, edit, save, state, hasRun, busy, busyLabel, busySin
         {state.unassigned > 0 && <p className="muted">{state.unassigned} records passed checks but aren't in a group, so they aren't in this panel.</p>}
         <PanelSummary panel={state.panel} />
         <NetworkSection panel={state.panel} sequences={state.sequences} />
+        <RegionMapSection panel={state.panel} platform={platform} />
         <h3>Validation</h3>
         <ValidationView blocks={state.validation.blocks} groups={state.validation.groups} ladder={state.validation.ladder} claims={state.validation.claims} panel={state.panel} />
       </>}
