@@ -8,6 +8,17 @@ Each audit lists what this repo promises, the tests that prove it, and the gaps:
 - **Fixed:** a failed rename in the Mac store (`apps/desktop/src/platform-mac.ts`) left `<file>.tmp` beside the target. A failed write or rename now removes the temporary file and rethrows the original error unchanged, as the CLI store has done since 2026-11-09. Unlike the CLI, a failed removal isn't dropped: the error then says the temporary file couldn't be removed and names it, with the original error as its `cause`. The capabilities now grant `fs:allow-remove`.
 - **Covered** (`apps/desktop/test/platform-mac.test.tsx`, 2 new tests, Tauri file calls mocked): a failed rename leaves only the old file and reports the original error; a failed removal is reported along with the original error. Desktop tests went from 26 to 28, the repo from 445 to 447.
 - **Gaps left:** the file calls and capability check are mocked, so a real failed save in a built app is unchecked.
+## 2026-11-11: outcomes by window, shown
+
+- **Promises:** counts always come with their tests and interval, never as a bare rate; no-test rows say so; warnings are shown; old reports still render.
+- **Covered** (`packages/react/test/outcomes.test.tsx`, 3 tests): counts and intervals, "No tests", no bare percentage, a window with no separating columns, study warnings, records without a study, and an empty render for old reports. The Mac app passes the reports through; that wiring is covered by typecheck.
+- **Gaps left:** not looked at in the running Mac app yet.
+
+## 2026-11-11: consensus from mapped reads
+
+- **Promises:** no base is written without enough depth and agreement; mixed positions are listed, never resolved; insertions aren't silently added; malformed pileups are refused with the line.
+- **Covered** (`packages/core/test/pileup.test.ts`, 7 tests): the mpileup syntax (both strands, read starts and ends, indels, deletions, quality cutoff), refusals, and consensus cases: confident, thin, split, deleted, unlisted, mixed, frequent insertions, outside the reference, and end to end from text.
+- **Gaps left:** no real low-pass run yet. Deletions are counted whatever their quality character, as samtools gives it.
 
 ## 2026-11-10: stronger validation
 

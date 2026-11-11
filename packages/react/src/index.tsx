@@ -1,4 +1,4 @@
-import type { ClaimReport, Finding, FindingStatus, PairFinding, Panel, Result, RunEvent, ValidationReport } from '@captiveorigins/onephylogeny-core'
+import type { ClaimReport, CountInterval, Finding, FindingStatus, OutcomeRow, PairFinding, Panel, PerWindowReport, Result, RunEvent, StudyOutReport, ValidationReport } from '@captiveorigins/onephylogeny-core'
 
 export type Labels = Partial<Record<FindingStatus, string>>
 
@@ -199,7 +199,51 @@ export function ClaimsView({ claims, panel }: { claims: ClaimReport[]; panel?: P
   )
 }
 
-export function ValidationView({ blocks, groups, ladder, claims, panel }: { blocks: ValidationReport; groups: ValidationReport; ladder?: ValidationReport[]; claims?: ClaimReport[]; panel?: Panel }) {
+/** "12 of 14 (61% to 98%)": a count out of the tests, with its interval. Never a bare rate. */
+const counted = (c?: CountInterval) => (c ? `${c.count} of ${c.of} (${Math.round(c.lower * 100)}% to ${Math.round(c.upper * 100)}%)` : 'No tests')
+
+function OutcomeTable({ rows, caption, label }: { rows: OutcomeRow[]; caption: string; label: (id: string) => string }) {
+  return (
+    <table className="ophy-table">
+      <caption>{caption}</caption>
+      <thead><tr><th scope="col">Group</th><th scope="col">Records</th><th scope="col">Not testable</th><th scope="col">Sites</th><th scope="col">Named</th><th scope="col">True group kept</th><th scope="col">Wrong</th><th scope="col">Unresolved</th><th scope="col">Not evaluable</th></tr></thead>
+      <tbody>
+        {rows.map((r) => (
+          <tr key={`${r.window}|${r.group}`}>
+            <th scope="row">{label(r.group)}</th><td>{r.records}</td><td>{r.notTestable}</td><td>{r.sites}</td><td>{counted(r.namedTruth)}</td><td>{counted(r.truthKept)}</td><td>{counted(r.wrong)}</td><td>{r.outcomes.unresolved}</td><td>{r.outcomes.notEvaluable}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
+/** Outcomes by window: holding out each site, and each study (analysis protocol, section 9). */
+export function OutcomesView({ windows, studyOut, panel }: { windows?: PerWindowReport; studyOut?: StudyOutReport; panel?: Panel }) {
+  if (!windows && !studyOut) return null
+  const label = (id: string) => (panel ? groupLabel(panel, id) : id)
+  const windowLabel = (id: string) => panel?.windows.find((w) => w.id === id)?.label ?? id
+  const studyWindows = studyOut ? [...new Set(studyOut.totals.map((r) => r.window))] : []
+  return (
+    <section>
+      <h4>Outcomes by window</h4>
+      <p className="ophy-muted">Each test lands in exactly one outcome. Counts come with exact 95% intervals on the number of tests; tests from one site or study aren't independent, so the true uncertainty is wider.</p>
+      {windows?.windows.map((w) => (
+        <div key={w.window}>
+          <OutcomeTable rows={w.rows} caption={`${w.label}, holding out each site (${w.separatingSites} separating column${w.separatingSites === 1 ? '' : 's'})`} label={label} />
+          {w.separatingSites === 0 && <p className="ophy-warning">No column in this window separates any two groups, so no result here can name a group.</p>}
+        </div>
+      ))}
+      {studyOut && studyWindows.map((id) => (
+        <OutcomeTable key={`study-${id}`} rows={studyOut.totals.filter((r) => r.window === id)} caption={`${windowLabel(id)}, holding out each study (${studyOut.studies.length} studies)`} label={label} />
+      ))}
+      {studyOut && studyOut.recordsWithoutStudy > 0 && <p className="ophy-muted">{studyOut.recordsWithoutStudy} records name no study, so they stay in every panel and are never tested here.</p>}
+      {[...(windows?.diagnostics ?? []), ...(studyOut?.diagnostics ?? [])].filter((d) => d.severity !== 'info').map((d, i) => <p key={`${d.code}-${i}`} className="ophy-warning">{d.message}</p>)}
+    </section>
+  )
+}
+
+export function ValidationView({ blocks, groups, ladder, claims, panel, windows, studyOut }: { blocks: ValidationReport; groups: ValidationReport; ladder?: ValidationReport[]; claims?: ClaimReport[]; panel?: Panel; windows?: PerWindowReport; studyOut?: StudyOutReport }) {
   const noEvidence = groups.groups.reduce((sum, g) => sum + g.notEvaluable, 0)
   return (
     <section>
@@ -225,6 +269,7 @@ export function ValidationView({ blocks, groups, ladder, claims, panel }: { bloc
           <tbody>{ladder.map((r) => <tr key={r.scheme}><th scope="row">{SCHEME[r.scheme]}</th><td>{r.tested}</td><td>{r.groups.reduce((n, g) => n + g.includedTruth, 0)}</td><td>{r.groups.reduce((n, g) => n + g.excludedTruth, 0)}</td><td>{r.groups.reduce((n, g) => n + g.notEvaluable, 0)}</td></tr>)}</tbody>
         </table>
       </>}
+      <OutcomesView {...(windows ? { windows } : {})} {...(studyOut ? { studyOut } : {})} {...(panel ? { panel } : {})} />
       {claims && <ClaimsView claims={claims} {...(panel ? { panel } : {})} />}
       <p className="ophy-muted">These are simple counts on a small reference panel, and they aren't calibrated probabilities.</p>
     </section>
