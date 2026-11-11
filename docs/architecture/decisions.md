@@ -4,6 +4,7 @@ Decisions the owner made about OnePhylogeny, newest first, each with its date. T
 
 | Date | Decision | Where it lives |
 | --- | --- | --- |
+| 2026-11-11 | The OneOrigin suite guidelines are accepted, and the brand has one source: "A: send it, accept guidelines (Recommended)" (N105). OnePhylogeny's `docs/oneorigin/` holds the guidelines, the brand text, `tokens.json` and the shared icon parts; each tool carries a copy in `brand/oneorigin/` with a lock, and CI fails on a hand edit and warns when the source moves ahead. Copies, not a dependency. Relayed. | [docs/oneorigin](../oneorigin/), `scripts/oneorigin.mjs` |
 | 2026-11-10 | Region map: "Shade public RESOLVE Ecoregions 2017 outlines (CC BY 4.0, about 850 worldwide), with each group tagged by ecoregion ID. Generalized and citable; about 10-20 MB, loaded only when a map shows." Relayed. | [ADR 0008](adr/0008-ecoregion-map.md) |
 | 2026-11-10 | Defer the tree view that reuses OneTaxonomy's viewers. Relayed. | [Roadmap](roadmap.md) stage 5 |
 | 2026-11-10 | The group audit stays strict: only records covering a window whole. "The rule was set before seeing the data. Report the 5p gap as a real limit; longer sequences will fill it later." Relayed. | [ADR 0007](adr/0007-strict-group-audit.md), [Limitations](limitations.md) |

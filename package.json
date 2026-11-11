@@ -22,7 +22,9 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "schemas": "node scripts/schemas.mjs",
-    "schemas:check": "node scripts/schemas.mjs --check"
+    "schemas:check": "node scripts/schemas.mjs --check",
+    "oneorigin": "node scripts/oneorigin.mjs",
+    "test:scripts": "node --test scripts/oneorigin.test.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",

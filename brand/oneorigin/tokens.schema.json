@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/CaptiveOrigins/onephylogeny/blob/main/docs/oneorigin/tokens.schema.json",
+  "title": "OneOrigin tokens",
+  "description": "The shared look of the OneOrigin tools: colors per mode, radii, sizes, icon parts and each tool's tile.",
+  "type": "object",
+  "required": ["schemaVersion", "name", "color", "radius", "size", "icon", "tools"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "name": { "const": "OneOrigin" },
+    "about": { "type": "string" },
+    "color": { "$ref": "#/$defs/colors" },
+    "radius": { "$ref": "#/$defs/lengths" },
+    "size": { "$ref": "#/$defs/lengths" },
+    "icon": {
+      "type": "object",
+      "required": ["line", "canvas", "tile", "tile-small", "block", "connector", "connector-small", "badge"],
+      "additionalProperties": false,
+      "properties": {
+        "line": {
+          "type": "object",
+          "required": ["size", "stroke"],
+          "additionalProperties": false,
+          "properties": { "size": { "type": "number", "exclusiveMinimum": 0 }, "stroke": { "type": "number", "exclusiveMinimum": 0 }, "use": { "type": "string" } }
+        },
+        "canvas": { "type": "number", "exclusiveMinimum": 0 },
+        "tile": { "$ref": "#/$defs/tileShape" },
+        "tile-small": { "$ref": "#/$defs/tileShape" },
+        "block": {
+          "type": "object",
+          "required": ["fill", "radius"],
+          "additionalProperties": false,
+          "properties": {
+            "fill": { "$ref": "#/$defs/hex" },
+            "radius": { "type": "array", "items": { "type": "number", "minimum": 0 }, "minItems": 2, "maxItems": 2 }
+          }
+        },
+        "connector": {
+          "type": "object",
+          "required": ["color", "width"],
+          "additionalProperties": false,
+          "properties": { "color": { "$ref": "#/$defs/hex" }, "width": { "type": "number", "exclusiveMinimum": 0 } }
+        },
+        "connector-small": {
+          "type": "object",
+          "required": ["width"],
+          "additionalProperties": false,
+          "properties": { "width": { "type": "number", "exclusiveMinimum": 0 } }
+        },
+        "badge": {
+          "type": "object",
+          "required": ["ring", "disc", "heart"],
+          "additionalProperties": false,
+          "properties": { "ring": { "$ref": "#/$defs/hex" }, "disc": { "$ref": "#/$defs/hex" }, "heart": { "$ref": "#/$defs/hex" } }
+        }
+      }
+    },
+    "tools": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "pattern": "^one[a-z]+$" },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["name", "prefix", "tile", "glyph", "color"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "pattern": "^One[A-Z][a-z]+$" },
+          "prefix": { "type": "string", "pattern": "^[a-z]{2,4}$" },
+          "tile": {
+            "type": "object",
+            "required": ["top", "bottom", "hue"],
+            "additionalProperties": false,
+            "properties": { "top": { "$ref": "#/$defs/hex" }, "bottom": { "$ref": "#/$defs/hex" }, "hue": { "type": "string" } }
+          },
+          "glyph": { "type": "string" },
+          "color": { "$ref": "#/$defs/colors" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "hex": { "type": "string", "pattern": "^#[0-9a-f]{6}$" },
+    "name": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+    "colors": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/name" },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["light", "dark"],
+        "additionalProperties": false,
+        "properties": { "light": { "$ref": "#/$defs/hex" }, "dark": { "$ref": "#/$defs/hex" }, "use": { "type": "string" } }
+      }
+    },
+    "lengths": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/name" },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["px"],
+        "additionalProperties": false,
+        "properties": { "px": { "type": "number", "minimum": 0 }, "use": { "type": "string" } }
+      }
+    },
+    "tileShape": {
+      "type": "object",
+      "required": ["size", "radius"],
+      "additionalProperties": false,
+      "properties": { "size": { "type": "number", "exclusiveMinimum": 0 }, "radius": { "type": "number", "minimum": 0 }, "use": { "type": "string" } }
+    }
+  }
+}
