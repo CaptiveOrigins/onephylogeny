@@ -2,6 +2,12 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-10: stronger validation
+
+- **Promises:** each study and each site is held out in each window and tested against a panel built without it; every test gets exactly one outcome, in the stated order; a study or site whose removal leaves its group below depth is reported as not testable with a reason, never dropped; records without a study are counted, not tested; every window and group is listed, including a window with nothing to test or no separating column; every rate is a count with an exact interval on tests and the method named; results are the same on every run.
+- **Covered** (`packages/core/test/validation.test.ts`, 16 tests, made-up panels whose counts follow from how they're built): Clopper-Pearson against R's `binom.test` for 0/10, 5/10, 10/10 and 1/4; all nine branches of the outcome order, including a truth that can't be compared while another group is consistent (wrong); a single-study group and a study whose removal leaves one record (both not testable, with reasons, in rows and totals, with no interval); a study whose labels disagree with the rest (2 of 2 wrong); named-but-not-all-compared when another group falls below depth; a window identical in every group (kept, never named) and an unsequenced window (no tests, no intervals); a site whose removal leaves its group below depth; totals and intervals summed over studies; a repeat run giving identical JSON; `fullValidation` carrying both reports.
+- **Gaps left:** not run on real data, so the protocol's stated expectation is untested. The Mac app and React `ValidationView` don't show the new reports yet. The site report doesn't list sites by name, by design, since block names can name places.
+
 ## 2026-11-10: region map in the Mac app
 
 - **Promises:** the Panel tab shows the region map only for a panel whose groups carry ecoregion tags, and otherwise says no group is tagged yet; the map keeps its legend, table and credit line; the outlines come from inside the app, never the network, and are read only when a map shows; a missing, unreadable or wrong outlines file gets a plain reason and no crash.

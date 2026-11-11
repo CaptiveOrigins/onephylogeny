@@ -1,6 +1,6 @@
 import { basesOf } from './sequence.js'
 import { evaluateQuery, leaveOneBlockOut, leaveOneGroupOut, holdOut, locates, unsealedBundle, type BuildPanelInput, type PanelMember, type ValidationInput, type ValidationReport } from './build.js'
-import type { Id, PanelSettings, PanelWindow, ValidatedClaim } from './model.js'
+import type { Diagnostic, Id, PanelSettings, PanelWindow, Result, ValidatedClaim } from './model.js'
 import { wholeMarker } from './derive.js'
 
 /** The gates and ladders in docs/architecture/analysis-protocol.md, section 9. Changing one needs a deviation-log entry. */
@@ -330,6 +330,210 @@ export function validatedScopeFromReport(claims: ClaimReport[]): ValidatedClaim[
 
 export const describeClaim = (c: ValidatedClaim) => `${c.a} vs ${c.b} in ${c.window}, ${c.minColumns}+ columns (${c.basis}; ${c.sites.a} and ${c.sites.b} sites)`
 
+/**
+ * The interval every outcome rate carries (analysis protocol, section 9, "Outcomes by window and by study"). Exact, so it
+ * never claims more than its nominal coverage at the small counts these panels have. It's computed on tests, and tests
+ * from one site or one study aren't independent, so it's narrower than the truth; `sites` is reported beside it.
+ */
+export const OUTCOME_INTERVAL = { method: 'clopper-pearson', level: 0.95, on: 'tests' } as const
+
+/**
+ * How each hold-out test came out. Exactly one of the five applies to a test, checked in this order, so they sum to `tests`:
+ * 1. `namedTruth`: the true group was the only consistent group, and the query wasn't flagged as possibly novel.
+ *    `truthKeptNotNamed`: the true group was consistent, but so was another, or the query was flagged.
+ * 2. `wrong`: the true group was excluded, or another group was consistent while the true group wasn't. This holds even
+ *    when the true group couldn't be compared, since the result still pointed somewhere else.
+ * 3. `notEvaluable`: the true group couldn't be compared, and no group was consistent.
+ * 4. `unresolved`: nothing was consistent, and the true group was inconclusive.
+ * `namedTruthAllCompared` is the part of `namedTruth` where every other group could be compared too.
+ */
+export type OutcomeCounts = { tests: number; namedTruth: number; namedTruthAllCompared: number; truthKeptNotNamed: number; wrong: number; unresolved: number; notEvaluable: number }
+
+/** A count out of a number of tests, with its interval. There is deliberately no bare rate. */
+export type CountInterval = { count: number; of: number; lower: number; upper: number }
+
+/**
+ * One group in one window. `records` are the held-out records that could be queries here: they can show location and
+ * cover the window with at least `minSharedColumns` bases. `notTestable` of them weren't tested, because the panel built
+ * without them left their group below depth in this window; they're counted, never dropped. Intervals are absent when
+ * nothing was tested, since unknown stays unknown.
+ */
+export type OutcomeRow = {
+  group: Id
+  window: Id
+  records: number
+  notTestable: number
+  /** Distinct sites among the tested records. Records without a site count as tests but not as sites. */
+  sites: number
+  outcomes: OutcomeCounts
+  /** `namedTruth + truthKeptNotNamed`: the true group stayed in the result. */
+  truthKept?: CountInterval
+  namedTruth?: CountInterval
+  wrong?: CountInterval
+}
+
+/** One study's records in one group and window, tested against a panel built without that study. */
+export type StudyOutRow = OutcomeRow & { study: string; testable: boolean; reason?: string }
+
+export type StudyOutReport = {
+  scheme: 'leave-one-study-out-by-window'
+  interval: typeof OUTCOME_INTERVAL
+  studies: string[]
+  /** Every study, group and window holding a record that could be a query, including those not testable. */
+  rows: StudyOutRow[]
+  /** Every group in every window, summed over studies. */
+  totals: OutcomeRow[]
+  /** Records that can show location but name no study. They stay in every panel here and are never tested. */
+  recordsWithoutStudy: number
+  diagnostics: Diagnostic[]
+}
+
+export type WindowReport = {
+  window: Id
+  label: string
+  /** Columns that separate at least one pair of groups in the panel built from every record. Zero means no result here can name a group. */
+  separatingSites: number
+  /** Every group, including those with nothing to test. */
+  rows: OutcomeRow[]
+}
+
+/** Leave-one-site-out, the default claim, run once per window with the query cut to that window. */
+export type PerWindowReport = { scheme: 'leave-one-site-out-by-window'; interval: typeof OUTCOME_INTERVAL; windows: WindowReport[]; diagnostics: Diagnostic[] }
+
+const emptyOutcomes = (): OutcomeCounts => ({ tests: 0, namedTruth: 0, namedTruthAllCompared: 0, truthKeptNotNamed: 0, wrong: 0, unresolved: 0, notEvaluable: 0 })
+
+/** Puts one result into exactly one outcome, in the order `OutcomeCounts` states. */
+export function classifyOutcome(result: Result, truth: Id, into: OutcomeCounts): OutcomeCounts {
+  const finding = result.findings.find((f) => f.group === truth)
+  const consistent = result.findings.filter((f) => f.status === 'consistent').map((f) => f.group)
+  into.tests++
+  if (consistent.includes(truth)) {
+    if (consistent.length === 1 && !result.novelty.flagged) {
+      into.namedTruth++
+      if (!result.candidatesNotEvaluated.length) into.namedTruthAllCompared++
+    } else into.truthKeptNotNamed++
+  } else if (finding?.status === 'excluded_within_panel' || consistent.length) into.wrong++
+  else if (!finding || finding.status === 'not_evaluable') into.notEvaluable++
+  else into.unresolved++
+  return into
+}
+
+const withInterval = (count: number, of: number): CountInterval => {
+  const [lower, upper] = clopperPearson(count, of, OUTCOME_INTERVAL.level)
+  return { count, of, lower, upper }
+}
+
+const intervalsOf = (o: OutcomeCounts) => (o.tests ? { truthKept: withInterval(o.namedTruth + o.truthKeptNotNamed, o.tests), namedTruth: withInterval(o.namedTruth, o.tests), wrong: withInterval(o.wrong, o.tests) } : {})
+
+type Cell = { records: number; notTestable: number; reason?: string; outcomes: OutcomeCounts; sites: Set<string> }
+const emptyCell = (): Cell => ({ records: 0, notTestable: 0, outcomes: emptyOutcomes(), sites: new Set() })
+
+const addCell = (into: Cell, from: Cell) => {
+  into.records += from.records
+  into.notTestable += from.notTestable
+  for (const k of Object.keys(into.outcomes) as (keyof OutcomeCounts)[]) into.outcomes[k] += from.outcomes[k]
+  for (const s of from.sites) into.sites.add(s)
+}
+
+const rowOf = (group: Id, window: Id, c: Cell): OutcomeRow => ({ group, window, records: c.records, notTestable: c.notTestable, sites: c.sites.size, outcomes: c.outcomes, ...intervalsOf(c.outcomes) })
+
+/** The same depth rule a pair uses (derive.ts): fewer than `minSharedColumns` columns at `minDepthPerColumn` records can't be compared. */
+function belowDepth(bundle: ReturnType<typeof unsealedBundle>, group: Id, window: PanelWindow): string | undefined {
+  const { minSharedColumns, minDepthPerColumn } = bundle.panel.rules
+  const cov = bundle.panel.groups.find((g) => g.id === group)?.coverage.find((c) => c.window === window.id)
+  if (!cov?.records) return `No record of ${group} that can show location is left in ${window.id}`
+  const columns = cov.columnsAtDepth.reduce((n, [s, e]) => n + e - s, 0)
+  if (columns < minSharedColumns) return `${group} keeps ${cov.records} records in ${window.id}, and ${columns} columns reach ${minDepthPerColumn} records, below the ${minSharedColumns} needed`
+  return undefined
+}
+
+/** Tests `held` against a panel of `rest` in one window. Every group with a possible query gets a cell, tested or not. */
+function testHeldInWindow(input: ValidationInput, window: PanelWindow, held: PanelMember[], rest: PanelMember[]): Map<Id, Cell> {
+  const { minSharedColumns } = input.settings.rules
+  const queries = held.filter((m) => locates(m) && columnsIn(m.aligned, window.start, window.end) >= minSharedColumns)
+  const cells = new Map<Id, Cell>()
+  if (!queries.length) return cells
+  const bundle = unsealedBundle({ ...input, settings: { ...input.settings, windows: [window] }, members: rest })
+  for (const g of input.settings.groups.map((x) => x.id)) {
+    const own = queries.filter((m) => m.group === g)
+    if (!own.length) continue
+    const cell = emptyCell()
+    cell.records = own.length
+    cells.set(g, cell)
+    const reason = belowDepth(bundle, g, window)
+    if (reason) { cell.notTestable = own.length; cell.reason = reason; continue }
+    for (const m of own) {
+      classifyOutcome(evaluateQuery(mask(m.aligned, window.start, window.end), bundle, { queryId: m.record, runId: 'validation' }), g, cell.outcomes)
+      if (m.block !== undefined) cell.sites.add(m.block)
+    }
+  }
+  return cells
+}
+
+const windowsOf = (input: ValidationInput) => (input.settings.windows?.length ? input.settings.windows : wholeMarker(input.reference.length))
+
+const testsNote: Diagnostic = { severity: 'info', code: 'intervals-on-tests', message: 'Intervals are exact (Clopper-Pearson, 95%) on tests. Tests from one site or study aren\'t independent, so each interval is narrower than the truth; read it beside the site count' }
+
+/**
+ * Leaves out each study in turn, in each window, and tests that study's records against a panel built without it. A study
+ * whose removal leaves its group below depth is reported as not testable, with the reason. Studies are the names records
+ * already carry; records without one are never held out, and are counted.
+ */
+export function leaveOneStudyOutByWindow(input: ValidationInput): StudyOutReport {
+  const windows = windowsOf(input)
+  const groupIds = input.settings.groups.map((g) => g.id)
+  const located = input.members.filter(locates)
+  const studies = [...new Set(located.flatMap((m) => (m.study ? [m.study] : [])))].sort()
+  const rows: StudyOutRow[] = []
+  const totals = new Map(groupIds.flatMap((g) => windows.map((w) => [`${g}\u0000${w.id}`, emptyCell()] as const)))
+  for (const study of studies) {
+    const held = input.members.filter((m) => m.study === study)
+    const rest = input.members.filter((m) => m.study !== study)
+    for (const w of windows) {
+      for (const [g, cell] of testHeldInWindow(input, w, held, rest)) {
+        rows.push({ study, ...rowOf(g, w.id, cell), testable: !cell.notTestable, ...(cell.reason ? { reason: cell.reason } : {}) })
+        addCell(totals.get(`${g}\u0000${w.id}`)!, cell)
+      }
+    }
+  }
+  const diagnostics: Diagnostic[] = [testsNote]
+  const recordsWithoutStudy = located.filter((m) => !m.study).length
+  if (recordsWithoutStudy) diagnostics.push({ severity: 'info', code: 'records-without-study', message: `${recordsWithoutStudy} records name no study, so they stay in every panel here and are never tested` })
+  for (const g of groupIds) {
+    const own = new Set(located.filter((m) => m.group === g && m.study).map((m) => m.study))
+    if (own.size === 1) diagnostics.push({ severity: 'warning', code: 'single-study-group', message: `Every study-labelled record of ${g} comes from one study, so leaving it out can't test ${g} against another study`, ids: [g] })
+  }
+  const notTestable = rows.filter((r) => !r.testable).length
+  if (notTestable) diagnostics.push({ severity: 'warning', code: 'study-not-testable', message: `${notTestable} study, group and window rows weren't testable, because the panel without that study fell below depth. They're listed, not dropped` })
+  return {
+    scheme: 'leave-one-study-out-by-window', interval: OUTCOME_INTERVAL, studies, rows,
+    totals: groupIds.flatMap((g) => windows.map((w) => rowOf(g, w.id, totals.get(`${g}\u0000${w.id}`)!))),
+    recordsWithoutStudy, diagnostics,
+  }
+}
+
+/** Leave-one-site-out in each window on its own. Records without a site are held out alone, as in `leaveOneBlockOut`. */
+export function perWindowValidation(input: ValidationInput): PerWindowReport {
+  const groupIds = input.settings.groups.map((g) => g.id)
+  const keyOf = (m: PanelMember) => m.block ?? `record:${m.record}`
+  const keys = [...new Set(input.members.map(keyOf))]
+  const diagnostics: Diagnostic[] = [testsNote]
+  const windows = windowsOf(input).map((w): WindowReport => {
+    const full = unsealedBundle({ ...input, settings: { ...input.settings, windows: [w] } })
+    const separatingSites = new Set(full.panel.pairs.flatMap((p) => p.sites.map((s) => s.position))).size
+    if (!separatingSites) diagnostics.push({ severity: 'warning', code: 'no-separating-sites', message: `No column in ${w.id} separates any pair of groups, so no result there can name one group`, ids: [w.id] })
+    const cells = new Map(groupIds.map((g) => [g, emptyCell()]))
+    for (const key of keys) {
+      const held = input.members.filter((m) => keyOf(m) === key)
+      for (const [g, cell] of testHeldInWindow(input, w, held, input.members.filter((m) => keyOf(m) !== key))) addCell(cells.get(g)!, cell)
+    }
+    return { window: w.id, label: w.label, separatingSites, rows: groupIds.map((g) => rowOf(g, w.id, cells.get(g)!)) }
+  })
+  const noSite = input.members.filter((m) => locates(m) && m.block === undefined).length
+  if (noSite) diagnostics.push({ severity: 'warning', code: 'records-without-site', message: `${noSite} records have no site, so each was held out alone. They can be tested against records from their own site, which flatters these results` })
+  return { scheme: 'leave-one-site-out-by-window', interval: OUTCOME_INTERVAL, windows, diagnostics }
+}
+
 export type FullValidation = {
   blocks: ValidationReport
   groups: ValidationReport
@@ -337,6 +541,10 @@ export type FullValidation = {
   ladder: ValidationReport[]
   claims: ClaimReport[]
   controls: { shuffles: number; simulations: number; seed: number }
+  /** Each study left out in each window, by group, with intervals. Absent from reports made before 2026-11-10. */
+  studyOut?: StudyOutReport
+  /** Leave-one-site-out outcomes in each window, by group, with intervals. Absent from reports made before 2026-11-10. */
+  windows?: PerWindowReport
 }
 
 /** Runs the whole ladder and tests every pair of groups in every window. Slow: it rebuilds a panel for every held-out site in every control. */
@@ -353,5 +561,5 @@ export function fullValidation(input: ValidationInput): FullValidation {
     blocks,
     holdOut(input, (m) => m.study ?? `record:${m.record}`, 'leave-one-study-out'),
   ]
-  return { blocks, groups: leaveOneGroupOut(input), ladder, claims, controls }
+  return { blocks, groups: leaveOneGroupOut(input), ladder, claims, controls, studyOut: leaveOneStudyOutByWindow(input), windows: perWindowValidation(input) }
 }
