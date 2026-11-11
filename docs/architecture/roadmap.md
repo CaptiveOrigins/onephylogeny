@@ -67,7 +67,7 @@ The techniques research changes what comes next, and the [analysis protocol](ana
 1. **Integrity.** Close the record-check gaps, seal checks and sequences into panels, and verify on load. *Code done. The genome NUMT screen has run once for the first species and flagged nothing, which clears no record. Its library is sealed into panels built from now on.*
 2. **Provenance.** Reported origins are labelled as reports, and records assigned by sequence no longer shape a panel. *Done.*
 3. **Evaluation.** Named windows, sites per pair of groups, depth rules, and a `not_resolved` state. *Done, with uncalibrated rules.*
-4. **Validation.** Hold-out ladder, fragments, controls and intervals on sites. Validated scope comes from a report, not by hand. *Done, including nested length selection, except the distance-based novelty test, which has no calibration data yet. Scope is exploratory until a confirmatory test runs.*
+4. **Validation.** Hold-out ladder, fragments, controls and intervals on sites. Validated scope comes from a report, not by hand. *Done, including nested length selection, except the distance-based novelty test, which has no calibration data yet. Its rule is stated and built uncalibrated (2026-11-11, `noveltyByDistance` and the group-left-out check in [analysis protocol](analysis-protocol.md) section 8); it changes no status until calibration, which still needs known-novel and known-sampled records from at least 4 sites per lineage and 2 studies that shaped nothing here. Scope is exploratory until a confirmatory test runs.*
 5. **Stage 2's dataset format,** on schema version 2.
 6. **Reporting.** Reference-class counts instead of probabilities, then expert review.
 
