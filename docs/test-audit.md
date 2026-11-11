@@ -2,6 +2,12 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-11: consensus from mapped reads
+
+- **Promises:** no base is written without enough depth and agreement; mixed positions are listed, never resolved; insertions aren't silently added; malformed pileups are refused with the line.
+- **Covered** (`packages/core/test/pileup.test.ts`, 7 tests): the mpileup syntax (both strands, read starts and ends, indels, deletions, quality cutoff), refusals, and consensus cases: confident, thin, split, deleted, unlisted, mixed, frequent insertions, outside the reference, and end to end from text.
+- **Gaps left:** no real low-pass run yet. Deletions are counted whatever their quality character, as samtools gives it.
+
 ## 2026-11-10: stronger validation
 
 - **Promises:** each study and each site is held out in each window and tested against a panel built without it; every test gets exactly one outcome, in the stated order; a study or site whose removal leaves its group below depth is reported as not testable with a reason, never dropped; records without a study are counted, not tested; every window and group is listed, including a window with nothing to test or no separating column; every rate is a count with an exact interval on tests and the method named; results are the same on every run.
