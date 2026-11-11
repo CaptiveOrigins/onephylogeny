@@ -44,8 +44,20 @@ const expected: Record<string, string[]> = {
   sanger: ['Kept bases 15 to 1090 of 1165 by quality.', '10 kept bases below Q20 became N.', '>226032_C-ME-18_pCAGseqF status=usable kept=15-1090', 'TTTNGGCAANANNTGAGCTCTATGGCCACAACCATGGTGAGCAAGGGCGAGGAGGATAACATGGCCATCA'],
   'sanger-failed': ['fixtures/abi/310.ab1: the read failed, so there is no sequence to use'],
   'test-read': ['"code": "no-reference-match"', 'Shares no seed with the reference, in either orientation: probably a different gene'],
+  'sanger-pair': ['Reverse (fixtures/abi/310.ab1): No stretch of the read is above the quality cutoff: the read failed.', 'fixtures/abi/310.ab1 failed, so only fixtures/abi/3730.ab1 is used, alone and not joined.', '>226032_C-ME-18_pCAGseqF status=usable kept=15-1090 alone'],
   primers: ['"status": "ok"', '"columns": 1050', '"of": 1144'],
   'primers-refused': ['"status": "refused"', 'The reverse primer matches nowhere in the reference within 3 mismatches.'],
+  snps: [
+    'VCF: 8 samples, 12 sites used.',
+    'Skipped 1 site: filter not PASS (lowQ).',
+    'Nearest SNP neighbour in the same group: 3 of 7. No neighbour with enough shared sites: 0.',
+    'A      3        1 of 3                 0.306        0.485',
+    'B      4        2 of 4                 0.558        0.485',
+    'Grouped but not in the VCF: d-1',
+    'In the VCF but not grouped: c-1',
+    'These are descriptions, not probabilities.',
+  ],
+  'snps-json': ['"compared": 7', '"nearestSameGroup": 3', '"meanWithin": 0.3055555555555555', '"meanBetween": 0.485479797979798'],
   cleanup: [],
 }
 
