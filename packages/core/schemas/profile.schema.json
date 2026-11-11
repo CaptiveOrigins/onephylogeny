@@ -90,6 +90,15 @@
             },
             "threads": {
               "type": "number"
+            },
+            "partitions": {
+              "type": "string",
+              "enum": [
+                "codons",
+                "genes",
+                "none"
+              ],
+              "description": "Mitogenome trees only (ADR 0009, decision 8): partitions from the gene windows. `codons` (the default) splits protein-coding genes by codon position; `genes` keeps each gene whole; `none` builds one unpartitioned tree."
             }
           },
           "required": [
