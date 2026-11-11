@@ -27,7 +27,7 @@ The full rules are in [scientific invariants](docs/architecture/scientific-invar
 | Package | What it does |
 | --- | --- |
 | [`onephylogeny-core`](packages/core) | Records, GenBank and FASTA parsing, pure TypeScript reference anchoring, gates, haplotypes, panels, sample evaluation, hold-out validation. No dependencies |
-| [`onephylogeny-acquire`](packages/acquire) | NCBI searches and downloads with safe retries; outgroup suggestions outward through the taxonomy |
+| [`onephylogeny-acquire`](packages/acquire) | NCBI searches and downloads with safe retries; outgroup suggestions outward through the taxonomy; SRA, BioSample and NCBI Datasets listings, and GBIF, iDigBio and BOLD counts, never coordinates |
 | [`onephylogeny-engine`](packages/engine) | Runs from profiles: fetch, anchor, gate, build panels, test samples, build trees, with immutable records and logs |
 | [`onephylogeny-cli`](packages/cli) | The `onephylogeny` command |
 | [`onephylogeny-react`](packages/react) | Sample results and reasons, coverage, validation, logs, trees and a compact lineage card |
