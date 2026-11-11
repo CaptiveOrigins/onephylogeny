@@ -72,6 +72,7 @@ pnpm --filter onephylogeny-desktop dev       # browser preview with made-up data
 
 ## Documentation
 
+- [Tutorial](docs/tutorial.md): build a panel, test samples and read a report on example data, offline, then the [concept pages](docs/concepts/README.md)
 - [Architecture](docs/architecture/architecture.md), [data schema](docs/architecture/data-schema.md), [technical decisions](docs/architecture/adr/README.md), [owner decisions](docs/architecture/decisions.md)
 - [The OneOrigin suite](docs/oneorigin/README.md) and its [guidelines](docs/oneorigin/guidelines.md) (draft)
 - [Analysis protocol](docs/architecture/analysis-protocol.md): what results can claim, and the rules fixed before testing

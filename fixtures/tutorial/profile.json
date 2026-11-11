@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "tutorial",
+  "title": "Tutorial: cytb from the golden fixture",
+  "selection": {
+    "id": "tutorial-selection",
+    "title": "cytb records in fixtures/golden/records.gb",
+    "taxa": [{ "source": "ncbi-taxonomy", "id": "50047" }],
+    "marker": { "kind": "gene", "gene": "cytb", "products": ["cytochrome b"], "organelle": "mitochondrion" },
+    "outgroups": [],
+    "exclude": [],
+    "filters": { "minLength": 300 }
+  },
+  "reference": { "accession": "NC_080265.1", "codonStart": 0, "geneticCode": 2 },
+  "panel": {
+    "id": "tutorial-panel",
+    "version": "1",
+    "groups": [
+      { "id": "a", "label": "Group A" },
+      { "id": "b", "label": "Group B" },
+      { "id": "c", "label": "Group C" },
+      { "id": "d", "label": "Group D" }
+    ],
+    "notCovered": ["Everything: this is a tutorial panel, and its groups are labels for the exercise"],
+    "validatedScope": [],
+    "rules": { "minSharedColumns": 100, "minDepthPerColumn": 1, "minBlocksForExclusion": 1, "minDecisiveSites": 2, "tolerance": 1 }
+  }
+}

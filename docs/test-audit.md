@@ -2,6 +2,12 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-11: tutorial and concept pages
+
+- **Promises:** every command in `docs/tutorial.md` runs, offline, and prints what the page shows; refusals (a tampered panel, a refused sample's report, a failed trace, an unmatched primer) exit with status 1.
+- **Covered** (`packages/cli/test/tutorial.test.ts`, 2 tests): every runnable block on the page is named and known to the test; all 16 run in one shell against the built CLI, with `fixtures/tutorial/offline-ncbi.mjs` loaded for every command so nothing can reach the network; each step's exit status, and 42 key lines that must appear both in the real output and on the page. CLI tests went from 4 to 6, the repo from 478 to 480.
+- **Gaps left:** the install block (clone, `pnpm install`, `pnpm build`) isn't run, because it needs the network and CI already does the same. The test runs them under bash. They were also run once by hand under zsh, the macOS default, with the same exit statuses. The concept pages make no runnable claims, so they're checked by reading against the code, not by a test.
+
 ## 2026-11-11: gene partitions for mitogenome trees
 
 - **Promises:** every column in exactly one partition; codon positions counted on each gene's own strand; overlaps kept apart; cytb trees unchanged.
