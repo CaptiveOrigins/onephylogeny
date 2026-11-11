@@ -464,7 +464,7 @@ function PanelTab({ profile, edit, save, state, hasRun, busy, busyLabel, busySin
         <NetworkSection panel={state.panel} sequences={state.sequences} />
         <RegionMapSection panel={state.panel} platform={platform} />
         <h3>Validation</h3>
-        <ValidationView blocks={state.validation.blocks} groups={state.validation.groups} ladder={state.validation.ladder} claims={state.validation.claims} panel={state.panel} />
+        <ValidationView blocks={state.validation.blocks} groups={state.validation.groups} ladder={state.validation.ladder} claims={state.validation.claims} panel={state.panel} {...(state.validation.windows ? { windows: state.validation.windows } : {})} {...(state.validation.studyOut ? { studyOut: state.validation.studyOut } : {})} />
       </>}
     </section>
   )

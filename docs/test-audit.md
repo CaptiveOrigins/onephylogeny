@@ -2,6 +2,12 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-11: outcomes by window, shown
+
+- **Promises:** counts always come with their tests and interval, never as a bare rate; no-test rows say so; warnings are shown; old reports still render.
+- **Covered** (`packages/react/test/outcomes.test.tsx`, 3 tests): counts and intervals, "No tests", no bare percentage, a window with no separating columns, study warnings, records without a study, and an empty render for old reports. The Mac app passes the reports through; that wiring is covered by typecheck.
+- **Gaps left:** not looked at in the running Mac app yet.
+
 ## 2026-11-11: consensus from mapped reads
 
 - **Promises:** no base is written without enough depth and agreement; mixed positions are listed, never resolved; insertions aren't silently added; malformed pileups are refused with the line.
