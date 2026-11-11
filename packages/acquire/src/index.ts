@@ -202,6 +202,7 @@ export async function suggestOutgroups(client: NcbiClient, selection: Selection,
 
 export * from './papers.js'
 export * from './lookup.js'
+export * from './sources.js'
 
 export type ReferenceCandidate = { accession: string; organism: string; length: number; title: string }
 export type ReferenceSuggestion = {
