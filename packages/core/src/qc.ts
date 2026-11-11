@@ -1,3 +1,4 @@
+import type { GeneCheck } from './mitogenome.js'
 import type { Diagnostic, Id } from './model.js'
 
 /**
@@ -20,7 +21,14 @@ export const DEFAULT_QC: QcSettings = {
   mixedSites: { mediocre: 1, bad: 3 },
   clusteredDifferences: { window: 30, minDifferences: 3, mediocre: 1, bad: 2 },
 }
-export type SampleQc = { overall: QcStatus; rules: { rule: QcRule; status: QcStatus; detail: string }[]; settings: 'panel' | 'default'; nearest?: Id }
+export type SampleQc = {
+  overall: QcStatus
+  rules: { rule: QcRule; status: QcStatus; detail: string }[]
+  settings: 'panel' | 'default'
+  nearest?: Id
+  /** Mitogenome panels: frame and stops for each protein-coding gene, on its own strand (ADR 0009, decision 4). The frame and stops rules summarise these. */
+  genes?: GeneCheck[]
+}
 
 const MIXED = /[RYKMSWBDHV]/
 const BASES = new Set(['A', 'C', 'G', 'T'])

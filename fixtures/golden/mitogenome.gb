@@ -1,0 +1,489 @@
+LOCUS       ZZ900000         1500 bp    DNA     circular VRT 11-NOV-2026
+DEFINITION  Made-up test mitogenome (the made-up reference). Not a real
+            organism or record.
+ACCESSION   ZZ900000
+VERSION     ZZ900000.1
+SOURCE      mitochondrion Fictional testudine
+  ORGANISM  Fictional testudine
+            Testudines; Made-up.
+REFERENCE   1  (bases 1 to 1500)
+  AUTHORS   OnePhylogeny fixtures.
+  TITLE     Made-up mitogenomes for an engine test
+  JOURNAL   Unpublished
+FEATURES             Location/Qualifiers
+     source          1..1500
+                     /organism="Fictional testudine"
+                     /organelle="mitochondrion"
+                     /mol_type="genomic DNA"
+     tRNA            1..66
+                     /gene="trnF"
+                     /product="tRNA-Phe"
+     rRNA            67..306
+                     /gene="rrnS"
+                     /product="12S ribosomal RNA"
+     CDS             307..663
+                     /gene="COX1"
+                     /product="cytochrome c oxidase subunit I"
+                     /transl_table=2
+     tRNA            664..729
+                     /gene="trnS"
+                     /product="tRNA-Ser"
+     CDS             complement(730..1029)
+                     /gene="ND6"
+                     /product="NADH dehydrogenase subunit 6"
+                     /transl_table=2
+     CDS             1030..1338
+                     /gene="CYTB"
+                     /product="cytochrome b"
+                     /transl_table=2
+     D-loop          1339..1500
+ORIGIN
+        1 gtggacaggt tcacaagttt ccgtttgcta ctcgtgaagt tgaggcaaat atctaaatat
+       61 ctgcttaagg cagtgcccga actaagggtt aaatacgcaa gatcttcacg ctgcgttgtg
+      121 atcatgaaac agaatcgtaa atcctcacgc atagatacac ggaactaaag cagcacctaa
+      181 cgcagaacag agcgcgggta catttaacct tcacgcccta gccgagaaat cccatttagc
+      241 cgctgaagaa cgaaccaact aggcaaaccc cactagctgc aagatgtaat acagcgccct
+      301 ggttaaatgg gtgttcaggc cccaaaaggc atagcgtcgg ctccctgtcc tcctccggga
+      361 acacttgcct tcggatcagt tcaaacaagc aaactctttg ggatggcaga tctcgcagat
+      421 gccagtgtgc atgtgcggag caattcctgc cagcggcatt tcggtgcgat gcacctgagc
+      481 ctacacctca atactgctca gttaccgggg accggtgcct cgaccgggta tgccctaacc
+      541 acaagtccga gtctcactgt tcagattaaa gggggaacta aggctcaagt caccactttc
+      601 aacgggccgt acgataagtc ctctgctcga taccaggact ctctgggacg ccatgtgggt
+      661 taatccggat agttctcagg ggccactggc gtgccgtacc agataaagtg ctcggaaatg
+      721 gattgtagat tagcgaggaa tttgaacatt cgtcaaaact gcactgtcga ctagacagtg
+      781 atatcgaccc agagacggcc ggtaactgta ccagccatgc gtagggaccc ctcgttgctc
+      841 gaaggctact aagctgctgt aagagagtgt ttgaggtccc cgtgtacgca ttggcccacc
+      901 tagtgcttgc gacgcgtaca cctcaccgca gaaatgcgct ttgcgttcct cccgagagtt
+      961 ccgactatga ggtaggttga gaaggggtat gctaggctgg tccacaagca atcacttctg
+     1021 agttaacata tgggagacgc tatgaatctg gcgcacttcg cgatatcgcc cgaggcatcg
+     1081 gcccatgcac ttcttgtccg tggcttgcgc ttagaagctc ggcactgttc cctacttaac
+     1141 gatgcgttgc aaccactacg ttgatgggcg ccgcggcgtc acatcacaca ccctaagtac
+     1201 attaaatcgc gcgacctgca acgagccccc atatcccagg cggaaggaaa cactgactct
+     1261 cgcttcccgc atacctggaa tcgctcagtc agcttaaatg ctagcaaagg tttcgatcag
+     1321 actgttctcc tcatctaatc agaaattggt catagtgatg atgcccggaa ctcgtgggac
+     1381 ctggcaggtt caacaattga gatcgtttat atgaagttat ggtcgtccac ggtcttcggg
+     1441 cgtgagtttt gtgtacacca actgtacgga acctaggcgg gctgtcctta acaggtgctc
+//
+LOCUS       ZZ900001         1500 bp    DNA     circular VRT 11-NOV-2026
+DEFINITION  Made-up test mitogenome (north, starts where the reference starts).
+            Not a real organism or record.
+ACCESSION   ZZ900001
+VERSION     ZZ900001.1
+SOURCE      mitochondrion Fictional testudine
+  ORGANISM  Fictional testudine
+            Testudines; Made-up.
+REFERENCE   1  (bases 1 to 1500)
+  AUTHORS   OnePhylogeny fixtures.
+  TITLE     Made-up mitogenomes for an engine test
+  JOURNAL   Unpublished
+FEATURES             Location/Qualifiers
+     source          1..1500
+                     /organism="Fictional testudine"
+                     /organelle="mitochondrion"
+                     /mol_type="genomic DNA"
+ORIGIN
+        1 gtggacaggt tcacaagttt ccgtttgcta ctcgtgaagt tgaggcaaat atctaaatat
+       61 ctgcttaagg cagtgcccga actaagggtt aaatacgcaa gatcttcacg ctgcgttgtg
+      121 atcatgaaac agaatcgtaa atcctcacgc atagatacac ggaactaaag cagcacctaa
+      181 cgcagaacag agcgcgggta catttaacct tcacgcccta gccgagaaat cccatttagc
+      241 cgctgaagaa cgaaccaact aggcaaaccc cactagctgc aagatgtaat acagcgccct
+      301 ggttaaatgg gtgttcaggc cccaaaaggc atagcgtcgg ctccctgtcc tcctccggga
+      361 acacttgcct tcggatcagt tcaaacaagc aaactctttg ggatggcaga tctcgcagat
+      421 gccagtgtgc atgtgcggag caattcctgc cagcggcatt tcggtgcgat gcacctgagc
+      481 ctacacctca atactgctca gttaccgggg accggtgcct cgaccgggta tgccctaacc
+      541 acaagtccga gtctcactgt tcagattaaa gggggaacta aggctcaagt caccactttc
+      601 aacgggccgt acgataagtc ctctgctcga taccaggact ctctgggacg ccatgtgggt
+      661 taatccggat agttctcagg ggccactggc gtgccgtacc ggataaagtg ctcggaaatg
+      721 gattgtagat tagcgaggaa tttgaacatt cgtcaaaact gcactgtcga ctagacagtg
+      781 atatcgaccc agagacggcc ggtaactgta ccagccatgc gtagggaccc ctcgttgctc
+      841 gaaggctact aagctgctgt aagagagtgt ttgaggtccc cgtgtacgca ttggcccacc
+      901 tagtgcttgc gacgcgtaca cctcaccgca gaaatgcgct ttgcgttcct cccgagagtt
+      961 ccgactatga ggtaggttga gaaggggtat gctaggctgg tccacaagca atcacttctg
+     1021 agttaacata tgggagacgc tatgaatctg gcgcacttcg cgatatcgcc cgaggcatcg
+     1081 gcccatgcac ttcttgtccg tggcttgcgc ttagaagctc ggcactgttc cctacttaac
+     1141 gatgcgttgc aaccactacg ttgatgggcg ccgcggcgtc acatcacaca ccctaagtac
+     1201 attaaatcgc gcgacctgca acgagccccc atatcccagg cggaaggaaa cactgactct
+     1261 cgcttcccgc atacctggaa tcgctcagtc agcttaaatg ctagcaaagg tttcgatcag
+     1321 actgttctcc tcatctaatc agaaattggt catagtgatg atgcccggaa ctcgtgggac
+     1381 ctggcaggtt caacaattga gatcgtttat atgaagttat ggtcgtccac ggtcttcggg
+     1441 cgtgagtttt gtgtacacca actgtacgga acctaggcgg gctgtcctta acaggtgctc
+//
+LOCUS       ZZ900002         1500 bp    DNA     circular VRT 11-NOV-2026
+DEFINITION  Made-up test mitogenome (north, turned by 500). Not a real organism
+            or record.
+ACCESSION   ZZ900002
+VERSION     ZZ900002.1
+SOURCE      mitochondrion Fictional testudine
+  ORGANISM  Fictional testudine
+            Testudines; Made-up.
+REFERENCE   1  (bases 1 to 1500)
+  AUTHORS   OnePhylogeny fixtures.
+  TITLE     Made-up mitogenomes for an engine test
+  JOURNAL   Unpublished
+FEATURES             Location/Qualifiers
+     source          1..1500
+                     /organism="Fictional testudine"
+                     /organelle="mitochondrion"
+                     /mol_type="genomic DNA"
+ORIGIN
+        1 gttaccgggg accggtgcct cgaccgggta tgccctaacc acaagtccga gtctcactgt
+       61 tcagattaaa gggggaacta aggctcaagt caccactttc aacgggccgt acgataagtc
+      121 ctctgctcga taccaggact ctctgggacg ccatgtgggt taatccggat agttctcagg
+      181 ggccactggc gtgccgtacc agataaagtg ctcggaaatg gattgtagat tagcgaggaa
+      241 tttgaacatt cgtcaaaact gcactgtcga ctagacagtg atatcgaccc agagacggcc
+      301 ggtaactgta ccagccatgc gtagggaccc ctcgttgctc gaaggctact aagctgctgt
+      361 aagagagtgt ttgaggtccc cgtgtacgca ttggcccacc tagtgcttgc gacgcgtaca
+      421 cctcaccgca gaaatgcgct ttgcgttcct cccgagagtt ccgactatga ggtaggttga
+      481 gaaggggtat gctaggctgg tccacaagca atcacttctg agttaacata tgggagacgc
+      541 tatgaatctg gcgcacttcg cgatatcgcc cgaggcatcg gcccatgcac ttcttgtccg
+      601 tggcttgcgc ttagaagctc ggcactgttc cctacttaac gatgcgttgc aaccactacg
+      661 ttgatgggcg ccgcggcgtc acatcacaca ccctaagtac attaaatcgc gcgacctgca
+      721 acgagccccc atatcccagg cggaaggaaa cactgactct cgcttcccgc atacctggaa
+      781 tcgctcagtc agcttaaatg ttagcaaagg tttcgatcag actgttctcc tcatctaatc
+      841 agaaattggt catagtgatg atgcccggaa ctcgtgggac ctggcaggtt caacaattga
+      901 gatcgtttat atgaagttat ggtcgtccac ggtcttcggg cgtgagtttt gtgtacacca
+      961 actgtacgga acctaggcgg gctgtcctta acaggtgctc gtggacaggt tcacaagttt
+     1021 ccgtttgcta ctcgtgaagt tgaggcaaat atctaaatat ctgcttaagg cagtgcccga
+     1081 actaagggtt aaatacgcaa gatcttcacg ctgcgttgtg atcatgaaac agaatcgtaa
+     1141 atcctcacgc atagatacac ggaactaaag cagcacctaa cgcagaacag agcgcgggta
+     1201 catttaacct tcacgcccta gccgagaaat cccatttagc cgctgaagaa cgaaccaact
+     1261 aggcaaaccc cactagctgc aagatgtaat acagcgccct ggttaaatgg gtgttcaggc
+     1321 cccaaaaggc atagcgtcgg ctccctgtcc tcctccggga acacttgcct tcggatcagt
+     1381 tcaaacaagc aaactctttg ggatggcaga tctcgcagat gccagtgtgc atgtgcggag
+     1441 caattcctgc cagcggcatt tcggtgcgat gcacctgagc ctacacctca atactgctca
+//
+LOCUS       ZZ900003         1500 bp    DNA     circular VRT 11-NOV-2026
+DEFINITION  Made-up test mitogenome (north, turned by 1100 and stored on the
+            other strand). Not a real organism or record.
+ACCESSION   ZZ900003
+VERSION     ZZ900003.1
+SOURCE      mitochondrion Fictional testudine
+  ORGANISM  Fictional testudine
+            Testudines; Made-up.
+REFERENCE   1  (bases 1 to 1500)
+  AUTHORS   OnePhylogeny fixtures.
+  TITLE     Made-up mitogenomes for an engine test
+  JOURNAL   Unpublished
+FEATURES             Location/Qualifiers
+     source          1..1500
+                     /organism="Fictional testudine"
+                     /organelle="mitochondrion"
+                     /mol_type="genomic DNA"
+ORIGIN
+        1 cggacaagaa gtgcatgggc cgatgcctcg ggcgatatcg cgaagtgcgc cagattcata
+       61 gcgtctccca tatgttaact cagaagtgat tgcttgtgga ccagcctagc ataccccttc
+      121 tcaacctacc tcatagtcgg aactctcggg aggaacgcaa agcgcatttc tgcggtgagg
+      181 tgtacgcgtc gcaagcacta ggtgggccaa tgcgtacacg gggacctcaa acactctctt
+      241 acagcagctt agtagccttc gagcaacgag gggtccctac gcatggctgg tacagttacc
+      301 ggccgtctct gggtcgatat cactgtctag tcgacagtgc agttttgacg aatgttcaaa
+      361 ttcctcgcta atctacaatc catttccgag cactttatct ggtacggcac gccagtggcc
+      421 cctgagaact atccggatta acccacatgg cgtcccagag agtcctggta tcgagcagag
+      481 gacttatcgt acggcccgtt gaaagtggtg acttgagcct tagttccccc tttaatctga
+      541 acagtgagac tcggacttgt ggttagggca tacccggtcg aggcaccggt ccccggtaac
+      601 tgagcagtat tgaggtgtag gctcaggtgc atcgcaccga aatgccgccg gcaggaattg
+      661 ctccgcacat gcacactggc atctgcgaga tctgccatcc caaagagttt gcttgtttga
+      721 actgatccga aggcaagtgt tcccggagga ggacagggag ccgacgctat gccttttggg
+      781 gcctgaacac ccatttaacc agggcgctgt attacatctt gcagctagtg gggtttgcct
+      841 agttggttcg ttcttcagcg gctaaatggg atttctcggc tagggcgtga aggttaaatg
+      901 tacccgcgct ctgttctgcg ttaggtgctg ctttagttcc gtgtatctat gcgtgaggat
+      961 ttacgattct gtttcatgat cacaacgcag cgtgaagatc ttgcgtattt aacccttagt
+     1021 tcgggcactg ccttaagcag atatttagat atttgcctca acttcacgag tagcaaacgg
+     1081 aaacttgtga acctgtccac gagcacctgt taaggacagc ccgcctaggt tccgtacagt
+     1141 tggtgtacac aaaactcacg cccgaagacc gtggacgacc ataacttcat ataaacgatc
+     1201 tcaattgttg aacctgccag gtcccacgag ttccgggcat catcactatg accaatttct
+     1261 gattagatga ggagaacagt ctgatcgaaa cctttgctag catttaagct gactgagcga
+     1321 ttccaggtat gcgggaagcg agagtcagtg tttccttccg cctgggatat gggggctcgt
+     1381 tgcaggtcgc gcgatttaat gtacttaggg tgtgtgatgt gacgccgcgg cgcccatcaa
+     1441 cgtagtggtt gcaacgcatc gttaagtagg gaacagtgcc gagcttctaa gcgcaagcca
+//
+LOCUS       ZZ900004         1504 bp    DNA     circular VRT 11-NOV-2026
+DEFINITION  Made-up test mitogenome (north, turned by 300, with 4 extra bases
+            in the control region). Not a real organism or record.
+ACCESSION   ZZ900004
+VERSION     ZZ900004.1
+SOURCE      mitochondrion Fictional testudine
+  ORGANISM  Fictional testudine
+            Testudines; Made-up.
+REFERENCE   1  (bases 1 to 1504)
+  AUTHORS   OnePhylogeny fixtures.
+  TITLE     Made-up mitogenomes for an engine test
+  JOURNAL   Unpublished
+FEATURES             Location/Qualifiers
+     source          1..1504
+                     /organism="Fictional testudine"
+                     /organelle="mitochondrion"
+                     /mol_type="genomic DNA"
+ORIGIN
+        1 ggttaaatgg gtgttcaggc cccaaaaggc atagcgtcgg ctccctgtcc tcctccggga
+       61 acacttgcct tcggatcagt tcaaacaagc aaactctttg ggatggcaga tctcgcagat
+      121 gccagtgtgc atgtgcggag caattcctgc cagcggcatt tcggtgcgat gcacctgagc
+      181 ctacacctca atactgctca gttaccgggg accggtgcct cgaccgggta tgccctaacc
+      241 acaagtccga gtctcactgt tcagattaaa gggggaacta aggctcaagt caccactttc
+      301 aacgggccgt acgataagtc ctctgctcga taccaggact ctctgggacg ccatgtgggt
+      361 taatccggat agttctcagg ggccactggc gtgccgtacc agataaagtg ctcggaaatg
+      421 gattgtagat tagcgaggaa tttgaacatt cgtcaaaact gcactgtcga ctagacagtg
+      481 atatcgaccc agagacggcc ggtaactgta ccagccatgc gtagggaccc ctcgttgctc
+      541 gaaggctact aagctgctgt aagagagtgt ttgaggtccc cgtgtacgca ttggcccacc
+      601 tagtgcttgc gacgcgtaca cctcaccgca gaaatgcgct ttgcgttcct cccgagagtt
+      661 tcgactatga ggtaggttga gaaggggtat gctaggctgg tccacaagca atcacttctg
+      721 agttaacata tgggagacgc tatgaatctg gcgcacttcg cgatatcgcc cgaggcatcg
+      781 gcccatgcac ttcttgtccg tggcttgcgc ttagaagctc ggcactgttc cctacttaac
+      841 gatgcgttgc aaccactacg ttgatgggcg ccgcggcgtc acatcacaca ccctaagtac
+      901 attaaatcgc gcgacctgca acgagccccc atatcccagg cggaaggaaa cactgactct
+      961 cgcttcccgc atacctggaa tcgctcagtc agcttaaatg ctagcaaagg tttcgatcag
+     1021 actgttctcc tcatctaatc agaaattggt catagtgatg atgcccggaa ctcgtgggac
+     1081 ctggcaggtt caacaattga acacgatcgt ttatatgaag ttatggtcgt ccacggtctt
+     1141 cgggcgtgag ttttgtgtac accaactgta cggaacctag gcgggctgtc cttaacaggt
+     1201 gctcgtggac aggttcacaa gtttccgttt gctactcgtg aagttgaggc aaatatctaa
+     1261 atatctgctt aaggcagtgc ccgaactaag ggttaaatac gcaagatctt cacgctgcgt
+     1321 tgtgatcatg aaacagaatc gtaaatcctc acgcatagat acacggaact aaagcagcac
+     1381 ctaacgcaga acagagcgcg ggtacattta accttcacgc cctagccgag aaatcccatt
+     1441 tagccgctga agaacgaacc aactaggcaa accccactag ctgcaagatg taatacagcg
+     1501 ccct
+//
+LOCUS       ZZ900005         1500 bp    DNA     circular VRT 11-NOV-2026
+DEFINITION  Made-up test mitogenome (south, turned by 700). Not a real organism
+            or record.
+ACCESSION   ZZ900005
+VERSION     ZZ900005.1
+SOURCE      mitochondrion Fictional testudine
+  ORGANISM  Fictional testudine
+            Testudines; Made-up.
+REFERENCE   1  (bases 1 to 1500)
+  AUTHORS   OnePhylogeny fixtures.
+  TITLE     Made-up mitogenomes for an engine test
+  JOURNAL   Unpublished
+FEATURES             Location/Qualifiers
+     source          1..1500
+                     /organism="Fictional testudine"
+                     /organelle="mitochondrion"
+                     /mol_type="genomic DNA"
+ORIGIN
+        1 agataaagtg ctcggaaatg gattgtagat tagcgaggaa tttgaacatt cgtcaaaact
+       61 gcactgtcga ctagacagtg atatcgaccc agagacggcc agtaactgta ccagccatgc
+      121 gtagggaccc ctcgttgctc gaaggctact aagctgctgt aagagagtgt ttgaggtccc
+      181 cgtgtacgca ttggcccacc tagtgtttgc gacgcgtaca cctcaccgca gaaatgcgct
+      241 ttgcgttcct cccgagagtt ccgactatga ggtaggttga gaaggggtat gctaggctgg
+      301 tccacaagca atcacttctg agttaacata tgggagacgc tatgaatctg gcgcacttcg
+      361 cgatatcgcc cgaggcatcg gcccatgcac ttcttgtccg cggcttgcgc ttagaagctc
+      421 ggcactgttc cctacttaac gatgcgttgc aaccactacg ttgatgggcg ccgcggcgtc
+      481 gcatcacaca ccctaagtac attaaatcgc gcgacctgca acgagccccc atatcccagg
+      541 cggaaggaaa cactgactct cgcttcccgc gtacctggaa tcgctcagtc agcttaaatg
+      601 ctagcaaagg tttcgatcag actgttctcc tcatctaatc agaaattggt catagtgatg
+      661 atgcccggaa ctcgtgggac ctggcaggtt caacaattga gatcgtttat atgaagttat
+      721 ggtcgtccac ggtcttcggg cgtgagtttt gtgtacacca actgtacgga acctaggcgg
+      781 gctgtcctta acaggtgctc gtggacaggt tcacaagttt ccgtttgcta ctcgtgaagt
+      841 tgaggcaaat atctaaatat ctgcttaagg cagtgcccga actaagggtt aaatacgcaa
+      901 gatcttcacg ctgcgttgtg atcatgaaac agaatcgtaa atcctcacgc atagatacac
+      961 ggaactaaag cagcacctaa cgcagaacag agcgcgggta catttaacct tcacgcccta
+     1021 gccgagaaat tccatttagc cgctgaagaa cgaaccaact agacaaaccc cactagctgc
+     1081 aagatgtaat gcagcgccct ggttaaatgg gtgttcaggc cccaaaaggc gtagcgtcgg
+     1141 ctccctgtcc tcctccggga acacttgcct tcggatcagt tcaaacaagc aaactctttg
+     1201 agatggcaga tctcgcagat gccagtgtgc atgtgcggag caattcctgc cagcggcatt
+     1261 tcggtgcgat gcacccgagc ctacacctca atactgctca gttaccgggg accggtgcct
+     1321 cgaccgggta tgccctaacc acaagtccga gtctcactgt tcggattaaa gggggaacta
+     1381 aggctcaagt caccactttc aacgggccgt acgataagtc ctctgctcga taccaggact
+     1441 ctctgggacg ccatgtgggt taatccggat agttctcagg ggccactggc gtgccgtacc
+//
+LOCUS       ZZ900006         1500 bp    DNA     circular VRT 11-NOV-2026
+DEFINITION  Made-up test mitogenome (south, turned by 50 and stored on the
+            other strand). Not a real organism or record.
+ACCESSION   ZZ900006
+VERSION     ZZ900006.1
+SOURCE      mitochondrion Fictional testudine
+  ORGANISM  Fictional testudine
+            Testudines; Made-up.
+REFERENCE   1  (bases 1 to 1500)
+  AUTHORS   OnePhylogeny fixtures.
+  TITLE     Made-up mitogenomes for an engine test
+  JOURNAL   Unpublished
+FEATURES             Location/Qualifiers
+     source          1..1500
+                     /organism="Fictional testudine"
+                     /organelle="mitochondrion"
+                     /mol_type="genomic DNA"
+ORIGIN
+        1 atttgcctca acttcacgag tagcaaacgg aaacttgtga acctgtccac gagcacctgt
+       61 taaggacagc ccgcctaggt tccgtacagt tggtgtacac aaaactcacg cccgaagacc
+      121 gtggacgacc ataacttcat ataaacgatc tcaattgttg aacctgccag gtcccacgag
+      181 ttccgggcat catcactatg accaatttct gattagatga ggagaacagt ctgatcgaaa
+      241 cctttgctag catttaagct gactgagcga ttccaggtac gcgggaagcg agagtcagtg
+      301 tttccttccg cctgggatat gggggctcgt tgcaggtcgc gcgatttaat gtacttaggg
+      361 tgtgtgatgc gacgccgcgg cgcccatcaa cgtagtggtt gcaacgcatc gttaagtagg
+      421 gaacagtgcc gagcttctaa gcgcaagccg cggacaagaa gtgcatgggc cgatgcctcg
+      481 ggcgatatca cgaagtgcgc cagattcata gcgtctccca tatgttaact cagaagtgat
+      541 tgcttgtgga ccagcctagc ataccccttc tcaacctacc tcatagtcgg aactctcggg
+      601 aggaacgcaa agcgcatttc tgcggtgagg tgtacgcgtc gcaaacacta ggtgggccaa
+      661 tgcgtacacg gggacctcaa acactctctt acagcagctt agtagccttc gagcaacgag
+      721 gggtccctac gcatggctgg tacagttact ggccgtctct gggtcgatat cactgtctag
+      781 tcgacagtgc agttttgacg aatgttcaaa ttcctcgcta atctacaatc catttccgag
+      841 cactttatct ggtacggcac gccagtggcc cctgagaact atccggatta acccacatgg
+      901 cgtcccagag agtcctggta tcgagcagag gacttatcgt acggcccgtt gaaagtggtg
+      961 acttgagcct tagttccccc tttaatccga acagtgagac tcggacttgt ggttagggca
+     1021 tacccggtcg aggcaccggt ccccggtaac tgagcagtat tgaggtgtag gctcgggtgc
+     1081 atcgcaccga aatgccgctg gcaggaattg ctccgcacat gcacactggc atctgcgaga
+     1141 tctgccatct caaagagttt gcttgtttga actgatccga aggcaagtgt tcccggagga
+     1201 ggacagggag ccgacgctat gccttttggg gcctgaacac ccatttaacc agggcgctgc
+     1261 attacatctt gcagctagtg gggtttgtct agttggttcg ttcttcagcg gctaaatgga
+     1321 atttctcggc tagggcgtga aggttaaatg tacccgcgct ctgttctgcg ttaggtgctg
+     1381 ctttagttcc gtgtatctat gcgtgaggat ttacgattct gtttcatgat cacaacgcag
+     1441 cgtgaagatc ttgcgtattt aacccttagt tcgggcactg ccttaagcag atatttagat
+//
+LOCUS       ZZ900007         1500 bp    DNA     circular VRT 11-NOV-2026
+DEFINITION  Made-up test mitogenome (south, turned by 1300). Not a real
+            organism or record.
+ACCESSION   ZZ900007
+VERSION     ZZ900007.1
+SOURCE      mitochondrion Fictional testudine
+  ORGANISM  Fictional testudine
+            Testudines; Made-up.
+REFERENCE   1  (bases 1 to 1500)
+  AUTHORS   OnePhylogeny fixtures.
+  TITLE     Made-up mitogenomes for an engine test
+  JOURNAL   Unpublished
+FEATURES             Location/Qualifiers
+     source          1..1500
+                     /organism="Fictional testudine"
+                     /organelle="mitochondrion"
+                     /mol_type="genomic DNA"
+ORIGIN
+        1 ctagcaaagg tttcgatcag actgttctcc tcatctaatc agaaattggt catagtgatg
+       61 atgcccggaa ctcgtgggac ctggcaggtt caacaattga gatcgtttat atgaagttat
+      121 ggtcgtccac ggtcttcggg cgtgagtttt gtgtacacca actgtacgga acctaggcgg
+      181 gctgtcctta acaggtgctc gtggacaggt tcacaagttt ccgtttgcta ctcgtgaagt
+      241 tgaggcaaat atctaaatat ctgcttaagg cagtgcccga actaagggtt aaatacgcaa
+      301 gatcttcacg ctgcgttgtg atcatgaaac agaatcgtaa atcctcacgc atagatacac
+      361 ggaactaaag cagcacctaa cgcagaacag agcgcgggta catttaacct tcacgcccta
+      421 gccgagaaat tccatttagc cgctgaagaa cgaaccaact agacaaaccc cactagctgc
+      481 aagatgtaat gcagcgccct ggttaaatgg gtgttcaggc cccaaaaggc atagcgtcgg
+      541 ctccctgtcc tcctccggga acacttgcct tcggatcagt tcaaacaagc aaactctttg
+      601 agatggcaga tctcgcagat gccagtgtgc atgtgcggag caattcctgc cagcggcatt
+      661 tcggtgcgat gcacccgagc ctacacctca atactgctca gttaccgggg accggtgcct
+      721 cgaccgggta tgccctaacc acaagtccga gtctcactgt tcggattaaa gggggaacta
+      781 aggctcaagt caccactttc aacgggccgt acgataagtc ttctgctcga taccaggact
+      841 ctctgggacg ccatgtgggt taatccggat agttctcagg ggccactggc gtgccgtacc
+      901 agataaagtg ctcggaaatg gattgtagat tagcgaggaa tttgaacatt cgtcaaaact
+      961 gcactgtcga ctagacagtg atatcgaccc agagacggcc agtaactgta ccagccatgc
+     1021 gtagggaccc ctcgttgctc gaaggctact aagctgctgt aagagagtgt ttgaggtccc
+     1081 cgtgtacgca ttggcccacc tagtgtttgc gacgcgtaca cctcaccgca gaaatgcgct
+     1141 ttgcgttcct cccgagagtt ccgactatga ggtaggttga gaaggggtat gctaggctgg
+     1201 tccacaagca atcacttctg agttaacata tgggagacgc tatgaatctg gcgcacttcg
+     1261 cgatatcgcc cgaggcatcg gcccatgcac ttcttgtccg cggcttgcgc ttagaagctc
+     1321 ggcactgttc cctacttaac gatgcgttgc aaccactacg ttgatgggcg ccgcggcgtc
+     1381 gcatcacaca ccctaagtac attaaatcgc gcgacctgca acgagccccc atatcccagg
+     1441 cggaaggaaa cactgactct cgcttcccgc gtacctggaa tcgctcagtc agcttaaatg
+//
+LOCUS       ZZ900008         1499 bp    DNA     circular VRT 11-NOV-2026
+DEFINITION  Made-up test mitogenome (south, turned by 900, with one base of
+            COX1 missing (a frameshift)). Not a real organism or record.
+ACCESSION   ZZ900008
+VERSION     ZZ900008.1
+SOURCE      mitochondrion Fictional testudine
+  ORGANISM  Fictional testudine
+            Testudines; Made-up.
+REFERENCE   1  (bases 1 to 1499)
+  AUTHORS   OnePhylogeny fixtures.
+  TITLE     Made-up mitogenomes for an engine test
+  JOURNAL   Unpublished
+FEATURES             Location/Qualifiers
+     source          1..1499
+                     /organism="Fictional testudine"
+                     /organelle="mitochondrion"
+                     /mol_type="genomic DNA"
+ORIGIN
+        1 agtgtttgcg acgcgtacac ctcaccgcag aaatgcgctt tgcgttcctc ccgagagttc
+       61 cgactatgag gtaggttgag aaggggtatg ctaggctggt ccacaagcaa tcacttctga
+      121 gttaacatat gggagacgct atgaatctgg cgcacttcgc gatatcgccc gaggcatcgg
+      181 cccatgcact tcttgtccgc ggcttgcgct tagaagctcg gcactgttcc ctacttaacg
+      241 atgcgttgca accactacgt tgatgggcgc cgcggcgtcg catcacacac cctaagtaca
+      301 ttaaatcgcg cgacctgcaa cgagccccca tatcccaggt ggaaggaaac actgactctc
+      361 gcttcccgcg tacctggaat cgctcagtca gcttaaatgc tagcaaaggt ttcgatcaga
+      421 ctgttctcct catctaatca gaaattggtc atagtgatga tgcccggaac tcgtgggacc
+      481 tggcaggttc aacaattgag atcgtttata tgaagttatg gtcgtccacg gtcttcgggc
+      541 gtgagttttg tgtacaccaa ctgtacggaa cctaggcggg ctgtccttaa caggtgctcg
+      601 tggacaggtt cacaagtttc cgtttgctac tcgtgaagtt gaggcaaata tctaaatatc
+      661 tgcttaaggc agtgcccgaa ctaagggtta aatacgcaag atcttcacgc tgcgttgtga
+      721 tcatgaaaca gaatcgtaaa tcctcacgca tagatacacg gaactaaagc agcacctaac
+      781 gcagaacaga gcgcgggtac atttaacctt cacgccctag ccgagaaatt ccatttagcc
+      841 gctgaagaac gaaccaacta gacaaacccc actagctgca agatgtaatg cagcgccctg
+      901 gttaaatggg tgttcaggcc ccaaaaggca tagcgtcggc tccctgtcct cctccgggaa
+      961 cacttgcctt cggatcagtt caaacaagca aactctttga gatggcagat ctcgcagatg
+     1021 ccagtgtgca tgtgcggagc aattcctgcc agcggcattt cggtgcgatg cacccgagcc
+     1081 tacacctcaa tactgctcag ttaccgggga ccggtgcctg accgggtatg ccctaaccac
+     1141 aagtccgagt ctcactgttc ggattaaagg gggaactaag gctcaagtca ccactttcaa
+     1201 cgggccgtac gataagtcct ctgctcgata ccaggactct ctgggacgcc atgtgggtta
+     1261 atccggatag ttctcagggg ccactggcgt gccgtaccag ataaagtgct cggaaatgga
+     1321 ttgtagatta gcgaggaatt tgaacattcg tcaaaactgc actgtcgact agacagtgat
+     1381 atcgacccag agacggccag taactgtacc agccatgcgt agggacccct cgttgctcga
+     1441 aggctactaa gctgctgtaa gagagtgttt gaggtccccg tgtacgcatt ggcccacct
+//
+LOCUS       ZZ900009          400 bp    DNA     linear   VRT 11-NOV-2026
+DEFINITION  Made-up test mitogenome (a partial, linear record holding only CYTB
+            and around it). Not a real organism or record.
+ACCESSION   ZZ900009
+VERSION     ZZ900009.1
+SOURCE      mitochondrion Fictional testudine
+  ORGANISM  Fictional testudine
+            Testudines; Made-up.
+REFERENCE   1  (bases 1 to 400)
+  AUTHORS   OnePhylogeny fixtures.
+  TITLE     Made-up mitogenomes for an engine test
+  JOURNAL   Unpublished
+FEATURES             Location/Qualifiers
+     source          1..400
+                     /organism="Fictional testudine"
+                     /organelle="mitochondrion"
+                     /mol_type="genomic DNA"
+ORIGIN
+        1 tccacaagca atcacttctg agttaacata tgggagacgc tatgaatctg gcgcacttcg
+       61 cgatatcgcc cgaggcatcg gcccatgcac ttcttgtccg tggcttgcgc ttagaagctc
+      121 ggcactgttc cctacttaac gatgcgttgc aaccactacg ttgatgggcg ccgcggcgtc
+      181 acatcacaca ccctaagtac attaaatcgc gcgacctgca acgagccccc atatcccagg
+      241 cggaaggaaa cactgactct cgcttcccgc atacctggaa tcgctcagtc agcttaaatg
+      301 ctagcaaagg tttcgatcag actgttctcc tcatctaatc agaaattggt catagtgatg
+      361 atgcccggaa ctcgtgggac ctggcaggtt caacaattga
+//
+LOCUS       ZZ900010         1500 bp    DNA     circular VRT 11-NOV-2026
+DEFINITION  Made-up test mitogenome (circular and complete-length, but
+            unrelated, so it can't be turned). Not a real organism or record.
+ACCESSION   ZZ900010
+VERSION     ZZ900010.1
+SOURCE      mitochondrion Fictional testudine
+  ORGANISM  Fictional testudine
+            Testudines; Made-up.
+REFERENCE   1  (bases 1 to 1500)
+  AUTHORS   OnePhylogeny fixtures.
+  TITLE     Made-up mitogenomes for an engine test
+  JOURNAL   Unpublished
+FEATURES             Location/Qualifiers
+     source          1..1500
+                     /organism="Fictional testudine"
+                     /organelle="mitochondrion"
+                     /mol_type="genomic DNA"
+ORIGIN
+        1 gccaatctct tggggcccga agacgcatga tacggggcag ttccaaaaat gattcggcgc
+       61 agggtacgag atctcgagct ccgcgacttt gtgcaccgga tcccataaac ggcagttcca
+      121 aacactgtgt tcacaacgaa atgaggtgaa agacgtgtgc gagtagtaat cggccaacta
+      181 agatctcaga ccacctagga taacctatgg cgcgttctag ccatattcct gtgggacatg
+      241 cagtatcgac ggcacttaga ttaatccatg tagtaaggca caagctcgcg tacctctgag
+      301 cctatcatat ttacagtccg agcggactgg aaacactagt attgtgagcc gcagacgaga
+      361 cgggagggag agccaggcga aattcccgct cgtggccatg ggggatatta cgtccgctgc
+      421 gtagtctcgg actgataagc ttattgcgga gctaacgcag tgcggggcat gtctgtccac
+      481 cttcaaggta tcgggacgct agtcagcaac atgataaacc ctaagttgtc agcacatacg
+      541 agacgagtta ctcgctagta ataagatgaa aatgggcctg tttgcgctga tccccaaact
+      601 accgaatata atgctgcacg taagctagca ataggatttg ttatcgagat atcccttgga
+      661 ccaagcactg agtggacctt ttagaccatc gctacaacac ctgatagtgt tttgatcgct
+      721 ccaacatttt taccttcgca tctgcgcttc agggctggtc atcaccagta ggcggaatgt
+      781 gccggcacga gtcaagagct gacgtcctgc agctctaaaa ccccgaccag catgttccaa
+      841 ggggtgaact taagtagtcg acaggaacgc acttcccacg gagctatctg ttgctagaga
+      901 aagcgtccta tccctcaaga tggaggatat ccatgcaaac ccaccgtcaa cccgcgcaac
+      961 gggctatacc aatcttcgaa gccatccgat acatccctgg aaatatagcc gtatttgctc
+     1021 acataccgtg cgggtgctcc ctagctgagc ggctcggtgc ggcgcgtggg cggctccata
+     1081 cactgatcgt ataaggtaaa cgggcctttc atcacttcgg taagttttgc cccttgggac
+     1141 ccggaagctg atggagagct gcgcccaacc ggcgtagtac ctaaacttcg aactttaggg
+     1201 ggtcatgagt gcccctcaca acaggcattt gagcacctga ggaccttctc ctcgagctgt
+     1261 taggattgtt tcgtcgtcag tactgcggtt ctcgttttac caaataacag ccagtctgtt
+     1321 aagattgtgc gccttccttc aggtccggtt ggcgacagcc attcccacat caggacgtca
+     1381 aaccagcgat tcatgccggt tgtggcgtgg tgcacctcat tcatgtggcg tggagaatag
+     1441 aaaagcgcgg tccatttaga tcgtttagcg gttgtcttga agaaggaaag aggcttaacg
+//
