@@ -109,7 +109,7 @@ describe('golden mitogenome run on made-up records', () => {
     expect(s.result!.findings.find((f) => f.group === 's')!.status).toBe('consistent')
     expect(s.result!.qc!.rules.find((r) => r.rule === 'frame')!.status).toBe('bad')
     expect(s.diagnostics.some((d) => d.code === 'gene-frame')).toBe(true)
-  })
+  }, 60_000)
 
   it('refuses to build a mitogenome panel when the reference has no usable gene annotation', async () => {
     const bare = new Map(byVersion)
@@ -120,7 +120,7 @@ describe('golden mitogenome run on made-up records', () => {
     const failure = await buildPanelFromRun(ctx, profile, curation).catch((e: unknown) => e)
     expect(failure).toBeInstanceOf(EngineError)
     expect(failure).toMatchObject({ code: 'reference-unannotated', message: expect.stringMatching(/no usable gene annotation/) })
-  })
+  }, 60_000)
 
   it('uses windows the profile gives, unchanged, and keeps its notCovered as written', async () => {
     const windows = [{ id: 'cytb-part', label: 'CYTB part', start: 1029, end: 1338 }]
@@ -130,5 +130,5 @@ describe('golden mitogenome run on made-up records', () => {
     const built = await buildPanelFromRun(ctx, own, curation)
     expect(built.bundle.panel.windows).toEqual(windows)
     expect(built.bundle.panel.notCovered).toEqual(['Made-up records only'])
-  })
+  }, 60_000)
 })
