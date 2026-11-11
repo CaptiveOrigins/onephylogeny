@@ -26,6 +26,15 @@ describe('the CLI file store', () => {
     expect(await store.exists('runs/r1/log.jsonl')).toBe(true)
   })
 
+  it('lists the folders inside a folder, sorted, leaving out files, and none for a folder that is missing', async () => {
+    const store = nodeStore(root)
+    await store.write('panels/p-2/panel.json', '{}')
+    await store.write('panels/p-1/panel.json', '{}')
+    await store.write('panels/notes.txt', 'x')
+    expect(await store.folders!('panels')).toEqual(['p-1', 'p-2'])
+    expect(await store.folders!('nothing-here')).toEqual([])
+  })
+
   it('replaces a file whole and leaves no temporary file', async () => {
     const store = nodeStore(root)
     await store.write('panel.json', 'old')

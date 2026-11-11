@@ -1,6 +1,6 @@
 # Tutorial: from records to a report, offline
 
-This walks through OnePhylogeny's command line on a small example: fetch records, build a panel, check it, test three samples, read a report, check a Sanger trace and a primer pair, compare SNPs with the groups, then build a second version of the panel and compare the two. After the install it needs no network.
+This walks through OnePhylogeny's command line on a small example: fetch records, build a panel, check it, test three samples, read a report, check a Sanger trace and a primer pair, compare SNPs with the groups, then build a second version of the panel, compare the two, and put two claims to the saved results. After the install it needs no network.
 
 Every output below was captured from running the commands. Long output is trimmed, and each trim says so. Run ids, temporary folders and timestamps will differ on your machine. A test (`packages/cli/test/tutorial.test.ts`) runs every command on this page after the install, and checks the key lines of their output, so the page can't drift from the code.
 
@@ -740,7 +740,71 @@ How to read it:
 - In version 1, holding out each of group A's sites named group A every time, 6 of 6. In version 2 it named it 0 of 5 times: every result kept A, but another group fit too, or the result was flagged as possibly from a group the panel doesn't have. Each count has its interval, and those intervals are wide, because there are only a few sites.
 - Nothing here says which version is right. Regrouping a record because the results look better afterwards is choosing after seeing the answer, which isn't a test. The Mac app shows the same comparison under Compare versions in the Panel tab, and can save it as this Markdown.
 
-## 11. Clean up
+## 11. Put a claim to the data
+
+`hypothesis` checks one claim against what's already saved: results, panels and their versions. It reads only. It never builds, fetches or calls a language model. It prints the test it will run before running it, then one verdict from a closed list: refuted, not refuted, untestable with this data, or tool or data problem. There is no "confirmed". Every verdict exits 0, because a refuted claim is an answer and not an error.
+
+First, a claim the data refutes: that sample-1 belongs to group D. Its saved results are against version 1 only, so that's the version the test reads.
+
+<!-- step: hypothesis -->
+```sh
+onephylogeny hypothesis --workspace "$WS" --profile tutorial --claim sample-in-group --sample sample-1 --group d
+```
+
+```text
+Claim: Sample sample-1 belongs to group d.
+
+Stated test, before it runs:
+  Method: evaluateQuery finding.
+  Rule: Read the finding for group d in the result (evaluateQuery, evaluator version 2). Before reading anything, the panel is checked against its seal (verifyBundle) and the result against that panel (validateResult); any failure is a tool or data problem.
+  Reads:
+    - The saved result for sample-1 (sample-result sha256:c6521f66b84f…, run 2026-11-11T17-47-52-278Z-sample)
+    - The panel it was made with, panel tutorial-panel version 1 (built from sha256:6280cc0d1624ac42f1b59743e05fb8b33518d095233aead7d73c91480e245b8b) (panel sha256:fce356c69615…)
+  What each verdict will mean:
+    - refuted: the finding is excluded_within_panel: a resolved pair of groups rules d out.
+    - not refuted: the finding is consistent, or inconclusive (compared, but the rules can't rule d out).
+    - untestable with this data: the finding is not_evaluable, or the result has no finding for d.
+    - tool or data problem: a seal or result check fails, or an artifact changed after this test was stated.
+  Not refuted never means confirmed.
+
+Verdict: refuted.
+  Group d is excluded within panel tutorial-panel version 1 for sample-1: Outside this group's spread, and decisive sites favor Group A: 27 of 2 allowed over 900 columns in whole; 41 separating sites covered.
+
+It rests on:
+  - Group d: excluded_within_panel (contradicted-outside-spread). Outside this group's spread, and decisive sites favor Group A: 27 of 2 allowed over 900 columns in whole; 41 separating sites covered (sample-result sha256:c6521f66b84f…, findings.3, run 2026-11-11T17-47-52-278Z-sample)
+  - a vs d: resolved, favoring a (27 sites for a, 0 for d) (sample-result sha256:c6521f66b84f…, pairs.2, run 2026-11-11T17-47-52-278Z-sample)
+
+Caveats:
+  - Every result so far is exploratory (analysis protocol section 1): this verdict is a check on saved findings, not a confirmatory test
+  - Outside the panel's validated scope: This panel is candidate, not active
+  - Outside the panel's validated scope: This panel has no validated claims yet
+  - Excluded within this panel only: a group the panel lacks could still be the answer
+```
+
+Before reading, the result is traced to the run that made it, and every file is checked against the hash recorded when it was written. A changed file gives `tool or data problem`, not a verdict about the animal. The result and panel keys are shortened here; `--json` gives them whole.
+
+Next, a claim this data can't test: that sample-3 belongs to group A. Sample-3 was refused in step 5, so there is no result to read.
+
+<!-- step: hypothesis-untestable -->
+```sh
+onephylogeny hypothesis --workspace "$WS" --profile tutorial --claim sample-in-group --sample sample-3 --group a
+```
+
+```text
+Claim: Sample sample-3 belongs to group a.
+
+Stated test: none. This can't be tested with the saved data: there is no saved result for sample-3.
+
+Notes from loading:
+  - The saved result profiles/tutorial/results/tutorial-panel-1/sample-3.json has no result: the sample was refused (Only 80 columns align to the reference (minimum 100): probably a different gene or a poor fragment)
+
+Verdict: untestable with this data.
+  Not tested: there is no saved result for sample-3.
+```
+
+The other claims work the same way: `groups-distinct --groups a,d --window whole` reads a panel's pair table, `panel-changed-call --record sample-1 --a 1 --b 2` compares a sample's results against two versions (untestable here, since sample-1 was only tested against version 1), and `possibly-novel --sample sample-1` uses the uncalibrated distance rule. Two panel versions exist now, so a claim about the panel has to name one with `--version`; the command never picks one for you. `--plan-only` prints the stated test and stops.
+
+## 12. Clean up
 
 <!-- step: cleanup -->
 ```sh

@@ -10,6 +10,8 @@ export interface Store {
   exists(path: string): Promise<boolean>
   /** Adds to a log without rewriting it. Optional: without it, logs are written whole. */
   append?(path: string, text: string): Promise<void>
+  /** Names of the folders inside a folder, sorted; none if it doesn't exist. Optional: only hypothesis tests list folders, and without it a claim must name its panel version. */
+  folders?(path: string): Promise<string[]>
 }
 
 /** How native programs run. Only tree building needs one. */
