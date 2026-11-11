@@ -35,7 +35,7 @@ export type OnePhylogenyPluginOptions = {
 }
 
 export { either, anyOf } from './access.js'
-export { registerSequence, assignWaiting, readSingleSequence, summarize, type RecordsOptions, type RegisterSequenceInput, type Evaluate } from './records.js'
+export { registerSequence, registerTrace, assignWaiting, readSingleSequence, readTrace, summarize, type RecordsOptions, type RegisterSequenceInput, type RegisterTraceInput, type TraceSummary, type Evaluate } from './records.js'
 
 const PANEL_TRANSITIONS: Record<string, string[]> = { candidate: ['active', 'withdrawn'], active: ['superseded', 'withdrawn'], superseded: ['withdrawn'], withdrawn: [] }
 const LOCKED_PANEL_FIELDS = ['key', 'version', 'marker', 'checksum', 'artifact', 'importRun', 'taxa', 'groups', 'notCovered', 'validatedScope']

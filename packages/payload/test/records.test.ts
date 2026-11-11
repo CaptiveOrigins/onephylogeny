@@ -1,9 +1,10 @@
+import { readFileSync } from 'node:fs'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
-import { sha256Hex, type Result } from '@captiveorigins/onephylogeny-core'
+import { assessRead, readAbif, sha256Hex, sha256HexBytes, type Result } from '@captiveorigins/onephylogeny-core'
 import { MongoMemoryReplSet } from 'mongodb-memory-server'
 import { buildConfig, getPayload, type Payload } from 'payload'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { assignWaiting, onePhylogeny, readSingleSequence, registerSequence, type Evaluate } from '../src/index.js'
+import { assignWaiting, onePhylogeny, readSingleSequence, registerSequence, registerTrace, type Evaluate } from '../src/index.js'
 
 let payload: Payload
 let mongo: MongoMemoryReplSet
@@ -108,6 +109,47 @@ describe('registerSequence', () => {
     await expect(payload.update({ collection: 'sequences' as never, id: sequence.id as never, data: { status: 'assigned' } as never, user: staffOf('site-2'), overrideAccess: false })).rejects.toThrow()
     await expect(payload.update({ collection: 'sequences' as never, id: sequence.id as never, data: { tenant: 'site-1' } as never })).rejects.toThrow(/can't be edited/)
     await expect(payload.update({ collection: 'samples' as never, id: sample.id as never, data: { tenant: 'site-1' } as never })).rejects.toThrow(/can't change/)
+  })
+})
+
+describe('registerTrace', () => {
+  // Biopython's test files: 3730.ab1 is a good read, 310.ab1 a failed one. Neither is cytb; the plugin doesn't check that, the panel does.
+  const abi = (name: string) => new Uint8Array(readFileSync(new URL(`../../../fixtures/abi/${name}`, import.meta.url)))
+  const upload = async (bytes: Uint8Array, over: Record<string, unknown> = {}) =>
+    registerTrace(payload, { tenant: 'site-1', animal, kit: await kitOf(), lab, sha256: sha256HexBytes(bytes), bytes, fileName: 'upload.ab1', marker: 'cytb', ...over } as never)
+  const count = async () => (await payload.count({ collection: 'sequences' as never })).totalDocs
+
+  it('stores a usable read\'s kept bases and how it was judged, waiting to be tested', async () => {
+    const bytes = abi('3730.ab1')
+    const a = assessRead(readAbif(bytes))
+    const { sequence, created } = await upload(bytes)
+    expect(created).toBe(true)
+    expect(sequence).toMatchObject({ status: 'received', marker: 'cytb', recordId: '226032_C-ME-18_pCAGseqF', residues: a.sequence, length: a.sequence.length, sha256: sha256HexBytes(bytes), tenant: 'site-1' })
+    expect(sequence.trace).toEqual({ status: 'usable', keptStart: a.kept!.start + 1, keptEnd: a.kept!.end, rawLength: a.rawLength, meanQuality: a.meanQuality, maskedBases: a.maskedBases, mixedPeaks: a.mixedPeaks!.length })
+    // Like any sequence, it can't be edited afterwards, and its summary holds nothing else from the file.
+    await expect(payload.update({ collection: 'sequences' as never, id: sequence.id as never, data: { trace: { ...(sequence.trace as object), maskedBases: 0 } } as never })).rejects.toThrow(/can't be edited/)
+  })
+
+  it('refuses a failed read, a file that isn\'t a chromatogram and a file that doesn\'t match its checksum, storing nothing', async () => {
+    const before = await count()
+    await expect(upload(abi('310.ab1'))).rejects.toThrow(/This read failed, so it isn't stored or tested\. No stretch of the read is above the quality cutoff/)
+    await expect(upload(new TextEncoder().encode(fasta()))).rejects.toThrow(/isn't an ABI chromatogram/)
+    await expect(upload(abi('3730.ab1'), { sha256: sha256HexBytes(abi('310.ab1')) })).rejects.toThrow(/doesn't match its SHA-256/)
+    expect(await count()).toBe(before)
+  })
+
+  it('refuses a read too short to use, with the numbers', async () => {
+    // The good read with every quality set to 0 except 60 bases, in every copy of the qualities in the file.
+    const bytes = abi('3730.ab1')
+    const q = Uint8Array.from(readAbif(bytes).quality!)
+    for (let i = 0; i + q.length <= bytes.length; i++) {
+      if (!q.every((v, j) => bytes[i + j] === v)) continue
+      for (let j = 0; j < q.length; j++) bytes[i + j] = j >= 300 && j < 360 ? 50 : 0
+    }
+    expect(assessRead(readAbif(bytes)).status).toBe('short')
+    const before = await count()
+    await expect(upload(bytes)).rejects.toThrow(/too short to use: only 60 bases are good enough, under the 100 needed\. It isn't stored or tested/)
+    expect(await count()).toBe(before)
   })
 })
 

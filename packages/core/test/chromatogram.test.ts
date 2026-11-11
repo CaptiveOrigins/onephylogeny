@@ -1,7 +1,8 @@
+import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
-import { alignToReference, assessRead, checkPrimers, ChromatogramError, joinReads, mottTrim, readAbif, reverseComplement, type ChromatogramRead } from '../src'
+import { alignToReference, assessRead, sha256Hex, sha256HexBytes, checkPrimers, ChromatogramError, joinReads, mottTrim, readAbif, reverseComplement, type ChromatogramRead } from '../src'
 
 const fixture = (name: string) => new Uint8Array(readFileSync(new URL(`../../../fixtures/abi/${name}`, import.meta.url)))
 const expected = JSON.parse(readFileSync(new URL('../../../fixtures/abi/expected.json', import.meta.url), 'utf8')) as Record<string, { bases: string; quality: number[]; sampleName: string }>
@@ -181,5 +182,13 @@ describe('joinReads', () => {
     expect(j.status).toBe('single')
     if (j.status === 'single') expect(j.notes[0]).toMatch(/Only the forward read/)
     expect(joinReads('ACGT'.repeat(50), 'TTTT'.repeat(50), reference, align).status).toBe('refused')
+  })
+})
+
+describe('sha256HexBytes', () => {
+  it('hashes a chromatogram file as Node does, and text the same as sha256Hex', () => {
+    const bytes = fixture('3730.ab1')
+    expect(sha256HexBytes(bytes)).toBe(createHash('sha256').update(bytes).digest('hex'))
+    expect(sha256HexBytes(new TextEncoder().encode('ACGT é'))).toBe(sha256Hex('ACGT é'))
   })
 })
