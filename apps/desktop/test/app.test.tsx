@@ -120,6 +120,10 @@ describe('the Mac app, clicked through', () => {
     const net = within(screen.getByRole('region', { name: 'Haplotype network' }))
     expect(net.getByRole('img').getAttribute('aria-label')).toMatch(/^Haplotype network for window .*: \d+ haplotypes from \d+ records/)
     expect(net.getByRole('list', { name: 'Groups' })).toBeTruthy()
+    // No group here has ecoregion tags, so the Panel tab says so and draws no map.
+    const map = within(screen.getByRole('region', { name: 'Region map' }))
+    expect(map.getByText(/No group in this panel is tagged with an ecoregion yet/)).toBeTruthy()
+    expect(map.queryByRole('img')).toBeNull()
   })
 
   it('tells you when a second job has to wait, instead of ignoring the click', async () => {

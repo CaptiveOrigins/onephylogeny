@@ -27,6 +27,10 @@ jobs:
           targets: aarch64-apple-darwin,x86_64-apple-darwin
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r --filter '!onephylogeny-desktop' build
+      # The region map's outlines ship inside the app (ADR 0008), so people have nothing to fetch or choose. Built here
+      # from the official RESOLVE release (about 150 MB down, about 8 MB in the app); the log prints the SHA-256.
+      - run: npm install -g mapshaper@0.7.101
+      - run: node scripts/ecoregions.mjs apps/desktop/src-tauri/resources/ecoregions.json
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

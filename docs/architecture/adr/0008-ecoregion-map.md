@@ -15,4 +15,5 @@
 
 - A map is never finer than the ecoregions tagged, and those are whole ecoregions, often larger than any sampled area. Tagging is a curation decision that needs review, like a group's region name.
 - The outlines aren't shipped in the npm packages, to keep them small.
+- The Mac app carries them inside the app bundle (2026-11-10): its release workflow builds them with `scripts/ecoregions.mjs`, and the app reads them from its resources only when a panel with tags is shown. That leaves people nothing to fetch, build or point at, and nothing is downloaded on their machine. Each `.dmg` is about 8 MB bigger for it. A local build without the file still runs and says the map can't be drawn.
 - The redfoot panel 0.7.1 has no tags yet. A proposal is in the data repo for review.
