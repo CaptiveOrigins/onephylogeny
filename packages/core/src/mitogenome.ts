@@ -4,7 +4,8 @@
  * the reason, for the panel's `notCovered`.
  */
 import type { GenBankRecord } from './genbank.js'
-import type { PanelWindow } from './model.js'
+import type { GeneticCode, PanelWindow } from './model.js'
+import { basesOf, internalStops, reverseComplement } from './sequence.js'
 
 export type LeftOutGene = { name: string; location: string; reason: string }
 export type GeneWindows = { windows: PanelWindow[]; leftOut: LeftOutGene[]; notes: string[] }
@@ -103,4 +104,110 @@ export function coveredColumns(windows: readonly PanelWindow[]): number {
     reach = Math.max(reach, w.end)
   }
   return total
+}
+
+export type Rotation =
+  | { status: 'rotated'; sequence: string; strand: '+' | '-'; shift: number }
+  | { status: 'refused'; reason: string }
+
+/**
+ * Turns a complete, circular mitogenome so it starts where the reference starts and reads on the reference's strand,
+ * before alignment (ADR 0009, decision 1). The start is placed from the first stretch of the reference that is unique in it
+ * (a mitogenome often starts in repeats), by exact k-mer votes. A
+ * partial record isn't circular and must not be turned; a start found nowhere, or in two places, is a refusal.
+ */
+export function rotateToReference(query: string, reference: string, options: { head?: number; k?: number } = {}): Rotation {
+  const k = options.k ?? 16
+  const size = options.head ?? 200
+  const ref = reference.toUpperCase()
+  // Anchor on the first stretch of the reference whose k-mers occur once in it. Mitogenomes often start in the
+  // control region, whose tandem repeats would match many places.
+  const refDoubled = ref + ref.slice(0, size)
+  const unique = (from: number) => {
+    let ok = 0
+    let all = 0
+    for (let j = from; j + k <= from + size; j++) {
+      const kmer = refDoubled.slice(j, j + k)
+      if (!/^[ACGT]+$/.test(kmer)) continue
+      all++
+      const first = refDoubled.indexOf(kmer)
+      const again = refDoubled.indexOf(kmer, first + 1)
+      if (again < 0 || again >= ref.length + first) ok++
+    }
+    return all > 0 && ok / all >= 0.9
+  }
+  let anchor = -1
+  for (let from = 0; from + size <= ref.length; from += 50) if (unique(from)) { anchor = from; break }
+  if (anchor < 0) return { status: 'refused', reason: 'The reference has no stretch unique enough to anchor on.' }
+  const head = ref.slice(anchor, anchor + size)
+  // Each exact k-mer of the anchor votes for where the reference's start falls in the record. Exact matches only:
+  // an estimate a few bases off would shift every column after it.
+  const vote = (seq: string) => {
+    const n = seq.length
+    const doubled = seq + seq.slice(0, head.length)
+    const votes = new Map<number, number>()
+    for (let j = 0; j + k <= head.length; j++) {
+      const kmer = head.slice(j, j + k)
+      if (!/^[ACGT]+$/.test(kmer)) continue
+      let at = doubled.indexOf(kmer)
+      const seen = new Set<number>()
+      while (at >= 0 && at < n + j) {
+        const start = (((at - j - anchor) % n) + n) % n
+        if (!seen.has(start)) {
+          seen.add(start)
+          votes.set(start, (votes.get(start) ?? 0) + 1)
+        }
+        at = doubled.indexOf(kmer, at + 1)
+      }
+    }
+    return [...votes.entries()].sort((a, b) => b[1] - a[1])
+  }
+  const forward = query.toUpperCase()
+  const backward = reverseComplement(forward)
+  const options2 = ([['+', forward], ['-', backward]] as const).map(([strand, seq]) => ({ strand, seq, votes: vote(seq) }))
+  const ranked = options2.flatMap((o) => o.votes.map(([start, count]) => ({ strand: o.strand, seq: o.seq, start, count }))).sort((a, b) => b.count - a.count)
+  const best = ranked[0]
+  const needed = Math.max(5, Math.floor((head.length - k + 1) / 4))
+  if (!best || best.count < needed) return { status: 'refused', reason: "The reference's start couldn't be found in this record, so it can't be turned to match." }
+  const rival = ranked[1]
+  if (rival && rival.count >= best.count / 2) return { status: 'refused', reason: "The reference's start matches more than one place in this record, so where it starts is ambiguous." }
+  return { status: 'rotated', sequence: best.seq.slice(best.start) + best.seq.slice(0, best.start), strand: best.strand, shift: best.start }
+}
+
+export type GeneCheck = {
+  window: string
+  label: string
+  /** Share of the gene's reference columns where the query has a base. */
+  coverage: number
+  status: 'ok' | 'stops' | 'frame' | 'partial' | 'not-checked'
+  detail: string
+}
+
+/**
+ * Frame and stop codons for each protein-coding gene window, on the gene's own strand (ADR 0009, decision 4).
+ * `queryAligned` is in reference coordinates, as every aligned record is. A gene the query covers only in part isn't
+ * judged. A gene whose reference doesn't read cleanly (ND3's untranslated extra base in turtles) isn't judged either,
+ * because the same plain reading would flag every record.
+ */
+export function geneChecks(queryAligned: string, reference: string, windows: readonly PanelWindow[], code: GeneticCode, minCoverage = 0.95): GeneCheck[] {
+  return windows
+    .filter((w) => w.gene?.kind === 'cds')
+    .map((w) => {
+      const orient = (s: string) => (w.gene!.strand === '-' ? reverseComplement(s) : s.toUpperCase())
+      const q = orient(queryAligned.slice(w.start, w.end))
+      const r = orient(reference.slice(w.start, w.end))
+      const bases = [...q].filter((c) => basesOf(c)).length
+      const coverage = Math.round((bases / (w.end - w.start)) * 1000) / 1000
+      const base = { window: w.id, label: w.label, coverage }
+      if (coverage < minCoverage) return { ...base, status: 'partial', detail: `Covers ${Math.round(coverage * 100)}% of the gene, so frame and stops weren't judged.` }
+      if (internalStops(r, 0, code).length) return { ...base, status: 'not-checked', detail: "The reference itself doesn't read cleanly here (for example an untranslated extra base), so a plain reading can't judge the query." }
+      // Only gaps between the first and last base: missing ends are coverage, not a frameshift.
+      const inner = q.replace(/^[^ACGTRYSWKMBDHV]+|[^ACGTRYSWKMBDHV]+$/gi, '')
+      const gaps = [...inner].filter((c) => c === '-').length
+      if (gaps % 3 !== 0) return { ...base, status: 'frame', detail: `${gaps} missing column${gaps === 1 ? '' : 's'} inside the gene, not a multiple of three: a frameshift, a misread or a nuclear copy.` }
+      const lead = /^[^ACGTRYSWKMBDHV]*/i.exec(q)![0].length
+      const stops = internalStops(inner, (3 - (lead % 3)) % 3, code)
+      if (stops.length) return { ...base, status: 'stops', detail: `${stops.length} internal stop codon${stops.length === 1 ? '' : 's'}: a misread or a nuclear copy.` }
+      return { ...base, status: 'ok', detail: 'In frame, with no internal stops.' }
+    })
 }
