@@ -106,6 +106,21 @@ The evaluator stops asking "which group is this?" as one question. It asks wheth
 
 **Reporting.** Hold-out results go in the deviation log whether or not they match these expectations, labeled exploratory. Nothing above becomes a confirmatory test, since these records shaped the method.
 
+**Distance-based novelty (rule version 1, committed 2026-11-11 before it ran on any data, uncalibrated).** The `novelty.flagged` above only says no evaluated group fits. This second test asks whether a query is farther from everything in the panel than the panel's own groups are from themselves. It's `noveltyByDistance` in core.
+
+- **Records.** Only records that can show where a group occurs, the same ones the evaluator uses.
+- **The panel's own distances, per window.** For each record, the distance (differences per shared column) to its nearest record in the same group from a *different site*, sharing at least `minSharedColumns` columns. Records without a site count as one site per group, as in the evaluator. Leaving out the whole site mirrors the default claim, a new site in a sampled region, and keeps duplicates from one site from pulling the threshold to zero.
+- **Threshold, per window.** The 95th percentile, by nearest rank, of those distances pooled across groups. It needs at least 20 distances, since below that the 95th percentile is just the largest one. Groups with more records weigh more in the pool.
+- **The query, per window.** It needs at least `minSharedColumns` columns in the window. Its distance is to the nearest panel record, of any group, that shares at least `minSharedColumns` columns with it. Beyond the threshold (strictly greater) is `possibly-novel`; at or under it is `within-range`. Too few query columns, no record sharing enough columns, or too few panel distances is `not-evaluable`, with the reason, never a guess.
+- **Overall.** `possibly-novel` only if every evaluable window says so, `within-range` only if every one says that, `windows-disagree` if they differ, and `not-evaluable` if none could be tested.
+- **Known weakness, left for calibration to show:** a panel whose groups are nearly clonal gets a threshold near zero, so one sequencing error can make a query `possibly-novel`.
+
+**It changes no status.** Every answer carries `calibrated: false`, it doesn't set `novelty.flagged`, and anything that shows it must say it's uncalibrated. Wiring it into results waits on calibration.
+
+**Calibration would mean** measuring both error rates on queries whose answer is known and that shaped neither the rule nor the panel. Known-novel queries: records of lineages the panel lacks, either whole groups of the same species left out of a panel built without them, or close relatives outside the panel (sister species, or populations from regions no group covers), from published studies. Known-sampled queries: records from sites in a group's region that the panel never saw. Both need enough independent sites, counted as in section 9 (at least 4 per lineage, and about 17 all-correct sites before a lower 95% bound reaches 0.8), from at least 2 studies, so a rate can be stated with an interval on sites. On the first species that data doesn't exist yet: the lineages that could serve as known-novel (the Guianas, Brazil east, Chaco) have 1 to 4 records and at most a few sites each. The 95th percentile and the 20-distance minimum aren't to be changed because a calibration run disappoints; a change is a new rule version and goes in the deviation log.
+
+**Group-left-out check.** `noveltyGroupLeftOut` removes each whole group and counts how its records come out. They should mostly come out `possibly-novel`. It reports counts by outcome with no pass mark, and it isn't a calibration: a panel's own groups aren't a sample of the lineages it lacks, and they shaped the rule's inputs.
+
 ## 9. Validation harness
 
 A claim here is narrow: "this panel separates groups A and B in window W, for queries of at least N columns." The harness tests claims and fills `validatedScope` from what passes. Nobody types a scope by hand. These gates were committed before the harness ran on real data. Any later change goes in the deviation log.
