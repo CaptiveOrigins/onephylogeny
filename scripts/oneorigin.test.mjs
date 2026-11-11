@@ -178,7 +178,7 @@ describe('lock and check', () => {
     const { errors, warnings } = await check(tool, { source })
     assert.deepEqual(errors, [])
     assert.equal(warnings.length, 1)
-    assert.match(warnings[0], /The source has moved ahead of the lock .*guidelines.md: changed, new.md: added at the source/)
+    assert.match(warnings[0], /The source differs from the lock .*guidelines.md: changed, new.md: added at the source/)
   })
 
   it('only warns when the source can\'t be reached, and still checks the copy', async () => {

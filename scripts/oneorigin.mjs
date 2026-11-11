@@ -240,7 +240,7 @@ export async function check(root, { source, offline = false } = {}) {
   try {
     const src = await sourceHashes(root, lockValue, { source, offline })
     const ahead = compare(lockValue.files ?? {}, src.files).map((d) => d.replace(': missing', ': not at the source').replace(': not in the source', ': added at the source'))
-    if (ahead.length) warnings.push(`The source has moved ahead of the lock (${src.where}): ${ahead.join(', ')}. Copy it again and rewrite the lock.`)
+    if (ahead.length) warnings.push(`The source differs from the lock (${src.where}): ${ahead.join(', ')}. If the source has moved ahead, copy it again and rewrite the lock; if the lock points at a commit not yet on ${lockValue.source.branch ?? SOURCE_BRANCH}, this clears once it lands.`)
     if (!src.complete && !ahead.length) warnings.push(`Checked the locked files at ${src.where}; a file added there since wouldn't show.`)
   } catch (e) {
     warnings.push(`Couldn't check whether the source has moved ahead (${e.message === 'offline' ? 'offline' : e.message}). The copy itself was checked against the lock.`)
