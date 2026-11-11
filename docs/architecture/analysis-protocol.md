@@ -133,6 +133,19 @@ A claim here is narrow: "this panel separates groups A and B in window W, for qu
 
 **Expected before running** (first species, leave-one-site-out, records of panel `0.6.1`): no `excluded_within_panel` finding concerns the true group, as in the fragment tests. No prediction is made for single-match accuracy.
 
+**Outcomes by window and by study.** Two more reports sit beside the ladder, for every group in every window, with the query cut to that window. One holds out each site in turn (the default claim). The other holds out each study, by the study names records already carry, and tests that study's records against a panel built without it. Each test has exactly one outcome, checked in this order:
+
+1. The true group is consistent. It's *named* if it's the only consistent group and the query isn't flagged as possibly novel, and *kept but not named* otherwise. Named results where every other group could also be compared are counted apart.
+2. *Wrong*, if the true group is excluded, or another group is consistent while the true group isn't. This holds even when the true group couldn't be compared, since the result still points elsewhere.
+3. *Not evaluable*, if the true group couldn't be compared and nothing is consistent.
+4. *Unresolved* otherwise.
+
+A held-out record is a query in a window only if it can show location and covers at least `minSharedColumns` there. If the panel built without it leaves its group short of `minSharedColumns` columns at `minDepthPerColumn` records in that window, the same rule a pair uses, its records are counted as not testable, with the reason. They're never dropped. Records with no study stay in every panel of the study report and are counted, never tested. A window with no column separating any pair is reported as such.
+
+Each of "true group kept", "named" and "wrong" carries an exact Clopper-Pearson 95% interval on the number of tests, whatever the count. There's no bare rate. Clopper-Pearson was chosen over Wilson because it never covers less than it says at small counts, and section 9's gates already use it, so one report names one method. Tests from one site or study aren't independent, so these intervals are narrower than the truth, and each row gives its site count beside them. These reports gate nothing. Committed 2026-11-10, before they first ran on real data.
+
+**Expected before running** (first species, records of panel `0.6.1`): in 3', no West or East test is wrong in either report, as in the across-studies gate. Every row for the Guianas and Chaco is not testable or has no tests, since neither reaches depth anywhere.
+
 Values 4, 0.8 and 5% are our proposals and aren't calibrated. **They aren't to be changed because a claim failed.**
 
 **Every claim stays labeled exploratory** until a test meeting section 2 runs. Passing these gates means a claim survived its controls on data that shaped the method, not that it's confirmed.
