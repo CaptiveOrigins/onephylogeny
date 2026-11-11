@@ -13,6 +13,11 @@ Each audit lists what this repo promises, the tests that prove it, and the gaps:
 - **Promises:** a disagreement between two good bases is never resolved by choosing; each read fills the other's gaps; a read that doesn't align is left out and said so.
 - **Covered** (`packages/core/test/chromatogram.test.ts`, 2 tests, with the real aligner): an overlapping pair with one planted disagreement (listed, written as N) and one low-quality base filled from the other read, giving the reference back exactly otherwise; one read not aligning; neither aligning.
 - **Gaps left:** no real forward and reverse pair from a tortoise yet.
+## 2026-11-11: SNPs from a prepared VCF
+
+- **Promises:** genotypes are read exactly; missing calls are never differences; filtered sites are counted; malformed files are refused with the line; nearest-neighbour agreement counts only pairs sharing enough sites.
+- **Covered** (`packages/core/test/vcf.test.ts`, 5 tests): reading, missing and filtered sites; four kinds of refusal; distances of 0, one half and none; a made-up two-population set with one animal whose nuclear genotypes sit with the other group's (reported, not hidden), an uncalled animal, an animal only in the groups and one only in the VCF.
+- **Gaps left:** no real VCF yet (none is published for the redfoot 3RAD study). Multi-allelic and haploid sites are read but only tested through code reading.
 
 ## 2026-11-10: region map in the Mac app
 
