@@ -3,9 +3,52 @@
  * Nothing is typed by hand and nothing is guessed: a gene whose annotation can't be placed plainly is left out, with
  * the reason, for the panel's `notCovered`.
  */
+import { disagreeingWindows, nearestByWindow } from './conflicts.js'
 import type { GenBankRecord } from './genbank.js'
-import type { GeneticCode, PanelWindow } from './model.js'
+import type { Finding, GeneSummary, GeneticCode, Id, PanelWindow } from './model.js'
 import { basesOf, internalStops, reverseComplement } from './sequence.js'
+
+/**
+ * The summary across genes for one result (ADR 0009, decision 5), or undefined when the panel has no gene windows.
+ * Each gene is still judged on its own; this only lays them side by side and counts. "Nearest" is by differences per
+ * shared column, exactly as conflicts compute it. Nothing is added up into a probability or a score: genes on one
+ * mitogenome are inherited together, so agreeing genes are not independent tests (analysis protocol, section 6).
+ */
+export function geneSummary(queryAligned: string, windows: readonly PanelWindow[], findings: readonly Finding[]): GeneSummary | undefined {
+  const genes = windows.filter((w) => w.gene)
+  if (!genes.length) return undefined
+  const isGene = new Set<Id>(genes.map((w) => w.id))
+  const geneFindings = findings.map((f) => ({ ...f, windows: f.windows.filter((w) => isGene.has(w.window)) }))
+  const nearest = new Map(nearestByWindow({ findings: geneFindings }).map((n) => [n.window, n.closest]))
+  const compared = genes.filter((w) => geneFindings.some((f) => f.windows.some((x) => x.window === w.id)))
+  const rows = compared.map((w) => {
+    const here = geneFindings.flatMap((f) => f.windows.filter((x) => x.window === w.id).map((x) => ({ group: f.group, x })))
+    return {
+      window: w.id,
+      label: w.label,
+      compared: here.map((h) => h.group),
+      withinSpread: here.filter((h) => h.x.differences <= h.x.allowedDifferences).map((h) => h.group),
+      nearest: nearest.get(w.id) ?? [],
+      sharedColumns: Math.max(0, ...here.map((h) => h.x.sharedColumns)),
+    }
+  })
+  const byGroup = new Map<Id, Id[]>()
+  for (const r of rows) for (const g of r.nearest) byGroup.set(g, [...(byGroup.get(g) ?? []), r.window])
+  // Counted once: a column in two overlapping genes (ATP8 and ATP6) is one column.
+  const seen = new Set<number>()
+  for (const w of compared) for (let i = w.start; i < w.end; i++) if (basesOf(queryAligned[i])) seen.add(i)
+  const disagreeing = new Set(disagreeingWindows(rows.filter((r) => r.nearest.length).map((r) => ({ window: r.window, closest: r.nearest }))))
+  return {
+    geneWindows: genes.length,
+    comparedWindows: compared.length,
+    columns: coveredColumns(compared),
+    queryColumns: seen.size,
+    windows: rows,
+    // Most genes first, then by id: an order for reading, not a ranking of how likely a group is.
+    nearest: [...byGroup].map(([group, ws]) => ({ group, windows: ws })).sort((a, b) => b.windows.length - a.windows.length || String(a.group).localeCompare(String(b.group))),
+    disagreeing: rows.filter((r) => disagreeing.has(r.window)).map((r) => r.window),
+  }
+}
 
 export type LeftOutGene = { name: string; location: string; reason: string }
 export type GeneWindows = { windows: PanelWindow[]; leftOut: LeftOutGene[]; notes: string[] }

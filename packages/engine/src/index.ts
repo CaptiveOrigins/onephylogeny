@@ -9,6 +9,7 @@ import { hashText, loadArtifact, type Artifact, type ArtifactRef } from './artif
 import type { EngineContext, Store, ValidationReports } from './context.js'
 import { EngineError, isCancelled } from './errors.js'
 import { ENGINE, json, profilePaths, withRun, type RunScope } from './run.js'
+import { markerInSample, placeText } from './route.js'
 
 export * from './errors.js'
 export type { EngineContext, Store, ToolRunner, Compute, ValidationReports } from './context.js'
@@ -564,13 +565,19 @@ const geneQcDiagnostics = (diagnostics: Diagnostic[]): Diagnostic[] => [
 /** Tests one sequence against one panel. Pure TypeScript: runs in the app, the CLI or a hosted site. */
 export function testSample(sequence: string, queryId: string, bundle: PanelBundle, options: { runId?: string } = {}): SampleOutcome {
   if (!bundle.referenceSequence) throw new EngineError('panel-outdated', 'This panel has no reference sequence', 'Build it again')
-  const a = alignToReference(sequence, bundle.referenceSequence)
+  // A whole mitogenome against a gene panel: the marker is cut out first, as routing does (ADR 0009, decision 6).
+  // A sequence of ordinary length is tested as given, exactly as before.
+  const part = markerInSample(sequence, bundle)
+  const marker = bundle.panel.marker.gene ?? 'The marker'
+  if (part.manyPlaces) return { result: null, diagnostics: [{ severity: 'error', code: 'marker-in-many-places', message: `${marker} matches ${part.manyPlaces.length} places in this sample, so which one to test is ambiguous` }] }
+  const located: Diagnostic[] = part.located ? [{ severity: 'info', code: 'marker-located', message: `${placeText(marker, part.located)}; only that part was tested` }] : []
+  const a = alignToReference(part.sequence, bundle.referenceSequence)
   // The panel's own checks. A frame problem in a sample warns rather than refuses: it's shown with the result, for a person to weigh.
   const mito = bundle.panel.marker.kind === 'mitogenome'
   const assessed = assessAlignment(a, { ...bundle.panel.gates, frameErrors: false })
   // In a mitogenome panel the whole-sequence frame check is replaced by the per-gene one (ADR 0009, decision 4).
   const diagnostics = mito ? assessed.filter((d) => d.code !== 'frame-shifting-indel') : assessed
-  if (!a || diagnostics.some((d) => d.severity === 'error')) return { result: null, diagnostics }
+  if (!a || diagnostics.some((d) => d.severity === 'error')) return { result: null, diagnostics: [...located, ...diagnostics] }
   const genes = mito ? checkGenes(a.aligned, bundle.referenceSequence, bundle.panel.windows, bundle.panel.reference.geneticCode) : undefined
   if (genes) diagnostics.push(...genes.diagnostics)
   // The check runs before the result so a flag is part of what the result says about itself.
@@ -582,13 +589,13 @@ export function testSample(sequence: string, queryId: string, bundle: PanelBundl
   }
   const result = evaluateQuery(a.aligned, bundle, {
     queryId, runId: options.runId ?? 'sample', querySha256: hashText(sequence.toUpperCase()), producedBy: [ENGINE, ALIGNER],
-    caveats: ['Rules are configured values and these statuses are not probabilities', ...diagnostics.filter((d) => d.severity === 'warning').map((d) => d.message), ...numtCaveats],
+    caveats: ['Rules are configured values and these statuses are not probabilities', ...located.map((d) => d.message), ...diagnostics.filter((d) => d.severity === 'warning').map((d) => d.message), ...numtCaveats],
   })
   // Quality by named rules, beside the statuses, never changing them (roadmap stage 4).
   result.qc = sampleQc(a.aligned, genes ? geneQcDiagnostics(diagnostics) : diagnostics, bundle.sequences, bundle.panel.qc)
   if (genes?.checks.length) result.qc.genes = genes.checks
   diagnostics.push(...validateResult(result, bundle.panel))
-  return { result, diagnostics, aligned: a.aligned, insertions: a.insertions.reduce((s, x) => s + x.length, 0), deletions: a.deletions.reduce((s, x) => s + x.length, 0), identity: a.identity, clipped: a.clipped }
+  return { result, diagnostics: [...located, ...diagnostics], aligned: a.aligned, insertions: a.insertions.reduce((s, x) => s + x.length, 0), deletions: a.deletions.reduce((s, x) => s + x.length, 0), identity: a.identity, clipped: a.clipped }
 }
 
 /** Tests a sequence with a full record: a saved result that traces back to its panel, the records and raw files. */

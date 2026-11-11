@@ -1,6 +1,6 @@
 import { regionCard, type RegionCardRefusal } from './card.js'
 import { conflictText, resultConflicts } from './conflicts.js'
-import type { FindingStatus, Id, Panel, PairFinding, Result } from './model.js'
+import type { FindingStatus, GeneSummary, Id, Panel, PairFinding, Result } from './model.js'
 
 /**
  * A self-contained report for one sample (roadmap stage 2, item 3): the conclusion, the reasons, what was covered, what
@@ -16,6 +16,11 @@ export type SampleReport = {
   coverage: { columnsCompared: number; notEvaluated: string[] }
   /** Where the evidence points more than one way (roadmap stage 4). Empty when it doesn't. */
   conflicts: string[]
+  /** Panels whose windows are genes only (ADR 0009, decision 5): the genes side by side, in plain words. Counts, never a probability. */
+  genes?: {
+    summary: string[]
+    windows: { gene: string; columns: number; withinSpread: string[]; nearest: string[] }[]
+  }
   /** The sequence's quality by named rules, if the result carries it. */
   quality?: { overall: string; rules: string[] }
   gaps: string[]
@@ -52,6 +57,30 @@ const pairOutcome = (p: PairFinding, label: (id: Id) => string): string => {
   return `Not separated by the columns this sequence covers (${p.reasonCode})`
 }
 
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
+
+/** The summary across genes in plain words. It lays the genes side by side and counts; it adds nothing up. */
+function geneLines(s: GeneSummary, label: (id: Id) => string): NonNullable<SampleReport['genes']> {
+  const gene = new Map(s.windows.map((w) => [w.window, w.label]))
+  const genes = (ids: Id[]) => ids.map((id) => gene.get(id) ?? String(id)).join(', ')
+  const summary: string[] = []
+  if (!s.comparedWindows) summary.push(`No gene of the ${s.geneWindows} in this panel could be compared with this sequence.`)
+  else {
+    summary.push(`Compared in ${s.comparedWindows} of ${s.geneWindows} genes, over ${s.columns} reference columns (a column in two overlapping genes counted once). This sequence has a base at ${s.queryColumns} of them.`)
+    if (s.nearest.length) {
+      const tie = s.windows.some((w) => w.nearest.length > 1)
+      summary.push(`Nearest group in each gene, by differences per shared column: ${s.nearest.map((n) => `${label(n.group)} in ${plural(n.windows.length, 'gene')} (${genes(n.windows)})`).join('; ')}.${tie ? ' A gene where groups tie counts for each of them.' : ''}`)
+    }
+    if (s.disagreeing.length) summary.push(`These genes point to different nearest groups: ${genes(s.disagreeing)}.`)
+    else if (s.comparedWindows > 1) summary.push('The compared genes don\'t disagree: each shares a nearest group with every other.')
+  }
+  summary.push('These are counts of genes, not a probability or a score. The genes of one mitogenome are inherited together, so genes that agree are not independent tests.')
+  return {
+    summary,
+    windows: s.windows.map((w) => ({ gene: w.label, columns: w.sharedColumns, withinSpread: w.withinSpread.map(label), nearest: w.nearest.map(label) })),
+  }
+}
+
 export function sampleReport(panel: Panel, result: Result): SampleReport {
   const label = (id: Id) => panel.groups.find((g) => g.id === id)?.label ?? String(id)
   // The keeper's own view: candidates are shown, labelled exploratory, exactly as the card does for a maintainer's choice.
@@ -68,6 +97,7 @@ export function sampleReport(panel: Panel, result: Result): SampleReport {
     comparisons: result.pairs.map((p) => ({ pair: `${label(p.a)} vs ${label(p.b)}`, outcome: pairOutcome(p, label) })),
     coverage: { columnsCompared: result.overlap, notEvaluated },
     conflicts: resultConflicts(result).map((c) => conflictText(c, label)),
+    ...(result.geneSummary ? { genes: geneLines(result.geneSummary, label) } : {}),
     ...(result.qc ? { quality: { overall: result.qc.overall, rules: result.qc.rules.map((q) => `${q.rule}: ${q.status}. ${q.detail}`) } } : {}),
     // The result's own caveats already say what wasn't evaluated and what the panel doesn't cover, in the evaluator's
     // words; the panel's line is added only for a result made before it did. Exact repeats are dropped.
@@ -106,6 +136,13 @@ export function reportMarkdown(r: SampleReport): string {
     for (const c of r.comparisons) out.push(`| ${cell(c.pair)} | ${cell(c.outcome)} |`)
   }
   out.push('', '## Coverage', '', `${r.coverage.columnsCompared} columns compared.${r.coverage.notEvaluated.length ? ` Not evaluated: ${r.coverage.notEvaluated.join(', ')}.` : ''}`)
+  if (r.genes) {
+    out.push('', '## Across genes', '', ...r.genes.summary.flatMap((s) => [s, '']))
+    if (r.genes.windows.length) {
+      out.push('| Gene | Columns compared | Within the group\'s spread | Nearest |', '| --- | --- | --- | --- |')
+      for (const w of r.genes.windows) out.push(`| ${cell(w.gene)} | ${w.columns} | ${cell(w.withinSpread.join(', ') || 'none')} | ${cell(w.nearest.join(', '))} |`)
+    } else out.pop()
+  }
   if (r.quality) out.push('', '## Sequence quality', '', `Overall: ${r.quality.overall}. These describe the sequence and don't change any status.`, '', ...r.quality.rules.map((q) => `- ${q}`))
   if (r.conflicts.length) out.push('', '## Conflicting evidence', '', ...r.conflicts.map((c) => `- ${c}`))
   if (r.gaps.length) out.push('', '## Gaps and caveats', '', ...r.gaps.map((g) => `- ${g}`))

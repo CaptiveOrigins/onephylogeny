@@ -386,4 +386,41 @@ export type Result = {
   caveats: string[]
   /** The sequence's quality by named rules (roadmap stage 4). It describes the sequence; it changes no status. */
   qc?: SampleQc
+  /**
+   * Panels whose windows are genes only (ADR 0009, decision 5): what the gene windows say side by side. Counts and
+   * lists, never a combined probability or a single score. Absent for panels without gene windows, such as a single-gene panel.
+   */
+  geneSummary?: GeneSummary
+}
+
+/** One gene window in a result's summary across genes. */
+export type GeneSummaryWindow = {
+  window: Id
+  label: string
+  /** Groups that could be compared with this sequence in this gene. */
+  compared: Id[]
+  /** Of those, the groups whose differences here are within their spread in this gene. */
+  withinSpread: Id[]
+  /** Of those compared, the groups with the fewest differences per shared column here. A tie lists each tied group. */
+  nearest: Id[]
+  /** The most columns any group shared with this sequence in this gene. */
+  sharedColumns: number
+}
+
+/** The gene windows of one result, side by side (ADR 0009, decision 5). It describes; it changes no status. */
+export type GeneSummary = {
+  /** Gene windows in the panel. */
+  geneWindows: number
+  /** Gene windows where at least one group could be compared with this sequence. */
+  comparedWindows: number
+  /** Reference columns in the compared gene windows, each counted once where genes overlap. */
+  columns: number
+  /** Of those columns, the ones where this sequence has a base. */
+  queryColumns: number
+  /** Each compared gene window, in reference order. */
+  windows: GeneSummaryWindow[]
+  /** For each group nearest in at least one gene: the genes where it is nearest. A tied gene counts for each tied group. */
+  nearest: { group: Id; windows: Id[] }[]
+  /** Genes whose nearest groups share none with another compared gene's. Empty when the genes don't disagree. */
+  disagreeing: Id[]
 }

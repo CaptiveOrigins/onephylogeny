@@ -4,6 +4,7 @@ import { DEFAULT_GATES, type GateSettings } from './gates.js'
 import { LOCATION_EVIDENCE, sealPanel, sequencesChecksum } from './panel.js'
 import type { Diagnostic, Finding, FindingReason, FindingStatus, FindingWindow, Id, Novelty, PairFinding, PairReason, Panel, PanelGroup, PanelSettings, PanelStatus, ProvenanceClass, Result, EvidenceUse, ValidatedClaim, StudyLink } from './model.js'
 import { CLAIM_GATES, clopperPearson, describeClaim } from './validation.js'
+import { geneSummary } from './mitogenome.js'
 
 /** A panel and the aligned sequences its evidence names. Panels stay JSON; sequences travel in FASTA beside them. */
 export type PanelBundle = { panel: Panel; sequences: Record<string, string>; referenceSequence?: string }
@@ -265,6 +266,8 @@ export function evaluateQuery(queryAligned: string, bundle: PanelBundle, options
     }
     if (!pairs.some((p) => p.state === 'resolved')) outOfValidatedScope.push('This sequence resolves none of the validated claims')
   }
+  // Gene windows only (ADR 0009, decision 5). A single-gene panel has none, and gets no key at all.
+  const genes = geneSummary(queryAligned, panel.windows, findings)
   return {
     schemaVersion: 2,
     query: options.queryId,
@@ -279,6 +282,7 @@ export function evaluateQuery(queryAligned: string, bundle: PanelBundle, options
     novelty: { flagged: noFit, reasons, ...(closest ? { closest } : {}), neitherSideSites },
     outOfValidatedScope,
     caveats,
+    ...(genes ? { geneSummary: genes } : {}),
   }
 }
 
