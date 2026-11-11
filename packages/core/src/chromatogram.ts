@@ -297,3 +297,61 @@ export function checkPrimers(options: {
     }),
   }
 }
+
+export type JoinedRead =
+  | {
+      status: 'joined' | 'single'
+      /** The read in reference coordinates: one base, N or gap per reference column. */
+      aligned: string
+      /** Reference columns (0-based) where both reads had a base of at least Q20 and they disagreed: written as N. */
+      conflicts: number[]
+      columns: { both: number; forwardOnly: number; reverseOnly: number }
+      notes: string[]
+    }
+  | { status: 'refused'; reason: string }
+
+/**
+ * Joins a forward and a reverse read of one sample into one sequence in reference coordinates (roadmap stage 6.3).
+ * Each read is the kept sequence from `assessRead`, so bases below the quality cutoff are already N. Both are aligned to
+ * the reference (the reverse read is turned by the aligner). Where one read has a base and the other doesn't, the base
+ * is used; where both agree, it stands; where two good bases disagree, the column becomes N and is listed, never chosen.
+ * If one read doesn't align, the other is used alone and that's said.
+ */
+export function joinReads(forward: string, reverse: string, reference: string, align: (seq: string, ref: string) => { aligned: string } | null): JoinedRead {
+  const f = forward ? align(forward, reference) : null
+  const r = reverse ? align(reverse, reference) : null
+  if (!f && !r) return { status: 'refused', reason: 'Neither read aligns to the reference.' }
+  const notes: string[] = []
+  if (!f || !r) {
+    notes.push(`Only the ${f ? 'forward' : 'reverse'} read aligns to the reference; the other is left out.`)
+    const only = (f ?? r)!.aligned
+    const n = [...only].filter((c) => basesOf(c)).length
+    return { status: 'single', aligned: only, conflicts: [], columns: { both: 0, forwardOnly: f ? n : 0, reverseOnly: r ? n : 0 }, notes }
+  }
+  const conflicts: number[] = []
+  const columns = { both: 0, forwardOnly: 0, reverseOnly: 0 }
+  let out = ''
+  for (let i = 0; i < reference.length; i++) {
+    const a = f.aligned[i] ?? '-'
+    const b = r.aligned[i] ?? '-'
+    const ha = Boolean(basesOf(a)) && a.toUpperCase() !== 'N'
+    const hb = Boolean(basesOf(b)) && b.toUpperCase() !== 'N'
+    if (ha && hb) {
+      columns.both++
+      if (a.toUpperCase() === b.toUpperCase()) out += a.toUpperCase()
+      else {
+        conflicts.push(i)
+        out += 'N'
+      }
+    } else if (ha) {
+      columns.forwardOnly++
+      out += a.toUpperCase()
+    } else if (hb) {
+      columns.reverseOnly++
+      out += b.toUpperCase()
+    } else out += a === '-' && b === '-' ? '-' : 'N'
+  }
+  if (conflicts.length) notes.push(`${conflicts.length} column${conflicts.length === 1 ? '' : 's'} where the two reads disagree at good quality became N.`)
+  if (!columns.both) notes.push("The two reads don't overlap, so no base was confirmed by both.")
+  return { status: 'joined', aligned: out, conflicts, columns, notes }
+}

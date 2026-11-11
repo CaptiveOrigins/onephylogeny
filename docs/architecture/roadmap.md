@@ -121,7 +121,7 @@ Informed by the techniques research.
 
 1. **Mitogenomes.** Gene-by-gene extraction and partitions, tested on real records. Alignment to a whole mitogenome already works (15,613 columns in 78 ms). *Design: [ADR 0009](adr/0009-mitogenome-panels.md). Gene windows (`geneWindows`), turning to the reference's start (`rotateToReference`) and per-gene frame and stop checks (`geneChecks`) built 2026-11-10; panel builds with gene windows and partitions still to come.*
 2. **More sources.** SRA and BioSample listings, NCBI Datasets genomes, GBIF and iDigBio coverage, then BOLD. Dryad, Figshare and Zenodo stay flagged for review.
-3. **Sample input.** Chromatograms, base-quality checks and a primer-to-window check. *Built 2026-11-10 in core and the CLI (`readAbif`, `assessRead`, `checkPrimers`). Not yet: joining forward and reverse reads, the Mac app, and the Payload plugin taking traces.*
+3. **Sample input.** Chromatograms, base-quality checks and a primer-to-window check. *Built 2026-11-10 in core and the CLI (`readAbif`, `assessRead`, `checkPrimers`). Joining forward and reverse reads built 2026-11-11 (`joinReads`). Not yet: the Mac app and the Payload plugin taking traces.*
 4. **SNPs.** Import a prepared VCF first. Use the public RAD-Seq dataset as the test, and compare against cytb groups. Decide later whether reads-to-VCF belongs on a Mac at all.
 
 **Check:** a mitogenome panel and an imported SNP panel each pass the Stage 4 validation.
