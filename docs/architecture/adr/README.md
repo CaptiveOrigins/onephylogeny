@@ -14,3 +14,4 @@
 | [0010](0010-low-pass-reads.md) | Low-pass reads give a mitogenome first; nuclear data only as likelihoods | Proposed (Science 2026-11-11) |
 | [0011](0011-where-reads-are-mapped.md) | Where low-pass reads are mapped | Proposed (Science 2026-11-11), owner to choose |
 | [0012](0012-nuclear-likelihoods.md) | Nuclear relatedness and structure from low-pass genotype likelihoods | Proposed (Science 2026-11-11), design only |
+| [0013](0013-hypothesis-chat.md) | Hypothesis chat is a deterministic core with an optional language layer | Proposed (Science 2026-11-11); core built, no language layer |
