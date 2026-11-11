@@ -113,7 +113,7 @@ Informed by the techniques research.
 1. Haplotype network and region map, from generalized regions only. *Haplotype network built 2026-11-10 (core, React and Mac app). Region map built 2026-11-10 in React (ADR 0008), and shown in the Mac app's Panel tab the same day, with the outlines shipped inside the app; the platform still needs to load the outlines and show it.*
 2. Tree view that reuses OneTaxonomy's viewers, including paired support. *Deferred by the owner, 2026-11-10.*
 3. Methods text and a citation list for each run, generated from provenance. *Built for panels 2026-11-10 (`onephylogeny methods`); Studies already had `studyMethods`.*
-4. Comparison of two runs or two panel versions.
+4. Comparison of two runs or two panel versions. *Records, groups, settings and claims were already compared by `compareRuns` (JSON from the CLI, and a short list in the Study tab). Shown on screen and as Markdown 2026-11-11 (`comparePanels`, `comparisonMarkdown`, `ComparisonView`, `onephylogeny compare --markdown`, the Mac app's Panel and Study tabs), with each version's validation outcomes by window side by side, each with its interval and never a score. Not yet looked at in the running Mac app, and not compared on real panel versions.*
 
 **Check:** a reader can follow one conclusion from the summary to its supporting records and papers without opening a file.
 

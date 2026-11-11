@@ -68,6 +68,14 @@ describe('the Mac app, clicked through', () => {
     expect(await screen.findByRole('heading', { name: 'Second species' })).toBeTruthy()
   })
 
+  it('offers the version comparison in the Panel tab as well as the Study tab', async () => {
+    await openProfile()
+    tab('Panel')
+    expect(await screen.findByText('No panel versions are built yet.')).toBeTruthy()
+    tab('Study')
+    expect(await screen.findByText('No panel versions are built yet.')).toBeTruthy()
+  })
+
   it('suggests a reference and genetic code, and sets them only when chosen', async () => {
     await openProfile()
     // A marker not known to be mitochondrial gets no suggestion, and says why.
@@ -362,10 +370,10 @@ describe('the Mac app, clicked through', () => {
       await screen.findByText(/2 versions built for this profile: 0\.1\.0, 0\.2\.0/, undefined, { timeout: 60_000 })
       fireEvent.click(screen.getByRole('button', { name: 'Compare' }))
       const result = within(await screen.findByRole('region', { name: 'Comparison' }))
-      expect(result.getByText(/A: version 0\.1\.0\. From Study First Study, with 1 post hoc omissions/)).toBeTruthy()
-      expect(result.getByText(/0 only in A, 0 only in B, 0 changed group/)).toBeTruthy()
-      expect(result.getByText(/The sequences are identical/)).toBeTruthy()
-      expect(result.getAllByText(/left out 1 records after results were seen/).length).toBe(2)
+      expect(result.getByText(/version 0\.1\.0\. From Study "First Study", with 1 record left out after results were seen/)).toBeTruthy()
+      expect(result.getByText(/0 only in A, 0 only in B\. 0 of the shared records changed group/)).toBeTruthy()
+      expect(result.getByText(/The aligned sequences are identical/)).toBeTruthy()
+      expect(result.getAllByText(/left out 1 record after results were seen: N0\.1\. The other version has 1 of them/).length).toBe(2)
       expect(screen.queryByRole('alert')).toBeNull()
 
       // A version whose files changed can't be compared.

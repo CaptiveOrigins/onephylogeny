@@ -1,8 +1,8 @@
 import {
-  ALIGNER, alignToReference, LOCATE_FLANK, locateMarker, assessAlignment, buildPanel, canonicalJson, checkNumts, collapseHaplotypes, compareRuns, DEFAULT_GATES, extractLocation, findGeneFeatures, fullValidation, gatesForRecord, parseFasta, parseGenBank,
+  ALIGNER, alignToReference, LOCATE_FLANK, locateMarker, assessAlignment, buildPanel, canonicalJson, checkNumts, collapseHaplotypes, compareRuns, comparePanels, DEFAULT_GATES, extractLocation, findGeneFeatures, fullValidation, gatesForRecord, parseFasta, parseGenBank,
   evaluateQuery, sampleQc, toRecordSheet, toSequenceRecord, validatePanel, verifyBundle, validatedScopeFromReport, validateProfile, validateResult, writeFasta,
   geneChecks, geneCharsets, geneWindows, partitionNexus, rotateToReference,
-  type Alignment, type Curation, type Diagnostic, type GateSettings, type GenBankRecord, type GeneCheck, type GeneWindows, type GeneticCode, type LinkedRecord, type MarkerPlace, type Panel, type PanelBundle, type PanelMember, type PanelSettings, type PanelWindow, type Profile, type Result, type Run, type RunComparison, type SequenceRecord, type Snapshot, type ValidationInput,
+  type Alignment, type Curation, type Diagnostic, type GateSettings, type GenBankRecord, type GeneCheck, type GeneWindows, type GeneticCode, type LinkedRecord, type MarkerPlace, type Panel, type PanelBundle, type PanelComparison, type PanelMember, type PanelSettings, type PanelWindow, type Profile, type Result, type Run, type RunComparison, type SequenceRecord, type Snapshot, type ValidationInput,
 } from '@captiveorigins/onephylogeny-core'
 import { classifyAccessions, genomesHoldingMarkerQuery, linkedAccessions, NcbiClient, selectionQuery, studiesFromRecords, type FoundPaper } from '@captiveorigins/onephylogeny-acquire'
 import { hashText, loadArtifact, type Artifact, type ArtifactRef } from './artifacts.js'
@@ -539,18 +539,28 @@ export function panelVersions(profile: Profile, folders: string[]): string[] {
   return folders.filter((f) => f.startsWith(prefix)).map((f) => f.slice(prefix.length)).sort(order)
 }
 
-/** Compares two built versions. Both must still match their seals. */
-export async function comparePanelVersions(store: Store, profile: Profile, a: string, b: string): Promise<RunComparison> {
+async function loadVersions(store: Store, profile: Profile, a: string, b: string) {
   if (!profile.panel) throw new EngineError('invalid-profile', 'The profile has no panel settings', 'Add groups in the Panel tab')
   const P = profilePaths(profile.id)
   const load = async (version: string) => {
     const dir = P.panel(profile.panel!.id, version)
     const { panel } = await loadPanel(store, dir)
-    const report = (await store.exists(`${dir}/validation.json`)) ? (JSON.parse(await store.read(`${dir}/validation.json`)) as ValidationReports).claims : undefined
-    return { panel, report }
+    const validation = (await store.exists(`${dir}/validation.json`)) ? (JSON.parse(await store.read(`${dir}/validation.json`)) as ValidationReports) : undefined
+    return { panel, validation }
   }
-  const [x, y] = [await load(a), await load(b)]
-  return compareRuns(x.panel, y.panel, x.report, y.report)
+  return [await load(a), await load(b)] as const
+}
+
+/** Compares two built versions. Both must still match their seals. */
+export async function comparePanelVersions(store: Store, profile: Profile, a: string, b: string): Promise<RunComparison> {
+  const [x, y] = await loadVersions(store, profile, a, b)
+  return compareRuns(x.panel, y.panel, x.validation?.claims, y.validation?.claims)
+}
+
+/** The same comparison, with each version's validation outcomes by window paired beside it and labels to show it with. */
+export async function panelVersionComparison(store: Store, profile: Profile, a: string, b: string): Promise<PanelComparison> {
+  const [x, y] = await loadVersions(store, profile, a, b)
+  return comparePanels(x.panel, y.panel, x.validation, y.validation)
 }
 
 export type SampleOutcome = { result: Result; diagnostics: Diagnostic[]; aligned: string; insertions: number; deletions: number; identity: number; clipped: { start: number; end: number } } | { result: null; diagnostics: Diagnostic[] }

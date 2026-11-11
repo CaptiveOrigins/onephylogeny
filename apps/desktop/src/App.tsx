@@ -7,6 +7,7 @@ import { treeToPhylogeny } from '@captiveorigins/onephylogeny-onetaxonomy'
 import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Platform, Settings } from './platform'
 import { PREVIEW_SAMPLE } from './platform-preview'
+import { CompareRuns } from './CompareRuns'
 import { RegionMapSection } from './RegionMapSection'
 import { emptyStudySession, StudyTab, type StudySession } from './StudyTab'
 import { TraceInput } from './Traces'
@@ -233,7 +234,7 @@ export function App({ platform }: { platform: Platform }) {
           const out = await fetchAndAnchor(engine(), profile)
           setRecords(out.records); setOutcomes(out.outcomes); setRunId(out.run.id)
         })} />}
-        {tab === 'panel' && <PanelTab profile={profile} edit={edit} save={save} state={panelState} hasRun={Boolean(runId)} busy={Boolean(busy)} busyLabel={busy} busySince={busySince} platform={platform} onBuild={() => attempt('Building panel', async () => {
+        {tab === 'panel' && <PanelTab profile={profile} edit={edit} save={save} state={panelState} hasRun={Boolean(runId)} busy={Boolean(busy)} busyLabel={busy} busySince={busySince} platform={platform} attempt={attempt} onBuild={() => attempt('Building panel', async () => {
           await save()
           const out = await buildPanelFromRun(engine(), profile, curation)
           setPanelState({ panel: out.bundle.panel, sequences: out.bundle.sequences, diagnostics: out.diagnostics, validation: out.validation, unassigned: out.unassigned })
@@ -421,7 +422,7 @@ function NetworkSection({ panel, sequences }: { panel: Panel; sequences: Record<
   </section>
 }
 
-function PanelTab({ profile, edit, save, state, hasRun, busy, busyLabel, busySince, platform, onBuild }: { profile: Profile; edit: (p: Profile) => void; save: () => Promise<void>; state: { panel: Panel; sequences: Record<string, string>; diagnostics: Diagnostic[]; validation: any; unassigned: number } | null; hasRun: boolean; busy: boolean; busyLabel: string | null; busySince: number; platform: Platform; onBuild: () => void }) {
+function PanelTab({ profile, edit, save, state, hasRun, busy, busyLabel, busySince, platform, attempt, onBuild }: { profile: Profile; edit: (p: Profile) => void; save: () => Promise<void>; state: { panel: Panel; sequences: Record<string, string>; diagnostics: Diagnostic[]; validation: any; unassigned: number } | null; hasRun: boolean; busy: boolean; busyLabel: string | null; busySince: number; platform: Platform; attempt: (l: string, w: () => Promise<void>) => Promise<void>; onBuild: () => void }) {
   const panel = profile.panel!
   const setP = (x: Partial<typeof panel>) => edit({ ...profile, panel: { ...panel, ...x } })
   const th = panel.rules ?? DEFAULT_RULES
@@ -467,6 +468,7 @@ function PanelTab({ profile, edit, save, state, hasRun, busy, busyLabel, busySin
         <h3>Validation</h3>
         <ValidationView blocks={state.validation.blocks} groups={state.validation.groups} ladder={state.validation.ladder} claims={state.validation.claims} panel={state.panel} {...(state.validation.windows ? { windows: state.validation.windows } : {})} {...(state.validation.studyOut ? { studyOut: state.validation.studyOut } : {})} />
       </>}
+      <CompareRuns profile={profile} platform={platform} attempt={attempt} busy={busy} />
     </section>
   )
 }

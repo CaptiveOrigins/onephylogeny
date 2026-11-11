@@ -2,9 +2,9 @@
 import { execFile } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { assessRead, auditGroups, checkPrimers, chimeraCandidates, compareWithGroups, parseVcf, readAbif, curationFromCsv, panelMethods, curationToCsv, parseCuration, parseFasta, parseProfile, reportMarkdown, sampleReport, type Result } from '@captiveorigins/onephylogeny-core'
+import { assessRead, auditGroups, checkPrimers, chimeraCandidates, compareWithGroups, comparisonMarkdown, parseVcf, readAbif, curationFromCsv, panelMethods, curationToCsv, parseCuration, parseFasta, parseProfile, reportMarkdown, sampleReport, type Result } from '@captiveorigins/onephylogeny-core'
 import { lookupPaper, NcbiClient, paced, suggestOutgroups } from '@captiveorigins/onephylogeny-acquire'
-import { buildPanelFromRun, comparePanelVersions, buildTree, EngineError, fetchAndAnchor, isCancelled, loadPanel, loadRunRecords, profilePaths, readCurationHistory, saveCuration, routeSample, runSample, testSample, traceArtifact, verifyDataset, writeDataset, type ArtifactType, type EngineContext, type ToolRunner } from '@captiveorigins/onephylogeny-engine'
+import { buildPanelFromRun, comparePanelVersions, panelVersionComparison, buildTree, EngineError, fetchAndAnchor, isCancelled, loadPanel, loadRunRecords, profilePaths, readCurationHistory, saveCuration, routeSample, runSample, testSample, traceArtifact, verifyDataset, writeDataset, type ArtifactType, type EngineContext, type ToolRunner } from '@captiveorigins/onephylogeny-engine'
 import { joinPair, type AssessedRead } from './sanger.js'
 import { parseGroups, snpsTable } from './snps.js'
 import { nodeStore } from './store.js'
@@ -23,7 +23,9 @@ const USAGE = `onephylogeny <command> --workspace DIR --profile ID [options]
   curation history [--record ID]
                            Every saved change, when, by whom and why
   trace --type T --key K   Show everything that produced an artifact
-  compare --a V --b V      Compare two built panel versions
+  compare --a V --b V [--markdown]
+                           Compare two built panel versions: records, groups, settings, claims, as JSON. --markdown
+                           prints it for reading, with each version's validation outcomes by window side by side
   verify --dir DIR         Check a built panel folder: file hashes, seal, and its examples rerun (no profile needed)
   dataset --dir DIR        Add examples and a manifest to a panel built before they existed (no profile needed)
   lookup --title T [--authors A]
@@ -268,7 +270,8 @@ async function main() {
     const a = flag('a')
     const b = flag('b')
     if (!a || !b) throw new Error('--a and --b are required')
-    console.log(JSON.stringify(await comparePanelVersions(store, profile, a, b), null, 2))
+    if (has('markdown')) process.stdout.write(comparisonMarkdown(await panelVersionComparison(store, profile, a, b)))
+    else console.log(JSON.stringify(await comparePanelVersions(store, profile, a, b), null, 2))
   } else if (command === 'curation') {
     const records = await loadRunRecords(store, profile.id)
     const curation = (await store.exists(P.curation)) ? parseCuration(await store.read(P.curation)) : { schemaVersion: 1 as const, records: {} }

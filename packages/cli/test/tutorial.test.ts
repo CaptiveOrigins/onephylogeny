@@ -58,6 +58,20 @@ const expected: Record<string, string[]> = {
     'These are descriptions, not probabilities.',
   ],
   'snps-json': ['"compared": 7', '"nearestSameGroup": 2', '"nearestTied": 1', '"meanWithin": 0.3055555555555555', '"meanBetween": 0.485479797979798'],
+  regroup: ['"applied": true', '"record": "FN185748.1"', '[panel] Finished'],
+  compare: [
+    '# tutorial-panel 1 compared with tutorial-panel 2',
+    "It doesn't say which is better",
+    '13 records in both, 0 only in A, 0 only in B. 1 of the shared records changed group.',
+    '| FN185748.1 | Group A | Group C |',
+    'These differ, so changes may not come from the records alone: Groups, Site tables. The aligned sequences are identical.',
+    '6 claims, each one pair of groups in one window. 1 of them is the same in both versions.',
+    '| Group A vs Group C, Whole marker | Same outcome, different report | Failed at the sites gate. Group A: 6 sites, 6 records. Group C: 3 sites, 3 records. | Failed at the interval gate. Group A: 5 sites, 5 records. Group C: 4 sites, 4 records. |',
+    '### Whole marker, holding out each site',
+    '| Group A | 1 | 6 | 0 | 6 | 6 of 6 (54% to 100%) | 6 of 6 (54% to 100%) | 0 of 6 (0% to 46%) | 0 | 0 |',
+    '| Group A | 2 | 5 | 0 | 5 | 0 of 5 (0% to 52%) | 5 of 5 (48% to 100%) | 0 of 5 (0% to 52%) | 0 | 0 |',
+    '| Group C | 2 | 4 | 0 | 4 | 3 of 4 (19% to 99%) | 3 of 4 (19% to 99%) | 1 of 4 (1% to 81%) | 0 | 0 |',
+  ],
   cleanup: [],
 }
 
