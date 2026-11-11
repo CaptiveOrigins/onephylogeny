@@ -12,3 +12,4 @@
 | [0008](0008-ecoregion-map.md) | The region map shades whole RESOLVE ecoregions | Accepted (owner 2026-11-10) |
 | [0009](0009-mitogenome-panels.md) | Mitogenome panels are gene windows on one reference | Proposed (Science 2026-11-10) |
 | [0010](0010-low-pass-reads.md) | Low-pass reads give a mitogenome first; nuclear data only as likelihoods | Proposed (Science 2026-11-11) |
+| [0011](0011-where-reads-are-mapped.md) | Where low-pass reads are mapped | Proposed (Science 2026-11-11), owner to choose |
