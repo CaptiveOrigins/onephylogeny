@@ -1,0 +1,57 @@
+/* OneOrigin tokens for OnePhylogeny (--ophy-), written by `node scripts/oneorigin.mjs build` from brand/oneorigin/tokens.json.
+   Don't edit by hand: `node scripts/oneorigin.mjs check` fails when this differs from what build writes. Tool: onephylogeny. */
+:root {
+  --ophy-accent: #cf8137;
+  --ophy-focus: #a65f20;
+  --ophy-brand-pink: #e48185;
+  --ophy-structure: #4c312c;
+  --ophy-mauve: #91645d;
+  --ophy-text: #1d2330;
+  --ophy-muted: #5b6577;
+  --ophy-background: #ffffff;
+  --ophy-panel: #fbf7f4;
+  --ophy-border: #eaddd6;
+  --ophy-good: #1d6b47;
+  --ophy-warning: #8a5a14;
+  --ophy-error: #a23a3d;
+  --ophy-radius-button: 8px;
+  --ophy-radius-card: 10px;
+  --ophy-button-height: 32px;
+  --ophy-focus-width: 2px;
+  --ophy-focus-offset: 1px;
+  --ophy-icon-size: 24px;
+  --ophy-tile-top: #e6d6d2;
+  --ophy-tile-bottom: #c9aca5;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-appearance='light']) {
+    --ophy-accent: #e7a066;
+    --ophy-focus: #e7a066;
+    --ophy-brand-pink: #eda9ac;
+    --ophy-structure: #eda9ac;
+    --ophy-mauve: #c79a92;
+    --ophy-text: #e8ecf2;
+    --ophy-muted: #a3acbb;
+    --ophy-background: #12151b;
+    --ophy-panel: #181c24;
+    --ophy-border: #2c3340;
+    --ophy-good: #62c196;
+    --ophy-warning: #dfb269;
+    --ophy-error: #eda9ac;
+  }
+}
+:root[data-appearance='dark'] {
+  --ophy-accent: #e7a066;
+  --ophy-focus: #e7a066;
+  --ophy-brand-pink: #eda9ac;
+  --ophy-structure: #eda9ac;
+  --ophy-mauve: #c79a92;
+  --ophy-text: #e8ecf2;
+  --ophy-muted: #a3acbb;
+  --ophy-background: #12151b;
+  --ophy-panel: #181c24;
+  --ophy-border: #2c3340;
+  --ophy-good: #62c196;
+  --ophy-warning: #dfb269;
+  --ophy-error: #eda9ac;
+}

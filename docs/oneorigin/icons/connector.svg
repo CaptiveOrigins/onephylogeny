@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-labelledby="t">
+  <title id="t">OneOrigin connector</title>
+  <!-- OneOrigin icon part: a connector, 34 px Captive Origins brown, as drawn in the three tools' brand/icon.svg.
+       The icons draw joins with stroke-linejoin="round" (OneTaxonomy also rounds its caps). Values in tokens.json (icon.connector). -->
+  <path d="M40 40V200H200M40 120H200" fill="none" stroke="#4c312c" stroke-width="34" stroke-linejoin="round" />
+</svg>

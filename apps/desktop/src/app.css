@@ -3,19 +3,18 @@
   color-scheme: light dark;
   --bg: #ffffff; --panel: #fbf7f4; --text: #1d2330; --muted: #5b6577; --border: #eaddd6; --field: #ffffff; --accent: #cf8137;
   /* Focus rings: the darker orange on light backgrounds (owner decision N154, 2026-11-11), 4.61:1 on the panel. Dark keeps #e7a066. */
-  --focus: #a65f20; --ophy-focus: #a65f20;
-  --ophy-muted: #5b6577; --ophy-border: #eaddd6; --ophy-ink: #91645d; --ophy-accent: #cf8137; --ophy-good: #1d6b47; --ophy-warning: #8a5a14; --ophy-flag: #a23a3d;
+  --focus: #a65f20;
+  /* The --ophy- colors come from oneorigin.css, built from brand/oneorigin/tokens.json; these two keep the library's older names. */
+  --ophy-ink: var(--ophy-mauve); --ophy-flag: var(--ophy-error);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-appearance='light']) {
-    --bg: #12151b; --panel: #181c24; --text: #e8ecf2; --muted: #a3acbb; --border: #2c3340; --field: #12151b; --accent: #e7a066; --focus: #e7a066; --ophy-focus: #e7a066;
-    --ophy-muted: #a3acbb; --ophy-border: #2c3340; --ophy-ink: #c79a92; --ophy-accent: #e7a066; --ophy-good: #62c196; --ophy-warning: #dfb269; --ophy-flag: #eda9ac;
+    --bg: #12151b; --panel: #181c24; --text: #e8ecf2; --muted: #a3acbb; --border: #2c3340; --field: #12151b; --accent: #e7a066; --focus: #e7a066;
   }
 }
 :root[data-appearance='dark'] {
   color-scheme: dark;
-  --bg: #12151b; --panel: #181c24; --text: #e8ecf2; --muted: #a3acbb; --border: #2c3340; --field: #12151b; --accent: #e7a066; --focus: #e7a066; --ophy-focus: #e7a066;
-    --ophy-muted: #a3acbb; --ophy-border: #2c3340; --ophy-ink: #c79a92; --ophy-accent: #e7a066; --ophy-good: #62c196; --ophy-warning: #dfb269; --ophy-flag: #eda9ac;
+  --bg: #12151b; --panel: #181c24; --text: #e8ecf2; --muted: #a3acbb; --border: #2c3340; --field: #12151b; --accent: #e7a066; --focus: #e7a066;
 }
 :root[data-appearance='light'] { color-scheme: light; }
 * { box-sizing: border-box; }

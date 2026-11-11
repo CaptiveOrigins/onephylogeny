@@ -1,6 +1,6 @@
 # OneOrigin suite guidelines
 
-**Status: draft for the owner's review (2026-11-04).** These apply to OnePedigree, OneTaxonomy and OnePhylogeny, the [OneOrigin suite](README.md). They replace nothing yet. `brand/README.md` in each repo stays in force until this is accepted.
+**Status: accepted by the owner on 2026-11-11 (N105: "A: send it, accept guidelines (Recommended)").** Drafted 2026-11-04. These apply to OnePedigree, OneTaxonomy and OnePhylogeny, the [OneOrigin suite](README.md). The brand text that used to be hand-copied into each repo's `brand/README.md` now lives in [brand.md](brand.md), and the machine-readable values in [tokens.json](tokens.json). Each tool carries a locked copy of this folder (section 10).
 
 They exist so the three tools feel like one suite and keep working together as they change, while each stays its own and none depends on another.
 
@@ -44,7 +44,8 @@ Shared by every tool:
 
 | Role | Light | Dark | Use |
 | --- | --- | --- | --- |
-| Accent | `#cf8137` | `#e7a066` | Selection, focus, primary action |
+| Accent | `#cf8137` | `#e7a066` | Selection, fills, primary action |
+| Focus | `#a65f20` | `#e7a066` | Keyboard focus rings only |
 | Brand pink | `#e48185` | `#eda9ac` | The brand mark and highlights only |
 | Structure | `#4c312c` | `#eda9ac` | Lines and connectors |
 | Mauve | `#91645d` | `#c79a92` | Secondary data marks |
@@ -53,7 +54,7 @@ Shared by every tool:
 
 - Color must never be the only signal. Statuses have words and a symbol.
 - Status colors are for status only, never decoration.
-- Each tool exposes colors as CSS variables under its prefix: `--op-`, `--ot-`, `--ophy-`.
+- Each tool exposes colors as CSS variables under its prefix: `--op-`, `--ot-`, `--ophy-`. `node scripts/oneorigin.mjs build` writes them from `tokens.json`.
 
 ### Type
 
@@ -69,7 +70,7 @@ The system font stack in every tool, with monospace only for sequences, logs and
 
 - Buttons are 32 px, radius 8, with a 1 px border.
 - Cards and panels have radius 10 and a soft shadow.
-- The focus ring is 2 px in the accent color.
+- The focus ring is 2 px: the darker orange `#a65f20` on light backgrounds and `#e7a066` in dark mode. The brand orange `#cf8137` stays for fills, accents and selection. Owner's decision 2026-11-11 (N154, "A: darker orange ring").
 - Interactive canvases have a floating toolbar at the top right. Drag the background to pan, use Ctrl/⌘ + wheel or pinch to zoom, use `+` `-` `0` keys, and offer Fit, Download SVG and Print (chart only).
 
 ### Voice
@@ -227,7 +228,7 @@ From a review of the three repos on 2026-11-04, updated on 2026-11-07 after the 
 
 ## 10. Keeping this true
 
-- **One source:** this file is the source of truth, and each repo links to it instead of keeping its own copy.
+- **One source:** this folder in OnePhylogeny (`docs/oneorigin/`) is the source of truth. Each tool carries a copy in `brand/oneorigin/`, with `brand/oneorigin.lock` recording the source commit and a checksum of every file. CI fails when a copy is edited by hand, and warns when the source has moved ahead. Copies, not a dependency, so each tool still builds alone. Accepted by the owner on 2026-11-11 (N105).
 - **Changing it:** a pull request here says which tools it affects, and those tools get a parity row until they catch up.
 - **Pull request checklist:**
   - Does this change something the family shares? Then update this page.
@@ -237,6 +238,6 @@ From a review of the three repos on 2026-11-04, updated on 2026-11-07 after the 
 
 ### Open questions for the owner
 
-1. Where should this live long term? It's here for now. A small public repo for the suite would suit it better, once the draft settles.
-2. Should shared look move into a shared package? Today it's copied under each prefix, which keeps tools independent. A shared `@captiveorigins/one-ui` would reduce drift, but each tool would then depend on it.
+1. Where should this live long term? Answered 2026-11-11 (N105): here, in `docs/oneorigin/`, copied into each tool.
+2. Should shared look move into a shared package? Answered 2026-11-11 (N105): no. Copies with a lock and a drift check, so no tool depends on another.
 3. Should OnePedigree's green accent change to the family orange?

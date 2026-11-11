@@ -22,3 +22,9 @@ jobs:
       - run: pnpm build
       - run: pnpm typecheck
       - run: pnpm test
+      # The OneOrigin brand copy (brand/oneorigin/) must match brand/oneorigin.lock, and the CSS built from it must be current.
+      # It warns, without failing, when the source in docs/oneorigin/ has moved ahead of the copy.
+      - name: OneOrigin brand check
+        run: node scripts/oneorigin.mjs check
+      - name: OneOrigin script tests
+        run: node --test scripts/oneorigin.test.mjs

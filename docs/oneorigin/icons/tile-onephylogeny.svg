@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="t">
+  <title id="t">OnePhylogeny tile</title>
+  <!-- OneOrigin icon part: the OnePhylogeny tile, cut from its brand/icon.svg. 896 square on a 1024 canvas, radius 200,
+       a top-to-bottom pastel gradient of Captive Origins mauve. Values in tokens.json (tools.onephylogeny.tile, icon.tile). -->
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e6d6d2" />
+      <stop offset="1" stop-color="#c9aca5" />
+    </linearGradient>
+  </defs>
+  <rect x="64" y="64" width="896" height="896" rx="200" fill="url(#g)" />
+</svg>

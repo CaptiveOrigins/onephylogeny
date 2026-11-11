@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 130" role="img" aria-labelledby="t">
+  <title id="t">OneOrigin block</title>
+  <!-- OneOrigin icon part: a cream block, as drawn in the three tools' brand/icon.svg (240 x 130, radius 40;
+       widths and heights vary per glyph, radius 36 to 40). Values in tokens.json (icon.block). -->
+  <rect width="240" height="130" rx="40" fill="#fbf8f2" />
+</svg>
