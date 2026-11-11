@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { Ajv } from 'ajv'
 import { describe, expect, it } from 'vitest'
 import type { Curation, Profile } from '@captiveorigins/onephylogeny-core'
-import { buildPanelFromRun, checkExamples, comparePanelVersions, panelVersions, EngineError, ENGINE_VERSION, fetchAndAnchor, loadArtifact, loadPanel, loadRunRecords, historyPath, profilePaths, readCurationHistory, routeSample, runSample, saveCuration, testSample, traceArtifact, verifyDataset, writeDataset, type DatasetManifest, type EngineContext, type PanelExamples, type Store } from '../src/index.js'
+import { buildPanelFromRun, checkExamples, comparePanelVersions, panelVersionComparison, panelVersions, EngineError, ENGINE_VERSION, fetchAndAnchor, loadArtifact, loadPanel, loadRunRecords, historyPath, profilePaths, readCurationHistory, routeSample, runSample, saveCuration, testSample, traceArtifact, verifyDataset, writeDataset, type DatasetManifest, type EngineContext, type PanelExamples, type Store } from '../src/index.js'
 
 const ajv = new Ajv({ allErrors: true, strict: false })
 const schemaRoot = fileURLToPath(new URL('../../', import.meta.url))
@@ -167,11 +167,21 @@ describe('panel and sample', () => {
     const c = await comparePanelVersions(ctx.store, profile, '1', '2')
     expect(c.records.changedGroup).toEqual([{ record: 'A2.1', a: 'a', b: 'b' }])
     expect(c.a.hasValidation && c.b.hasValidation).toBe(true)
+    // The full comparison carries the same record and claim comparison, and each version's stored outcomes by window.
+    const full = await panelVersionComparison(ctx.store, profile, '1', '2')
+    expect(full.runs).toEqual(c)
+    const stored = (v: string) => JSON.parse(ctx.store.files.get(`${profilePaths('demo').panel('p', v)}/validation.json`)!)
+    expect(full.outcomes.missing).toEqual([])
+    expect(full.outcomes.pairs.length).toBeGreaterThan(0)
+    expect(full.outcomes.pairs.filter((p) => p.scheme === 'site').map((p) => p.a)).toEqual(stored('1').windows.windows.flatMap((w: { rows: unknown[] }) => w.rows))
+    expect(full.outcomes.pairs.filter((p) => p.scheme === 'site').map((p) => p.b)).toEqual(stored('2').windows.windows.flatMap((w: { rows: unknown[] }) => w.rows))
+    expect(full.labels.groups).toMatchObject({ a: expect.any(String), b: expect.any(String) })
     const dir = profilePaths('demo').panel('p', '2')
-    const stored = JSON.parse(ctx.store.files.get(`${dir}/panel.json`)!)
-    stored.notCovered = []
-    ctx.store.files.set(`${dir}/panel.json`, JSON.stringify(stored))
+    const sealed = JSON.parse(ctx.store.files.get(`${dir}/panel.json`)!)
+    sealed.notCovered = []
+    ctx.store.files.set(`${dir}/panel.json`, JSON.stringify(sealed))
     await expect(comparePanelVersions(ctx.store, profile, '1', '2')).rejects.toThrow(/seal/)
+    await expect(panelVersionComparison(ctx.store, profile, '1', '2')).rejects.toThrow(/seal/)
   })
   it('lists every version in order, and only this panel', () => {
     expect(panelVersions(profile, ['p-0.10.0', 'p-0.2.0', 'p-0.9.1', 'other-1.0.0'])).toEqual(['0.2.0', '0.9.1', '0.10.0'])

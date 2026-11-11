@@ -1,6 +1,6 @@
 # Tutorial: from records to a report, offline
 
-This walks through OnePhylogeny's command line on a small example: fetch records, build a panel, check it, test three samples, read a report, check a Sanger trace and a primer pair, then compare SNPs with the groups. After the install it needs no network.
+This walks through OnePhylogeny's command line on a small example: fetch records, build a panel, check it, test three samples, read a report, check a Sanger trace and a primer pair, compare SNPs with the groups, then build a second version of the panel and compare the two. After the install it needs no network.
 
 Every output below was captured from running the commands. Long output is trimmed, and each trim says so. Run ids, temporary folders and timestamps will differ on your machine. A test (`packages/cli/test/tutorial.test.ts`) runs every command on this page after the install, and checks the key lines of their output, so the page can't drift from the code.
 
@@ -641,7 +641,106 @@ onephylogeny snps --vcf fixtures/tutorial/snps.vcf --groups fixtures/tutorial/sn
 
 (Trimmed after the first group.) The means aren't rounded in the JSON.
 
-## 10. Clean up
+## 10. Compare two panel versions
+
+A panel version is never overwritten. When the groups change, you build a new version and compare the two. Here, as an exercise, one of group A's records, `FN185748.1`, is moved to group C. The profile is copied in again with its version set to 2, the change is imported from a one-line sheet, `fixtures/tutorial/regroup.csv`, with a reason for the history, and version 2 is built. The build's JSON is the same kind as in step 3, so it's thrown away here:
+
+<!-- step: regroup -->
+```sh
+sed 's/"version": "1"/"version": "2"/' fixtures/tutorial/profile.json > "$WS/profiles/tutorial/profile.json"
+onephylogeny curation import --workspace "$WS" --profile tutorial --file fixtures/tutorial/regroup.csv --apply --reason "Exercise: move FN185748.1 to group C"
+onephylogeny panel --workspace "$WS" --profile tutorial > /dev/null
+```
+
+```text
+{
+  "applied": true,
+  "changed": 1,
+  "changes": [
+    {
+      "record": "FN185748.1",
+      "fields": [
+        "group"
+      ]
+    }
+  ],
+  "diagnostics": []
+}
+[validate] Running
+[validate] Finished
+[panel] Running
+[panel] Finished
+```
+
+`compare` prints the comparison as JSON. With `--markdown` it prints it for reading, with each version's validation outcomes beside each other:
+
+<!-- step: compare -->
+```sh
+onephylogeny compare --workspace "$WS" --profile tutorial --a 1 --b 2 --markdown
+```
+
+```markdown
+# tutorial-panel 1 compared with tutorial-panel 2
+
+What differs between the two versions. It doesn't say which is better: choosing the best-looking run after comparing isn't a test.
+
+## Versions
+
+- A: version 1, checksum `sha256:0c7e1b6f412a07ba434e259fa80c37c1ce1428910423a588c4499b44e1cfd72d`. Not from a Study. Has a validation report.
+- B: version 2, checksum `sha256:36157ac85988b9d65d98afd1eeb13d331997fac57b1cb5091acbd54604f046af`. Not from a Study. Has a validation report.
+
+## Settings
+
+These differ, so changes may not come from the records alone: Groups, Site tables. The aligned sequences are identical.
+
+## Records
+
+13 records in both, 0 only in A, 0 only in B. 1 of the shared records changed group.
+
+| Record | Group in A | Group in B |
+| --- | --- | --- |
+| FN185748.1 | Group A | Group C |
+
+## Claims
+
+6 claims, each one pair of groups in one window. 1 of them is the same in both versions.
+
+| Claim | Change | A | B |
+| --- | --- | --- | --- |
+| Group A vs Group B, Whole marker | Same outcome, different report | Failed at the sites gate. Group A: 6 sites, 6 records. Group B: 2 sites, 2 records. | Failed at the sites gate. Group A: 5 sites, 5 records. Group B: 2 sites, 2 records. |
+| Group A vs Group C, Whole marker | Same outcome, different report | Failed at the sites gate. Group A: 6 sites, 6 records. Group C: 3 sites, 3 records. | Failed at the interval gate. Group A: 5 sites, 5 records. Group C: 4 sites, 4 records. |
+| Group A vs Group D, Whole marker | Same outcome, different report | Failed at the sites gate. Group A: 6 sites, 6 records. Group D: 2 sites, 2 records. | Failed at the sites gate. Group A: 5 sites, 5 records. Group D: 2 sites, 2 records. |
+| Group B vs Group C, Whole marker | Same outcome, different report | Failed at the sites gate. Group B: 2 sites, 2 records. Group C: 3 sites, 3 records. | Failed at the sites gate. Group B: 2 sites, 2 records. Group C: 4 sites, 4 records. |
+| Group C vs Group D, Whole marker | Same outcome, different report | Failed at the sites gate. Group C: 3 sites, 3 records. Group D: 2 sites, 2 records. | Failed at the sites gate. Group C: 4 sites, 4 records. Group D: 2 sites, 2 records. |
+```
+
+The full output then lists each gate that moved, claim by claim, and has a table per window for each way of holding out. Here is the one for holding out each site, trimmed after it:
+
+```markdown
+### Whole marker, holding out each site
+
+Differs for Group A, Group C.
+
+| Group | Version | Records | Not testable | Sites | Named the true group | Kept the true group | Wrong | Unresolved | Not evaluable |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Group A | 1 | 6 | 0 | 6 | 6 of 6 (54% to 100%) | 6 of 6 (54% to 100%) | 0 of 6 (0% to 46%) | 0 | 0 |
+| Group A | 2 | 5 | 0 | 5 | 0 of 5 (0% to 52%) | 5 of 5 (48% to 100%) | 0 of 5 (0% to 52%) | 0 | 0 |
+| Group B | 1 | 2 | 0 | 2 | 2 of 2 (16% to 100%) | 2 of 2 (16% to 100%) | 0 of 2 (0% to 84%) | 0 | 0 |
+| Group B | 2 | 2 | 0 | 2 | 2 of 2 (16% to 100%) | 2 of 2 (16% to 100%) | 0 of 2 (0% to 84%) | 0 | 0 |
+| Group C | 1 | 3 | 0 | 3 | 3 of 3 (29% to 100%) | 3 of 3 (29% to 100%) | 0 of 3 (0% to 71%) | 0 | 0 |
+| Group C | 2 | 4 | 0 | 4 | 3 of 4 (19% to 99%) | 3 of 4 (19% to 99%) | 1 of 4 (1% to 81%) | 0 | 0 |
+| Group D | 1 | 2 | 0 | 2 | 2 of 2 (16% to 100%) | 2 of 2 (16% to 100%) | 0 of 2 (0% to 84%) | 0 | 0 |
+| Group D | 2 | 2 | 0 | 2 | 2 of 2 (16% to 100%) | 2 of 2 (16% to 100%) | 0 of 2 (0% to 84%) | 0 | 0 |
+```
+
+How to read it:
+
+- Moving one record changed five of the six claims, though none passed before or after. Group C now has the 4 sites the sites gate needs, so A against C went on to the other gates and stopped at the interval gate instead.
+- `Groups` and `Site tables` are listed under settings, because the groups changed. The aligned sequences are identical, so the record is the only thing that moved.
+- In version 1, holding out each of group A's sites named group A every time, 6 of 6. In version 2 it named it 0 of 5 times: every result kept A, but another group fit too, or the result was flagged as possibly from a group the panel doesn't have. Each count has its interval, and those intervals are wide, because there are only a few sites.
+- Nothing here says which version is right. Regrouping a record because the results look better afterwards is choosing after seeing the answer, which isn't a test. The Mac app shows the same comparison under Compare versions in the Panel tab, and can save it as this Markdown.
+
+## 11. Clean up
 
 <!-- step: cleanup -->
 ```sh

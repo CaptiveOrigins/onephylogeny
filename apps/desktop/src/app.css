@@ -47,6 +47,7 @@ main { overflow-y: auto; min-width: 0; }
 .muted { color: var(--muted); font-size: 13px; }
 .error { color: var(--ophy-flag); padding: 8px 20px; margin: 0; }
 .pane .error { padding: 0; }
+.pane .pane { padding: 0; }
 .field { display: flex; flex-direction: column; gap: 3px; font-size: 13px; flex: 1; min-width: 150px; }
 .field > span { font-weight: 600; }
 .field small { color: var(--muted); }
