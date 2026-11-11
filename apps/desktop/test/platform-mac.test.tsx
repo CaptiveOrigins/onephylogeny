@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mocked Tauri file system: this checks how the Mac app saves, not the real disk.
-const fs = vi.hoisted(() => ({ files: new Map<string, string>(), written: [] as string[], failWrite: false, workspace: '/ws' as string | undefined }))
+const fs = vi.hoisted(() => ({ files: new Map<string, string>(), written: [] as string[], failWrite: false, failRename: null as unknown, failRemove: null as unknown, workspace: '/ws' as string | undefined }))
 vi.mock('@tauri-apps/plugin-store', () => ({ load: async () => ({ get: async () => fs.workspace, set: async () => {} }) }))
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
 vi.mock('@tauri-apps/plugin-dialog', () => ({ open: vi.fn(), ask: vi.fn() }))
@@ -16,8 +16,13 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
     fs.files.set(p, opts?.append ? (fs.files.get(p) ?? '') + text : text)
   },
   rename: async (from: string, to: string) => {
+    if (fs.failRename) throw fs.failRename
     fs.files.set(to, fs.files.get(from)!)
     fs.files.delete(from)
+  },
+  remove: async (p: string) => {
+    if (fs.failRemove) throw fs.failRemove
+    fs.files.delete(p)
   },
 }))
 vi.mock('@tauri-apps/plugin-http', () => ({ fetch: vi.fn() }))
@@ -31,6 +36,8 @@ beforeEach(() => {
   fs.files.clear()
   fs.written.length = 0
   fs.failWrite = false
+  fs.failRename = null
+  fs.failRemove = null
   fs.workspace = '/ws'
 })
 
@@ -51,6 +58,24 @@ describe('the Mac store', () => {
     fs.failWrite = true
     await expect(store.write('a/panel.json', 'two')).rejects.toThrow(/disk full/)
     expect(fs.files.get('/ws/a/panel.json')).toBe('one')
+  })
+
+  it('removes the temporary file when the rename fails, and reports the original error', async () => {
+    const { store } = await createMacPlatform()
+    await store.write('a/panel.json', 'one')
+    fs.failRename = new Error('permission denied')
+    await expect(store.write('a/panel.json', 'two')).rejects.toThrow(/^permission denied$/)
+    expect([...fs.files]).toEqual([['/ws/a/panel.json', 'one']])
+  })
+
+  it("says so when the temporary file can't be removed either, keeping the original error", async () => {
+    const { store } = await createMacPlatform()
+    // Tauri reports errors as plain strings.
+    fs.failRename = 'permission denied'
+    fs.failRemove = new Error('read-only volume')
+    const error = await store.write('a/panel.json', 'two').then(() => null, (e: unknown) => e as Error)
+    expect(error?.message).toBe("permission denied. The temporary file /ws/a/panel.json.tmp couldn't be removed either (read-only volume); you can delete it.")
+    expect(error?.cause).toBe('permission denied')
   })
 
   it('appends to logs, and writes nothing before a workspace is chosen', async () => {
