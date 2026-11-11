@@ -50,11 +50,11 @@ export function snpsTable(vcf: Vcf, result: GroupAgreement, minSharedSites: numb
   lines.push(`VCF: ${vcf.samples.length} samples, ${vcf.sites.length} sites used.`)
   for (const s of vcf.skipped) lines.push(`Skipped ${s.count} site${s.count === 1 ? '' : 's'}: ${s.reason}.`)
   lines.push(`Compared ${result.compared} samples that have both SNPs and a group. Two samples count as neighbours only if they share at least ${minSharedSites} called sites.`)
-  lines.push(`Nearest SNP neighbour in the same group: ${result.nearestSameGroup} of ${result.compared}. No neighbour with enough shared sites: ${result.noNeighbour}.`)
+  lines.push(`Nearest SNP neighbours all in the same group: ${result.nearestSameGroup} of ${result.compared}. Tied between its own group and another: ${result.nearestTied}. No neighbour with enough shared sites: ${result.noNeighbour}.`)
   lines.push('')
   const rows = [
-    ['Group', 'Samples', 'Nearest in same group', 'Mean within', 'Mean between'],
-    ...result.perGroup.map((g) => [g.group, String(g.samples), `${g.nearestSameGroup} of ${g.samples}`, fmt(g.meanWithin), fmt(g.meanBetween)]),
+    ['Group', 'Samples', 'Nearest in same group', 'Tied', 'Mean within', 'Mean between'],
+    ...result.perGroup.map((g) => [g.group, String(g.samples), `${g.nearestSameGroup} of ${g.samples}`, String(g.nearestTied), fmt(g.meanWithin), fmt(g.meanBetween)]),
   ]
   const widths = rows[0]!.map((_, i) => Math.max(...rows.map((r) => r[i]!.length)))
   for (const r of rows) lines.push(r.map((c, i) => c.padEnd(widths[i]!)).join('  ').trimEnd())

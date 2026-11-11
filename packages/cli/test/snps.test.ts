@@ -41,9 +41,9 @@ describe('snps on the command line', () => {
     expect(r.code).toBe(0)
     expect(r.stdout).toContain('VCF: 8 samples, 12 sites used.')
     expect(r.stdout).toContain('Skipped 1 site: filter not PASS (lowQ).')
-    expect(r.stdout).toContain('Nearest SNP neighbour in the same group: 3 of 7. No neighbour with enough shared sites: 0.')
-    expect(r.stdout).toContain('A      3        1 of 3                 0.306        0.485')
-    expect(r.stdout).toContain('B      4        2 of 4                 0.558        0.485')
+    expect(r.stdout).toContain('Nearest SNP neighbours all in the same group: 2 of 7. Tied between its own group and another: 1. No neighbour with enough shared sites: 0.')
+    expect(r.stdout).toContain('A      3        0 of 3                 1     0.306        0.485')
+    expect(r.stdout).toContain('B      4        2 of 4                 0     0.558        0.485')
     expect(r.stdout).toContain('Grouped but not in the VCF: d-1')
     expect(r.stdout).toContain('In the VCF but not grouped: c-1')
     expect(r.stdout).toContain('These are descriptions, not probabilities.')
@@ -55,12 +55,12 @@ describe('snps on the command line', () => {
     const json = run('snps', '--vcf', vcf, '--groups', 'fixtures/tutorial/snp-groups.json', '--min-shared', '10', '--json')
     expect(csv.stdout).toBe(json.stdout)
     const out = JSON.parse(json.stdout)
-    expect(out).toMatchObject({ samples: 8, sites: 12, minSharedSites: 10, compared: 7, nearestSameGroup: 3, noNeighbour: 0, notInVcf: ['d-1'], notGrouped: ['c-1'] })
+    expect(out).toMatchObject({ samples: 8, sites: 12, minSharedSites: 10, compared: 7, nearestSameGroup: 2, nearestTied: 1, noNeighbour: 0, notInVcf: ['d-1'], notGrouped: ['c-1'] })
     expect(out.perGroup.map((g: { group: string; samples: number }) => [g.group, g.samples])).toEqual([['A', 3], ['B', 4]])
     // The default needs 100 shared sites; this file has 12, so nothing is measured, and that's said rather than guessed.
     const strict = run('snps', '--vcf', vcf, '--groups', 'fixtures/tutorial/snp-groups.csv')
     expect(strict.stdout).toContain('No neighbour with enough shared sites: 7.')
-    expect(strict.stdout).toContain('A      3        0 of 3                 none         none')
+    expect(strict.stdout).toContain('A      3        0 of 3                 0     none         none')
   })
 
   it('refuses missing files, a bad --min-shared and a file that isn\'t a VCF, with exit status 1', () => {

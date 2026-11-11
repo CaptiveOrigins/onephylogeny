@@ -591,11 +591,11 @@ onephylogeny snps --vcf fixtures/tutorial/snps.vcf --groups fixtures/tutorial/sn
 VCF: 8 samples, 12 sites used.
 Skipped 1 site: filter not PASS (lowQ).
 Compared 7 samples that have both SNPs and a group. Two samples count as neighbours only if they share at least 10 called sites.
-Nearest SNP neighbour in the same group: 3 of 7. No neighbour with enough shared sites: 0.
+Nearest SNP neighbours all in the same group: 2 of 7. Tied between its own group and another: 1. No neighbour with enough shared sites: 0.
 
-Group  Samples  Nearest in same group  Mean within  Mean between
-A      3        1 of 3                 0.306        0.485
-B      4        2 of 4                 0.558        0.485
+Group  Samples  Nearest in same group  Tied  Mean within  Mean between
+A      3        0 of 3                 1     0.306        0.485
+B      4        2 of 4                 0     0.558        0.485
 
 Grouped but not in the VCF: d-1
 In the VCF but not grouped: c-1
@@ -604,7 +604,7 @@ Distances are the share of differing alleles over the sites both samples have ca
 These are descriptions, not probabilities. A sample whose nearest neighbour is in another group is not an error: maternal lines and nuclear relatedness can differ for real reasons.
 ```
 
-Only 3 of the 7 have their nearest neighbour in their own group. `b-4` and `a-1` have identical genotypes, so each is the other's nearest, across groups. `a-3` and `b-3`, heterozygous at almost every site, are each other's nearest too. `a-2` is exactly as close to `a-1` as to `b-4`; a tie goes to the animal that comes first in the VCF, here `a-1`, so it counts as its own group. Those mixed pairs pull the two means together. None of this says a group is wrong: maternal lines (the mitochondrial groups) and nuclear relatedness can differ for real reasons, such as males moving between places.
+Only 2 of the 7 have their nearest neighbours all in their own group. `b-4` and `a-1` have identical genotypes, so each is the other's nearest, across groups. `a-3` and `b-3`, heterozygous at almost every site, are each other's nearest too. `a-2` is exactly as close to `a-1` as to `b-4`, so it's counted as tied: a tie is never settled by which animal comes first in the file. Those mixed pairs pull the two means together. None of this says a group is wrong: maternal lines (the mitochondrial groups) and nuclear relatedness can differ for real reasons, such as males moving between places.
 
 The same with the JSON groups file and `--json`:
 
@@ -625,13 +625,15 @@ onephylogeny snps --vcf fixtures/tutorial/snps.vcf --groups fixtures/tutorial/sn
   ],
   "minSharedSites": 10,
   "compared": 7,
-  "nearestSameGroup": 3,
+  "nearestSameGroup": 2,
+  "nearestTied": 1,
   "noNeighbour": 0,
   "perGroup": [
     {
       "group": "A",
       "samples": 3,
-      "nearestSameGroup": 1,
+      "nearestSameGroup": 0,
+      "nearestTied": 1,
       "meanWithin": 0.3055555555555555,
       "meanBetween": 0.485479797979798
     },

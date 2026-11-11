@@ -50,14 +50,14 @@ const expected: Record<string, string[]> = {
   snps: [
     'VCF: 8 samples, 12 sites used.',
     'Skipped 1 site: filter not PASS (lowQ).',
-    'Nearest SNP neighbour in the same group: 3 of 7. No neighbour with enough shared sites: 0.',
-    'A      3        1 of 3                 0.306        0.485',
-    'B      4        2 of 4                 0.558        0.485',
+    'Nearest SNP neighbours all in the same group: 2 of 7. Tied between its own group and another: 1. No neighbour with enough shared sites: 0.',
+    'A      3        0 of 3                 1     0.306        0.485',
+    'B      4        2 of 4                 0     0.558        0.485',
     'Grouped but not in the VCF: d-1',
     'In the VCF but not grouped: c-1',
     'These are descriptions, not probabilities.',
   ],
-  'snps-json': ['"compared": 7', '"nearestSameGroup": 3', '"meanWithin": 0.3055555555555555', '"meanBetween": 0.485479797979798'],
+  'snps-json': ['"compared": 7', '"nearestSameGroup": 2', '"nearestTied": 1', '"meanWithin": 0.3055555555555555', '"meanBetween": 0.485479797979798'],
   cleanup: [],
 }
 

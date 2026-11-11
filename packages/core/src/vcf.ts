@@ -83,11 +83,16 @@ export function genotypeDistance(vcf: Vcf, a: number, b: number): { distance: nu
 export type GroupAgreement = {
   /** Samples in both the VCF and the group list. */
   compared: number
-  /** Samples whose nearest SNP neighbour (with at least `minSharedSites`) is in the same mitochondrial group. */
+  /** Samples whose nearest SNP neighbours (with at least `minSharedSites`) are all in the same mitochondrial group. */
   nearestSameGroup: number
+  /**
+   * Samples whose nearest neighbours tie between their own group and another. Counted apart, never settled by file
+   * order: a tie says the SNPs don't choose.
+   */
+  nearestTied: number
   /** Samples with no neighbour sharing enough sites: counted, never guessed. */
   noNeighbour: number
-  perGroup: { group: string; samples: number; nearestSameGroup: number; meanWithin: number | null; meanBetween: number | null }[]
+  perGroup: { group: string; samples: number; nearestSameGroup: number; nearestTied: number; meanWithin: number | null; meanBetween: number | null }[]
   notInVcf: string[]
   notGrouped: string[]
 }
@@ -108,21 +113,30 @@ export function compareWithGroups(vcf: Vcf, groups: Record<string, string>, minS
       d.set(key(ids[i]!, ids[j]!), r.sharedSites >= minSharedSites ? r.distance : null)
     }
   let nearestSameGroup = 0
+  let nearestTied = 0
   let noNeighbour = 0
-  const sameBySample = new Map<string, boolean>()
+  const outcome = new Map<string, 'same' | 'tied' | 'other'>()
   for (const s of ids) {
-    let best: { other: string; dist: number } | null = null
+    let bestDist = Infinity
+    let nearest: string[] = []
     for (const o of ids) {
       if (o === s) continue
       const v = d.get(key(s, o))
       if (v === null || v === undefined) continue
-      if (!best || v < best.dist) best = { other: o, dist: v }
+      if (v < bestDist - 1e-12) {
+        bestDist = v
+        nearest = [o]
+      } else if (Math.abs(v - bestDist) <= 1e-12) nearest.push(o)
     }
-    if (!best) noNeighbour++
-    else if (groups[best.other] === groups[s]) {
-      nearestSameGroup++
-      sameBySample.set(s, true)
+    if (!nearest.length) {
+      noNeighbour++
+      continue
     }
+    const same = nearest.filter((o) => groups[o] === groups[s]).length
+    const result = same === nearest.length ? 'same' : same > 0 ? 'tied' : 'other'
+    outcome.set(s, result)
+    if (result === 'same') nearestSameGroup++
+    else if (result === 'tied') nearestTied++
   }
   const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null)
   const groupIds = [...new Set(ids.map((s) => groups[s]!))].sort()
@@ -139,11 +153,12 @@ export function compareWithGroups(vcf: Vcf, groups: Record<string, string>, minS
           if (s < o) within.push(v)
         } else between.push(v)
       }
-    return { group: g, samples: members.length, nearestSameGroup: members.filter((s) => sameBySample.get(s)).length, meanWithin: mean(within), meanBetween: mean(between) }
+    return { group: g, samples: members.length, nearestSameGroup: members.filter((s) => outcome.get(s) === 'same').length, nearestTied: members.filter((s) => outcome.get(s) === 'tied').length, meanWithin: mean(within), meanBetween: mean(between) }
   })
   return {
     compared: ids.length,
     nearestSameGroup,
+    nearestTied,
     noNeighbour,
     perGroup,
     notInVcf: Object.keys(groups).filter((s) => !index.has(s)).sort(),
