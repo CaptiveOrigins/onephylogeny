@@ -102,7 +102,7 @@ Informed by the techniques research.
 2. **Better authenticity checks.** A NUMT screen against a genome, plus chimera and mislabel detection. *Chimera candidates built 2026-11-10 (`onephylogeny chimeras`); mislabels are the group audit's records closer to another group. On redfoot 0.7.1 neither can see 5p yet.*
 3. **Stronger validation.** Fragment simulation, leave-one-study-out, per-window reports and intervals for small groups. *Leave-one-study-out and leave-one-site-out by window, each group's outcomes with exact intervals on tests, built 2026-11-10 (`leaveOneStudyOutByWindow`, `perWindowValidation`, in `fullValidation`; analysis protocol, section 9). Not yet run on real data or shown in the Mac app.*
 4. **Conflict reporting.** Report when evidence supports several groups or windows disagree. *Built 2026-11-10 (`resultConflicts`, in reports).*
-5. **Calibration.** Expect to refuse: at these site counts, report counts by evidence class, not probabilities. *Counts by status and single match are built; not yet run on real data.*
+5. **Calibration.** Expect to refuse: at these site counts, report counts by evidence class, not probabilities. *Counts by status and single match are built, and were run on the redfoot panel 0.7.1's own records on 2026-11-08 (single matches right at 29 of 29 sites, 88.1% to 100%). The by-window and by-study outcomes were run on panel 0.6.1's records on 2026-11-11, and the prediction written beforehand held. Both are exploratory: the records also shaped the method.*
 6. **Replication.** Reproduce the published assignments that have sources (Arias-Sosa 2025).
 7. **Expert review.** A wildlife geneticist reviews the method and wording.
 
