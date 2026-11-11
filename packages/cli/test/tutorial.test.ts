@@ -72,6 +72,20 @@ const expected: Record<string, string[]> = {
     '| Group A | 2 | 5 | 0 | 5 | 0 of 5 (0% to 52%) | 5 of 5 (48% to 100%) | 0 of 5 (0% to 52%) | 0 | 0 |',
     '| Group C | 2 | 4 | 0 | 4 | 3 of 4 (19% to 99%) | 3 of 4 (19% to 99%) | 1 of 4 (1% to 81%) | 0 | 0 |',
   ],
+  hypothesis: [
+    'Claim: Sample sample-1 belongs to group d.',
+    'Stated test, before it runs:',
+    '    - refuted: the finding is excluded_within_panel: a resolved pair of groups rules d out.',
+    'Verdict: refuted.',
+    "  Group d is excluded within panel tutorial-panel version 1 for sample-1: Outside this group's spread, and decisive sites favor Group A: 27 of 2 allowed over 900 columns in whole; 41 separating sites covered.",
+    '  - a vs d: resolved, favoring a (27 sites for a, 0 for d)',
+    '  - Excluded within this panel only: a group the panel lacks could still be the answer',
+  ],
+  'hypothesis-untestable': [
+    "Stated test: none. This can't be tested with the saved data: there is no saved result for sample-3.",
+    '  - The saved result profiles/tutorial/results/tutorial-panel-1/sample-3.json has no result: the sample was refused (Only 80 columns align to the reference (minimum 100): probably a different gene or a poor fragment)',
+    'Verdict: untestable with this data.',
+  ],
   cleanup: [],
 }
 

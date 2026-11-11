@@ -45,4 +45,4 @@ Everything a test needs already exists: saved results with findings and pairs (`
 - The verdicts can be repeated: the same plan on the same artifacts gives the same answer, and a reader can follow each citation to the finding it names.
 - Four claim kinds are narrow. A claim outside them can't be asked yet; adding one means stating its mapping here first.
 - The verdicts inherit every limit of what they read. `refuted` for a group means excluded within this panel; `refuted` for novelty rests on an uncalibrated rule and is weak evidence.
-- Still to build: the engine side that loads artifacts from the store with their file checks, a CLI command, and a Mac app view that shows the stated test before it runs.
+- Built since (2026-11-11, part 2): the engine side (`testHypothesis`, `runHypothesis`), which loads artifacts from the store with their file checks, and the `onephylogeny hypothesis` command. Still to build: a Mac app view that shows the stated test before it runs.

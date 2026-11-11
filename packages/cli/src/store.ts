@@ -1,4 +1,4 @@
-import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import type { Store } from '@captiveorigins/onephylogeny-engine'
 
@@ -30,4 +30,9 @@ export const nodeStore = (root: string): Store => ({
     appendFileSync(file, text)
   },
   exists: async (p) => existsSync(join(root, p)),
+  folders: async (p) => {
+    const dir = join(root, p)
+    if (!existsSync(dir)) return []
+    return readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort()
+  },
 })

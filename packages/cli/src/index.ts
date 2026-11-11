@@ -4,7 +4,8 @@ import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { assessRead, auditGroups, checkPrimers, chimeraCandidates, compareWithGroups, comparisonMarkdown, parseVcf, readAbif, curationFromCsv, panelMethods, curationToCsv, parseCuration, parseFasta, parseProfile, reportMarkdown, sampleReport, type Result } from '@captiveorigins/onephylogeny-core'
 import { lookupPaper, NcbiClient, paced, publicListings, suggestOutgroups } from '@captiveorigins/onephylogeny-acquire'
-import { buildPanelFromRun, comparePanelVersions, panelVersionComparison, buildTree, EngineError, fetchAndAnchor, isCancelled, loadPanel, loadRunRecords, profilePaths, readCurationHistory, saveCuration, routeSample, runSample, testSample, traceArtifact, verifyDataset, writeDataset, type ArtifactType, type EngineContext, type ToolRunner } from '@captiveorigins/onephylogeny-engine'
+import { buildPanelFromRun, runHypothesis, testHypothesis, testHypothesisOnPanel, comparePanelVersions, panelVersionComparison, buildTree, EngineError, fetchAndAnchor, isCancelled, loadPanel, loadRunRecords, profilePaths, readCurationHistory, saveCuration, routeSample, runSample, testSample, traceArtifact, verifyDataset, writeDataset, type ArtifactType, type EngineContext, type HypothesisPlan, type ToolRunner } from '@captiveorigins/onephylogeny-engine'
+import { claimFromFlags, planText, verdictText } from './hypothesis.js'
 import { joinPair, type AssessedRead } from './sanger.js'
 import { parseGroups, snpsTable } from './snps.js'
 import { chosenKinds, sourcesText } from './sources.js'
@@ -24,6 +25,13 @@ const USAGE = `onephylogeny <command> --workspace DIR --profile ID [options]
   curation history [--record ID]
                            Every saved change, when, by whom and why
   trace --type T --key K   Show everything that produced an artifact
+  hypothesis --claim KIND [claim options] [--version V] [--plan-only] [--json]
+                           Put a claim to the saved panels and results, read only. It prints the stated test first,
+                           then one verdict (refuted, not refuted, untestable with this data, tool or data problem) with
+                           what it rests on and its caveats. --plan-only stops after the stated test. Any verdict exits 0.
+                           Claims: sample-in-group --sample S --group G | groups-distinct --groups G,H --window W |
+                           panel-changed-call --a V --b V --record R [--group G] | possibly-novel --sample S.
+                           With --dir PANEL instead of a profile, only that panel folder is read (no saved results)
   compare --a V --b V [--markdown]
                            Compare two built panel versions: records, groups, settings, claims, as JSON. --markdown
                            prints it for reading, with each version's validation outcomes by window side by side
@@ -255,6 +263,14 @@ async function main() {
     if (r.diagnostics.some((d) => d.severity === 'error')) process.exitCode = 1
     return
   }
+  if (command === 'hypothesis' && flag('dir')) {
+    const store = nodeStore(resolve(flag('dir')!))
+    const panelId = (await store.exists('panel.json')) ? (JSON.parse(await store.read('panel.json')) as { id?: string }).id : undefined
+    const claim = claimFromFlags(flag, panelId)
+    // Reads files only: the network is never needed, so any attempt fails loudly.
+    const offline: EngineContext = { store, ncbi: { fetch: () => Promise.reject(new Error('The hypothesis command never uses the network')) } }
+    return hypothesis(offline, await testHypothesisOnPanel(offline, '.', claim))
+  }
   const root = resolve(flag('workspace') ?? '.')
   const id = flag('profile')
   if (!id) throw new Error('--profile is required')
@@ -311,12 +327,23 @@ async function main() {
     const end = flag('end')
     const t = await buildTree(ctx, profile, { absoluteDir: root, ...(start && end ? { window: { start: Number(start), end: Number(end) } } : {}) })
     console.log(JSON.stringify({ tool: t.tool, version: t.version, tips: t.tips.length, newick: t.newick.trim() }, null, 2))
+  } else if (command === 'hypothesis') {
+    const claim = claimFromFlags(flag, profile.panel?.id)
+    await hypothesis(ctx, await testHypothesis(ctx, profile, claim))
   } else if (command === 'trace') {
     const type = flag('type') as ArtifactType | undefined
     const key = flag('key')
     if (!type || !key) throw new Error('--type and --key are required')
     console.log(JSON.stringify(await traceArtifact(store, { type, key }), null, 2))
   } else throw new Error(`Unknown command ${command}\n\n${USAGE}`)
+}
+
+/** Prints the stated test, then, unless --plan-only, the verdict. Every verdict is an answer, so it exits 0. */
+async function hypothesis(ctx: EngineContext, plan: HypothesisPlan) {
+  if (has('plan-only')) return void process.stdout.write(has('json') ? `${JSON.stringify({ plan }, null, 2)}\n` : planText(plan))
+  if (!has('json')) process.stdout.write(`${planText(plan)}\n`)
+  const outcome = await runHypothesis(ctx, plan)
+  process.stdout.write(has('json') ? `${JSON.stringify({ plan, outcome }, null, 2)}\n` : verdictText(outcome))
 }
 
 main().catch((e) => {
