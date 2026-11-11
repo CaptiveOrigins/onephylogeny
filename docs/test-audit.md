@@ -2,6 +2,16 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-11: focus ring colour
+
+Owner decision N154 (2026-11-11, option A): "keep the brand orange everywhere else, but use the darker orange #a65f20 for focus rings on light backgrounds (4.6 to 1 or better). Dark mode keeps the lighter orange, which already passes." Tests went from 574 to 577: desktop 53 to 56 (`apps/desktop/test/theme.test.tsx`, new). The rest are unchanged.
+
+- **Promises:** `brand/README.md`, "Focus ring": light focus rings are `#a65f20` and pass 3:1 on every light background (WCAG 2.2 1.4.11, 2.4.13); dark rings stay `#e7a066`; the brand orange stays for everything else.
+- **Before and after (focus colour on the background it sits on):** light, app controls: `#cf8137` 3.07:1 on the page and fields (`#ffffff`), 2.88:1 on the side panel (`#fbf7f4`); now `#a65f20`, 4.91:1 and 4.61:1. Light, the library's tree canvas (`.ophy-canvas`): 3.07:1 on white, now 4.91:1. Dark, unchanged: `#e7a066` 8.37:1 on the page and fields (`#12151b`), 7.82:1 on the panel (`#181c24`).
+- **Covered** (`theme.test.tsx`, 3 tests, computed from the stylesheets): the light `--focus` and `--ophy-focus` are `#a65f20` and the accents are still `#cf8137`; light focus passes 3:1 on the page, panel and fields; both dark blocks (system dark and a chosen Dark) keep `#e7a066` and pass 3:1 on all three; the app's one focus rule uses `var(--focus)` and the library's canvas ring uses `var(--ophy-focus, #a65f20)`.
+- **Gaps left:** not looked at in the built app or a browser; the ratios are computed from the CSS. The React package has no dark styles of its own, so a host page in dark mode has to set `--ophy-focus` itself, as the Mac app does; that's said in the stylesheet's comment.
+- **Left out as overkill:** a test per focusable control. They all share the one rule the test reads.
+
 ## 2026-11-11: distance-based novelty, uncalibrated
 
 - **Promises:** analysis protocol section 8, "Distance-based novelty": per-window thresholds from leave-one-site-out nearest-groupmate distances (95th percentile by nearest rank, at least 20 distances); a query beyond it is `possibly-novel`, at or under it `within-range`, and too few query columns, no record sharing `minSharedColumns`, or too few panel distances is `not-evaluable` with its reason; windows that differ give `windows-disagree`; every answer says `calibrated: false`; nothing changes a result's statuses or `novelty.flagged`; the group-left-out check reports counts with no pass mark.

@@ -24,7 +24,16 @@ Shared by every tool:
 Both React packages share these (colors from the Captive Origins palette: orange `#cf8137`, pink `#e48185`, brown `#4c312c`), under their own prefixes (`op-`, `ot-`), so neither depends on the other:
 
 - **Icons**: the same 24 × 24 line icons in `icons.tsx`, drawn from Lucide (ISC; the set Captive Origins uses), 1.75 stroke, round caps and joins, `currentColor`. Shown next to text where a label helps; alone only in compact floating toolbars, always with `aria-label` and a visible tooltip on hover and keyboard focus (`data-tip`). Icons standing alone must say the action (a magnifier for zoom, not a bare +). Buttons are at least 32 px (WCAG asks 24); icon strokes keep 3:1 contrast; overlays use shape as well as color.
-- **Controls**: 32 px buttons, radius 8, 1 px border; floating toolbar at the top right of the canvas; cards and panels radius 10 with a soft shadow; focus ring 2 px Captive Origins orange `#cf8137` (`#e7a066` in dark mode).
+- **Controls**: 32 px buttons, radius 8, 1 px border; floating toolbar at the top right of the canvas; cards and panels radius 10 with a soft shadow; focus ring 2 px, darker orange `#a65f20` on light backgrounds and `#e7a066` in dark mode (see Focus ring below).
 - **Canvas**: drag the background to pan, Ctrl/⌘ + wheel or pinch to zoom, `+` `-` `0` keys, Fit, Download SVG, Print (chart only).
-- **Selection**: Captive Origins orange for the selected item and focus; brown for structure; pink for the brand mark and highlights.
+- **Selection**: Captive Origins orange for the selected item; the darker orange for focus in light mode; brown for structure; pink for the brand mark and highlights.
 - Each tool keeps its own functionality and layout; only the backbone is shared.
+
+## Focus ring
+
+Owner's decision 2026-11-11 (N154, option A, "darker orange ring"): "keep the brand orange everywhere else, but use the darker orange #a65f20 for focus rings on light backgrounds (4.6 to 1 or better). Dark mode keeps the lighter orange, which already passes."
+
+- **Light backgrounds**: focus rings are `#a65f20`. That's 4.91:1 on white and 4.61:1 or better on the cream panels (`#fbf7f4`, `#f7f8fa`, `#fdf7f7`). The brand orange was 3.07:1 on white and 2.88:1 on the panels, under the 3:1 that WCAG 2.2 asks of focus indicators (1.4.11, 2.4.13).
+- **Dark mode**: focus rings stay `#e7a066`, 7.1:1 or better on every dark background the tools use.
+- **Everything else** keeps the brand orange `#cf8137`: fills, accents, selection, primary buttons. OneTaxonomy already uses `#a65f20` for text in the selection colour on light backgrounds.
+- Each tool sets the ring through its own focus variable (`--ophy-focus`, `--op-focus`, `--ot-focus`, and `--focus` in the Mac apps), so a light theme and a dark theme each get the right one, and a test checks the light value and its contrast.
