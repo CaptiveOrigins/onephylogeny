@@ -2,6 +2,14 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-11: .ab1 traces in the Mac app and plugin
+
+- **Promises:** each read's assessment is shown before anything is tested; a failed or too-short read is never tested or stored; two reads are joined against the panel reference with disagreements as N and counted; the joined or single read goes through the ordinary sample test; the plugin stores the kept bases and a summary of the assessment, nothing else from the file, and refuses unreadable, mismatched, failed and short files with nothing stored; a stored trace can't be edited.
+- **Covered, Mac app** (`apps/desktop/test/traces.test.tsx`, 7 tests, on Biopython's `3730.ab1` and `310.ab1`): a usable read's status, bases kept, mean quality, masked count, mixed peaks and notes, then its kept bases sent to the test under the file's sample name; a failed read refused and not tested; a file that isn't ABIF refused; two reads joined with one conflict counted and written as N, nothing else changed; a good and a failed read, the good one used alone and the other named; more than two files refused; hidden in the browser preview. `apps/desktop/test/app.test.tsx`, 1 test, through the real engine on the preview's made-up panel: a failed read leaves no result, and a usable one goes through `runSample` and its result is saved. `apps/desktop/test/platform-mac.test.tsx`, 1 test: the chosen files are read as bytes, and nothing chosen gives null.
+- **Covered, plugin** (`packages/payload/test/records.test.ts`, 3 tests, in-memory MongoDB): a usable upload stored with its kept bases and summary and locked; a failed read, a FASTA file and a checksum mismatch refused with nothing stored; a short read (the good file with all but 60 qualities set to 0) refused with its numbers. Core: `sha256HexBytes` checked against Node's SHA-256 on the file (1 test).
+- **Fixed on the way:** the plugin's edit lock compared group fields as the string "undefined", so a group could change unnoticed. It now compares them by value. The new trace test caught it.
+- **Gaps left:** the joined pair is the good read and a copy with one base changed, not a real forward and reverse pair, so the reverse-strand path is covered only by core's `joinReads` tests. The Tauri dialog and file reads are mocked; the app hasn't been tried with real files yet. The fixtures are a plasmid, so no real result was produced in the app test, only the panel's refusal. Desktop tests went from 28 to 37, the plugin's from 37 to 40, core's from 279 to 280, the repo's from 457 to 470.
+
 ## 2026-11-11: temporary-file cleanup in the Mac store
 
 - **Promise:** a save replaces a file whole and never leaves debris; a failed save says what went wrong.

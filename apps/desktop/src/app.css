@@ -73,6 +73,12 @@ main { overflow-y: auto; min-width: 0; }
 .new-profile .actions { margin: 6px 0 0; }
 .dim { opacity: 0.55; }
 .sample { border-top: 1px solid var(--border); margin-top: 18px; }
+.trace { margin-top: 12px; }
+.trace h4 { margin: 0 0 4px; font-size: 14px; }
+.trace-facts { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; margin: 0 0 6px; }
+.trace-facts dt { color: var(--muted); }
+.trace-facts dd { margin: 0; }
+.trace-plan:empty { display: none; }
 .settings { display: flex; flex-direction: column; gap: 8px; }
 .check { display: flex; gap: 6px; align-items: center; font-size: 13px; }
 .check input { width: auto; min-height: 0; }
