@@ -46,14 +46,24 @@ describe('compareWithGroups', () => {
     const r = compareWithGroups(v, groups)
     expect(r.compared).toBe(7)
     expect(r.noNeighbour).toBe(1)
-    // x1..x3 and y1, y2 agree; y3 sits with X.
-    expect(r.nearestSameGroup).toBe(5)
+    // y3 carries X's genotypes, so each X animal is equally close to the other X animals and to y3: a tie, counted
+    // apart rather than settled by file order. y1 and y2 agree; y3's nearest are all X.
+    expect(r.nearestSameGroup).toBe(2)
+    expect(r.nearestTied).toBe(3)
     expect(r.notInVcf).toEqual(['missing'])
     expect(r.notGrouped).toEqual(['extra'])
     const y = r.perGroup.find((g) => g.group === 'Y')!
     expect(y.samples).toBe(4)
     expect(y.nearestSameGroup).toBe(2)
-    expect(r.perGroup.find((g) => g.group === 'X')!.meanWithin).toBe(0)
+    expect(r.perGroup.find((g) => g.group === 'X')).toMatchObject({ nearestSameGroup: 0, nearestTied: 3, meanWithin: 0 })
+  })
+
+  it('gives the same counts whatever order the animals are in the file', () => {
+    const reversed = [...samples].reverse()
+    const text2 = vcf(reversed, Array.from({ length: n }, (_, i) => row(i + 1, 'PASS', reversed.map(gts))))
+    const a = compareWithGroups(v, groups)
+    const b = compareWithGroups(parseVcf(text2), groups)
+    expect([b.nearestSameGroup, b.nearestTied, b.noNeighbour]).toEqual([a.nearestSameGroup, a.nearestTied, a.noNeighbour])
   })
 
   it('needs enough shared sites before two animals count as neighbours', () => {

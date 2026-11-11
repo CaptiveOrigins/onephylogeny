@@ -1,6 +1,6 @@
 # Tutorial: from records to a report, offline
 
-This walks through OnePhylogeny's command line on a small example: fetch records, build a panel, check it, test three samples, read a report, then check a Sanger trace and a primer pair. After the install it needs no network.
+This walks through OnePhylogeny's command line on a small example: fetch records, build a panel, check it, test three samples, read a report, check a Sanger trace and a primer pair, then compare SNPs with the groups. After the install it needs no network.
 
 Every output below was captured from running the commands. Long output is trimmed, and each trim says so. Run ids, temporary folders and timestamps will differ on your machine. A test (`packages/cli/test/tutorial.test.ts`) runs every command on this page after the install, and checks the key lines of their output, so the page can't drift from the code.
 
@@ -484,7 +484,26 @@ Kept bases 15 to 1090 of 1165 by quality.
 }
 ```
 
-`test` takes one read. Joining a forward and a reverse read exists in the library (`joinReads`), but the command line doesn't offer it yet.
+`test` takes one read. To join a forward and a reverse read of one sample first, give the reverse with `--reverse` and the panel with `--dir`: both reads are placed on the panel's reference, a base from either fills a gap in the other, and where two good bases disagree the column becomes N and is listed by its reference column, counting from 1. It's never a choice between them. Bases the reference has no column for (insertions) and gaps inside a read are left out of the FASTA, and the notes say how many. `--json` prints both assessments and the join.
+
+This repository has no real reverse read: neither file in `fixtures/abi/` is the other's partner, so a real join can't be shown here. The join itself is tested on made-up reads in `packages/cli/test/sanger.test.ts`. What can be shown is the rule for a bad pair. If one read failed or is too short, the other is used alone, and that's said:
+
+<!-- step: sanger-pair -->
+```sh
+onephylogeny sanger --ab1 fixtures/abi/3730.ab1 --reverse fixtures/abi/310.ab1 --dir "$PANEL"
+```
+
+```text
+Forward (fixtures/abi/3730.ab1): Kept bases 15 to 1090 of 1165 by quality.
+Forward (fixtures/abi/3730.ab1): 10 kept bases below Q20 became N.
+Forward (fixtures/abi/3730.ab1): 1 position has a strong second peak: possibly a mixed sample, a nuclear copy or heteroplasmy. Calls are unchanged.
+Reverse (fixtures/abi/310.ab1): No stretch of the read is above the quality cutoff: the read failed.
+fixtures/abi/310.ab1 failed, so only fixtures/abi/3730.ab1 is used, alone and not joined.
+>226032_C-ME-18_pCAGseqF status=usable kept=15-1090 alone
+TTTNGGCAANANNTGAGCTCTATGGCCACAACCATGGTGAGCAAGGGCGAGGAGGATAACATGGCCATCA
+```
+
+(Trimmed after the first sequence line.) A read used alone isn't checked against the reference here; `test` does that, and refuses this one as above. If both reads fail, there's no sequence, and the command exits with status 1. `--reverse` without `--dir` is refused too, because a join needs the panel's reference.
 
 ## 8. Check a primer pair
 
@@ -557,7 +576,72 @@ onephylogeny primers --dir "$PANEL" --forward ACCTACGAAAAACCCACCCA --reverse GGG
 
 Most published cytb primers sit just outside the gene. For those, pass a longer stretch of the reference with `--reference FILE.fasta` and say where cytb starts in it with `--offset`.
 
-## 9. Clean up
+## 9. Compare SNPs with the groups
+
+`snps` reads genotypes from a VCF you've already called, and compares them with the groups the same animals were given. For each animal it finds its nearest neighbour by SNPs, and asks whether that neighbour is in the same group. For each group it gives the mean genotype distance within the group and to everyone else. The groups file is either CSV with a `sample` and a `group` column, or one JSON object mapping sample to group.
+
+`fixtures/tutorial/snps.vcf` is made up: 8 animals and 13 sites, one of which failed the file's own filter. Animal `b-4` was given group B but carries group A's genotypes, on purpose. `c-1` has no group, and `d-1` is grouped but has no genotypes. Real data has thousands of sites, so the default needs two animals to share 100 called sites before they count as neighbours. This file has 12, so the tutorial lowers that with `--min-shared`:
+
+<!-- step: snps -->
+```sh
+onephylogeny snps --vcf fixtures/tutorial/snps.vcf --groups fixtures/tutorial/snp-groups.csv --min-shared 10
+```
+
+```text
+VCF: 8 samples, 12 sites used.
+Skipped 1 site: filter not PASS (lowQ).
+Compared 7 samples that have both SNPs and a group. Two samples count as neighbours only if they share at least 10 called sites.
+Nearest SNP neighbours all in the same group: 2 of 7. Tied between its own group and another: 1. No neighbour with enough shared sites: 0.
+
+Group  Samples  Nearest in same group  Tied  Mean within  Mean between
+A      3        0 of 3                 1     0.306        0.485
+B      4        2 of 4                 0     0.558        0.485
+
+Grouped but not in the VCF: d-1
+In the VCF but not grouped: c-1
+
+Distances are the share of differing alleles over the sites both samples have called: 0 is identical, 1 is opposite homozygotes. "none" means no pair shared enough sites to measure.
+These are descriptions, not probabilities. A sample whose nearest neighbour is in another group is not an error: maternal lines and nuclear relatedness can differ for real reasons.
+```
+
+Only 2 of the 7 have their nearest neighbours all in their own group. `b-4` and `a-1` have identical genotypes, so each is the other's nearest, across groups. `a-3` and `b-3`, heterozygous at almost every site, are each other's nearest too. `a-2` is exactly as close to `a-1` as to `b-4`, so it's counted as tied: a tie is never settled by which animal comes first in the file. Those mixed pairs pull the two means together. None of this says a group is wrong: maternal lines (the mitochondrial groups) and nuclear relatedness can differ for real reasons, such as males moving between places.
+
+The same with the JSON groups file and `--json`:
+
+<!-- step: snps-json -->
+```sh
+onephylogeny snps --vcf fixtures/tutorial/snps.vcf --groups fixtures/tutorial/snp-groups.json --min-shared 10 --json
+```
+
+```json
+{
+  "samples": 8,
+  "sites": 12,
+  "skipped": [
+    {
+      "reason": "filter not PASS (lowQ)",
+      "count": 1
+    }
+  ],
+  "minSharedSites": 10,
+  "compared": 7,
+  "nearestSameGroup": 2,
+  "nearestTied": 1,
+  "noNeighbour": 0,
+  "perGroup": [
+    {
+      "group": "A",
+      "samples": 3,
+      "nearestSameGroup": 0,
+      "nearestTied": 1,
+      "meanWithin": 0.3055555555555555,
+      "meanBetween": 0.485479797979798
+    },
+```
+
+(Trimmed after the first group.) The means aren't rounded in the JSON.
+
+## 10. Clean up
 
 <!-- step: cleanup -->
 ```sh
@@ -567,6 +651,8 @@ rm -rf "$WS"
 ## What this tutorial leaves out
 
 - **Real NCBI.** Everything above ran offline. On real data, `fetch` takes longer and finds more, and `outgroups` and `lookup` need the network. They aren't shown here.
+- **A real pair of Sanger reads.** The repository has no forward and reverse read of one sample, so `sanger --reverse` is shown only with a failed partner.
+- **Real SNP data.** The VCF is made up and tiny. Calling a VCF from reads is done outside OnePhylogeny.
 - **Trees.** `tree` needs IQ-TREE installed (`onephylogeny doctor` says whether it is), so it isn't part of this offline run.
 - **A validated panel.** This one has no validated claims, so no result here can name a region. A real panel needs more records from more sampling sites. The [analysis protocol](architecture/analysis-protocol.md) sets out what validation means.
 - **The Mac app.** It runs the same steps with buttons. See the [README](../README.md#install-the-mac-app).

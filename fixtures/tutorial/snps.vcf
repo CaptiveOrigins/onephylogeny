@@ -1,0 +1,16 @@
+##fileformat=VCFv4.2
+##source=made up for the OnePhylogeny tutorial
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	a-1	a-2	a-3	b-1	b-2	b-3	b-4	c-1
+chr1	100	.	A	G	60	PASS	.	GT	0/0	0/0	0/1	1/1	1/1	0/1	0/0	0/1
+chr1	200	.	A	G	60	PASS	.	GT	0/0	0/0	0/1	1/1	1/1	0/1	0/0	0/1
+chr1	300	.	A	G	60	PASS	.	GT	0/0	0/0	0/1	1/1	0/1	0/1	0/0	0/1
+chr1	400	.	A	G	60	PASS	.	GT	0/0	0/1	0/1	1/1	1/1	0/1	0/0	0/1
+chr1	500	.	A	G	60	PASS	.	GT	0/0	0/0	0/1	./.	1/1	0/1	0/0	0/1
+chr1	600	.	A	G	60	PASS	.	GT	0/0	0/0	0/1	1/1	0/1	0/1	0/0	0/1
+chr1	700	.	A	G	60	PASS	.	GT	0/0	0/0	0/0	1/1	1/1	0/1	0/0	0/1
+chr1	800	.	A	G	60	PASS	.	GT	0/0	0/1	0/1	1/1	1/1	0/1	0/0	0/1
+chr1	900	.	A	G	60	PASS	.	GT	0/0	0/0	0/1	1/1	0/1	0/1	0/0	0/1
+chr1	1000	.	A	G	60	PASS	.	GT	0/0	0/0	0/1	1/1	1/1	0/1	0/0	0/1
+chr1	1100	.	A	G	60	PASS	.	GT	0/0	0/0	0/1	1/1	1/1	0/1	0/0	0/1
+chr1	1200	.	A	G	60	PASS	.	GT	0/0	0/1	0/1	1/1	0/1	0/1	0/0	0/1
+chr1	1300	.	C	T	12	lowQ	.	GT	1/1	1/1	1/1	1/1	1/1	1/1	1/1	1/1

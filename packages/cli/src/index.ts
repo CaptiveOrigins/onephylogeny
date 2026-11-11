@@ -2,9 +2,11 @@
 import { execFile } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { assessRead, auditGroups, checkPrimers, chimeraCandidates, readAbif, curationFromCsv, panelMethods, curationToCsv, parseCuration, parseFasta, parseProfile, reportMarkdown, sampleReport, type Result } from '@captiveorigins/onephylogeny-core'
+import { assessRead, auditGroups, checkPrimers, chimeraCandidates, compareWithGroups, parseVcf, readAbif, curationFromCsv, panelMethods, curationToCsv, parseCuration, parseFasta, parseProfile, reportMarkdown, sampleReport, type Result } from '@captiveorigins/onephylogeny-core'
 import { lookupPaper, NcbiClient, paced, suggestOutgroups } from '@captiveorigins/onephylogeny-acquire'
 import { buildPanelFromRun, comparePanelVersions, buildTree, EngineError, fetchAndAnchor, isCancelled, loadPanel, loadRunRecords, profilePaths, readCurationHistory, saveCuration, routeSample, runSample, testSample, traceArtifact, verifyDataset, writeDataset, type ArtifactType, type EngineContext, type ToolRunner } from '@captiveorigins/onephylogeny-engine'
+import { joinPair, type AssessedRead } from './sanger.js'
+import { parseGroups, snpsTable } from './snps.js'
 import { nodeStore } from './store.js'
 
 const USAGE = `onephylogeny <command> --workspace DIR --profile ID [options]
@@ -36,6 +38,13 @@ const USAGE = `onephylogeny <command> --workspace DIR --profile ID [options]
   sanger --ab1 FILE [--min-quality N] [--min-length N] [--json]
                            Read a Sanger chromatogram: trim by quality, mask low bases as N, flag strong second peaks,
                            and print the kept read as FASTA (no profile needed)
+  sanger --ab1 FORWARD --reverse REVERSE --dir DIR [--json]
+                           Join a forward and a reverse read on the panel's reference: good bases that disagree become N
+                           and are listed (reference columns, counting from 1). One unusable read: the other is used alone
+  snps --vcf FILE --groups FILE [--min-shared N] [--json]
+                           Compare SNP genotypes with groups: per group, how many samples' nearest SNP neighbour shares
+                           their group, and mean distances within and between. GROUPS is CSV (sample,group) or a JSON
+                           object. Default --min-shared 100. Descriptions, never probabilities (no profile needed)
   primers --dir DIR --forward SEQ --reverse SEQ [--reference FASTA --offset N] [--max-mismatches N]
                            Which of a panel's windows a primer pair can cover. Give a longer reference and the marker's
                            offset in it when the primers sit outside the marker (no profile needed)
@@ -129,14 +138,60 @@ async function main() {
   if (command === 'sanger') {
     const file = flag('ab1')
     if (!file) throw new Error('--ab1 is required')
-    const read = readAbif(new Uint8Array(readFileSync(file)))
+    const reverseFile = flag('reverse')
+    const dir = flag('dir')
+    if (has('reverse') && (!reverseFile || reverseFile.startsWith('--'))) throw new Error('--reverse needs a file: the reverse read (.ab1)')
+    if (reverseFile && !dir) throw new Error("Joining two reads needs the panel's reference: add --dir with a built panel folder")
     const num = (name: string) => (flag(name) !== undefined ? Number(flag(name)) : undefined)
-    const a = assessRead(read, { ...(num('min-quality') !== undefined ? { minQuality: num('min-quality')! } : {}), ...(num('min-length') !== undefined ? { minLength: num('min-length')! } : {}) })
+    const settings = { ...(num('min-quality') !== undefined ? { minQuality: num('min-quality')! } : {}), ...(num('min-length') !== undefined ? { minLength: num('min-length')! } : {}) }
+    if (reverseFile) {
+      const reference = (await loadPanel(nodeStore(resolve(dir!)), '.')).referenceSequence
+      if (!reference) throw new Error("This panel carries no reference sequence, so the reads can't be joined. Build the panel again.")
+      const reads = [file, reverseFile].map((f) => {
+        const read = readAbif(new Uint8Array(readFileSync(f)))
+        return { file: f, sampleName: read.sampleName, instrument: read.instrument, assessment: assessRead(read, settings) }
+      }) as [AssessedRead & { instrument: string | null }, AssessedRead & { instrument: string | null }]
+      const pair = joinPair(reads[0], reads[1], reference)
+      if (has('json')) {
+        console.log(JSON.stringify({ forward: { file, sampleName: reads[0].sampleName, instrument: reads[0].instrument, ...reads[0].assessment }, reverse: { file: reverseFile, sampleName: reads[1].sampleName, instrument: reads[1].instrument, ...reads[1].assessment }, ...pair }, null, 2))
+        if (pair.status === 'refused') process.exitCode = 1
+        return
+      }
+      for (const [label, r] of [['Forward', reads[0]], ['Reverse', reads[1]]] as const) for (const n of r.assessment.notes) console.error(`${label} (${r.file}): ${n}`)
+      if (pair.status === 'refused') throw new Error(pair.reason)
+      for (const n of pair.notes) console.error(n)
+      const fasta = (s: string) => s.match(/.{1,70}/g)!.join('\n')
+      if (pair.status === 'single') {
+        const used = reads.find((r) => r.file === pair.used[0])!
+        process.stdout.write(`>${used.sampleName ?? used.file} status=${used.assessment.status} kept=${used.assessment.kept!.start + 1}-${used.assessment.kept!.end} alone\n${fasta(pair.sequence)}\n`)
+        return
+      }
+      console.error(`Reference columns ${pair.span.start} to ${pair.span.end}: ${pair.columns.both} with a good base from both reads, ${pair.columns.forwardOnly} from the forward only, ${pair.columns.reverseOnly} from the reverse only.`)
+      console.error(`Conflicts: ${pair.conflicts.length}${pair.conflicts.length ? ` (reference column${pair.conflicts.length === 1 ? '' : 's'} ${pair.conflicts.join(', ')}, counting from 1)` : ''}.`)
+      process.stdout.write(`>${reads[0].sampleName ?? file} joined columns=${pair.span.start}-${pair.span.end} conflicts=${pair.conflicts.length}\n${fasta(pair.sequence)}\n`)
+      return
+    }
+    const read = readAbif(new Uint8Array(readFileSync(file)))
+    const a = assessRead(read, settings)
     if (has('json')) return console.log(JSON.stringify({ sampleName: read.sampleName, instrument: read.instrument, ...a }, null, 2))
     for (const n of a.notes) console.error(n)
     if (a.status === 'failed') throw new Error(`${file}: the read failed, so there is no sequence to use`)
     if (a.status === 'short') console.error(`Not usable: too short. The kept bases are printed anyway, for inspection.`)
     process.stdout.write(`>${read.sampleName ?? file} status=${a.status} kept=${a.kept!.start + 1}-${a.kept!.end}\n${a.sequence.match(/.{1,70}/g)!.join('\n')}\n`)
+    return
+  }
+  if (command === 'snps') {
+    const vcfFile = flag('vcf')
+    const groupsFile = flag('groups')
+    if (!vcfFile || !groupsFile) throw new Error('--vcf and --groups are required')
+    const given = flag('min-shared')
+    const minShared = given === undefined ? 100 : Number(given)
+    if (!Number.isInteger(minShared) || minShared < 1) throw new Error('--min-shared must be a whole number of sites, 1 or more')
+    const vcf = parseVcf(readFileSync(vcfFile, 'utf8'))
+    const groups = parseGroups(readFileSync(groupsFile, 'utf8'))
+    const result = compareWithGroups(vcf, groups, minShared)
+    if (has('json')) return console.log(JSON.stringify({ samples: vcf.samples.length, sites: vcf.sites.length, skipped: vcf.skipped, minSharedSites: minShared, ...result }, null, 2))
+    process.stdout.write(snpsTable(vcf, result, minShared))
     return
   }
   if (command === 'primers') {
