@@ -151,6 +151,8 @@ Read-only and optional. It states its test before running it, cites a run for ea
 
 **Check:** given a false claim and an untestable one, it says so, with evidence.
 
+*Part 1 built 2026-11-11 ([ADR 0013](adr/0013-hypothesis-chat.md), task K232): a deterministic core in `packages/core`, with no language model. `planTest` states the test for four claim kinds (sample in group, groups distinct in a window, a panel version changed a call, possibly novel) before anything runs, and `runTest` returns one verdict from the closed list with citations, on saved artifacts only. The check passes on made-up panels: a false group claim comes back `refuted` with the finding and pairs that rule it out, and a claim about a group too thin to compare comes back `untestable with this data` with its reason. Not yet in the engine, CLI or Mac app, and not run on real data. A language layer, if any, needs its own design and an explicit setting first.*
+
 ## Alongside every stage
 
 Lab-grade work runs in parallel: controls, chain of custody and procedures, with a partner lab. This software can support a validated method, but it can't be one by itself.
