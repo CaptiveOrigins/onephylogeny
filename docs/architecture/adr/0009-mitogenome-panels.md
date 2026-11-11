@@ -20,7 +20,7 @@ What's missing is a panel whose windows are genes, gene-level checks, and a test
 5. **Evaluation stays per window.** Each gene window is judged as today, with depth, sites and `not_resolved`. Results add a summary across all evaluable windows, but never a single probability (protocol section 6). Conflicts between genes are reported as conflicts between windows are now.
 6. **Separate panels.** A cytb panel and a mitogenome panel of the same species are different panels. A mitogenome sample can still be tested against a cytb panel, because cytb is located inside it. `route` suggests every panel that applies.
 7. **Evidence rules don't change.** Records excluded by decision stay excluded. That includes the 7 genomes fetched on 2026-11-06, which stay ungrouped (data repo DECISIONS.md). Records assigned by sequence still never shape a panel.
-8. **Trees** get a partition file per gene and codon position for IQ-TREE.
+8. **Trees** get a partition file per gene and codon position for IQ-TREE. *Built 2026-11-11 (`geneCharsets`, `partitionNexus`, `tree.partitions`).*
 
 **Consequences.**
 

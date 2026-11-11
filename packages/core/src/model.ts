@@ -79,7 +79,18 @@ export type Profile = {
   /** Overrides for the record checks. Whatever applied is sealed into any panel built from them. */
   gates?: Partial<GateSettings>
   reference?: { accession: string; codonStart?: number; geneticCode?: GeneticCode }
-  tree?: { model: string; bootstrap: number; shAlrt: number; seed: number; threads: number }
+  tree?: {
+    model: string
+    bootstrap: number
+    shAlrt: number
+    seed: number
+    threads: number
+    /**
+     * Mitogenome trees only (ADR 0009, decision 8): partitions from the gene windows. `codons` (the default) splits
+     * protein-coding genes by codon position; `genes` keeps each gene whole; `none` builds one unpartitioned tree.
+     */
+    partitions?: 'codons' | 'genes' | 'none'
+  }
   panel?: PanelSettings
 }
 

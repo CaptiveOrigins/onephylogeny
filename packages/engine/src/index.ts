@@ -1,7 +1,7 @@
 import {
   ALIGNER, alignToReference, LOCATE_FLANK, locateMarker, assessAlignment, buildPanel, canonicalJson, checkNumts, collapseHaplotypes, compareRuns, DEFAULT_GATES, extractLocation, findGeneFeatures, fullValidation, gatesForRecord, parseFasta, parseGenBank,
   evaluateQuery, sampleQc, toRecordSheet, toSequenceRecord, validatePanel, verifyBundle, validatedScopeFromReport, validateProfile, validateResult, writeFasta,
-  geneChecks, geneWindows, rotateToReference,
+  geneChecks, geneCharsets, geneWindows, partitionNexus, rotateToReference,
   type Alignment, type Curation, type Diagnostic, type GateSettings, type GenBankRecord, type GeneCheck, type GeneWindows, type GeneticCode, type LinkedRecord, type MarkerPlace, type Panel, type PanelBundle, type PanelMember, type PanelSettings, type PanelWindow, type Profile, type Result, type Run, type RunComparison, type SequenceRecord, type Snapshot, type ValidationInput,
 } from '@captiveorigins/onephylogeny-core'
 import { classifyAccessions, genomesHoldingMarkerQuery, linkedAccessions, NcbiClient, selectionQuery, studiesFromRecords, type FoundPaper } from '@captiveorigins/onephylogeny-acquire'
@@ -643,12 +643,28 @@ export async function buildTree(ctx: EngineContext, profile: Profile, options: {
     const outgroups = profile.selection.outgroups.map((o) => o.accession).filter((a): a is string => Boolean(a))
     const names = new Map(haps.map((h, i) => [h, `H${String(i + 1).padStart(4, '0')}`]))
     const og = haps.filter((h) => h.members.some((m) => outgroups.includes(m))).map((h) => names.get(h)!)
+    const partitionMode = isMitogenome(profile) ? settings.partitions ?? 'codons' : 'none'
+    let geneWindowsForTree: PanelWindow[] | null = null
+    if (partitionMode !== 'none') {
+      try {
+        const anchoredArtifact = await loadArtifact(ctx.store, gated.manifest.inputs[0]!)
+        geneWindowsForTree = (JSON.parse(await anchoredArtifact.read('gene-windows.json')) as GeneWindows).windows
+      } catch {
+        scope.log('warning', 'tree', "This run's gene windows couldn't be read, so the tree isn't partitioned by gene")
+      }
+    }
     const artifact = await scope.step({
-      type: 'tree', step: { name: 'tree', version: 1 }, inputs: [ref(gated)], parameters: { window: w, minCoverage: min, tree: settings, outgroups: og }, tools: [{ name: tool, version }],
+      type: 'tree', step: { name: 'tree', version: 1 }, inputs: [ref(gated)], parameters: { window: w, minCoverage: min, tree: settings, outgroups: og, ...(partitionMode !== 'none' ? { partitions: partitionMode } : {}) }, tools: [{ name: tool, version }],
       run: async (put, dir, register) => {
         await put('input.fasta', writeFasta(haps.map((h) => ({ id: names.get(h)!, sequence: h.representative }))))
         await put('tips.json', json(haps.map((h) => ({ id: names.get(h)!, members: h.members }))))
-        const args = ['-s', 'input.fasta', '-m', settings.model, '-B', String(settings.bootstrap), '--alrt', String(settings.shAlrt), '--seed', String(settings.seed), '-T', String(settings.threads), '-pre', 'tree', '-redo', ...(og.length ? ['-o', og.join(',')] : [])]
+        // A mitogenome tree is partitioned by gene (and codon position) from the anchor step's gene windows.
+        let partitioned = false
+        if (partitionMode !== 'none' && geneWindowsForTree) {
+          await put('partitions.nex', partitionNexus(geneCharsets(geneWindowsForTree, w, { codonPositions: partitionMode === 'codons' })))
+          partitioned = true
+        }
+        const args = ['-s', 'input.fasta', ...(partitioned ? ['-p', 'partitions.nex'] : []), '-m', settings.model, '-B', String(settings.bootstrap), '--alrt', String(settings.shAlrt), '--seed', String(settings.seed), '-T', String(settings.threads), '-pre', 'tree', '-redo', ...(og.length ? ['-o', og.join(',')] : [])]
         const res = await tools.run(tool, args, { cwd: `${options.absoluteDir}/${dir}` })
         await ctx.store.write(`${dir}/tool.log`, `${res.stdout}\n${res.stderr}`)
         if (res.code !== 0) throw new EngineError('tool-failed', `${tool} failed: ${(res.stderr || res.stdout).slice(0, 600)}`, `See ${dir}/tool.log`)

@@ -211,3 +211,58 @@ export function geneChecks(queryAligned: string, reference: string, windows: rea
       return { ...base, status: 'ok', detail: 'In frame, with no internal stops.' }
     })
 }
+
+export type Charset = { name: string; columns: number[] }
+
+/**
+ * Partitions for a tree from gene windows (ADR 0009, decision 8), over the alignment columns `range` (0-based,
+ * half-open; the tree's input starts at `range.start`). Each column goes in exactly one set, because a tree program
+ * refuses overlapping partitions:
+ * - a column in one protein-coding gene: that gene's codon position 1, 2 or 3 (or the whole gene if `codonPositions`
+ *   is false), counted from the gene's own start, so a minus-strand gene counts from its end;
+ * - a column in one rRNA or tRNA gene: that gene;
+ * - a column in two or more genes (ATP8 and ATP6, ND4L and ND4): `overlapping_genes`;
+ * - a column in no gene: `noncoding`.
+ * Columns in the result are 1-based and relative to the tree's input.
+ */
+export function geneCharsets(windows: readonly PanelWindow[], range: { start: number; end: number }, options: { codonPositions?: boolean } = {}): Charset[] {
+  const codon = options.codonPositions ?? true
+  const sets = new Map<string, number[]>()
+  const add = (name: string, col: number) => (sets.get(name) ?? sets.set(name, []).get(name)!).push(col - range.start + 1)
+  const safe = (label: string) => label.replace(/[^A-Za-z0-9_]+/g, '_').replace(/^_+|_+$/g, '') || 'gene'
+  for (let col = range.start; col < range.end; col++) {
+    const here = windows.filter((w) => w.gene && col >= w.start && col < w.end)
+    if (here.length === 0) add('noncoding', col)
+    else if (here.length > 1) add('overlapping_genes', col)
+    else {
+      const w = here[0]!
+      if (w.gene!.kind === 'cds' && codon) {
+        const offset = w.gene!.strand === '-' ? w.end - 1 - col : col - w.start
+        add(`${safe(w.label)}_pos${(offset % 3) + 1}`, col)
+      } else add(safe(w.label), col)
+    }
+  }
+  return [...sets].map(([name, columns]) => ({ name, columns }))
+}
+
+/** Columns as NEXUS ranges: runs with step 1 ("5-9") or step 3 ("5-20\3"), and single columns. */
+export function nexusRanges(columns: readonly number[]): string {
+  const sorted = [...columns].sort((a, b) => a - b)
+  const out: string[] = []
+  let i = 0
+  while (i < sorted.length) {
+    const start = sorted[i]!
+    const step = i + 1 < sorted.length ? sorted[i + 1]! - start : 0
+    let j = i
+    if (step === 1 || step === 3) while (j + 1 < sorted.length && sorted[j + 1]! - sorted[j]! === step) j++
+    const end = sorted[j]!
+    out.push(j === i ? String(start) : step === 1 ? `${start}-${end}` : `${start}-${end}\\3`)
+    i = j + 1
+  }
+  return out.join(' ')
+}
+
+/** A NEXUS sets block for IQ-TREE's `-p`. */
+export function partitionNexus(charsets: readonly Charset[]): string {
+  return ['#nexus', 'begin sets;', ...charsets.map((c) => `  charset ${c.name} = ${nexusRanges(c.columns)};`), 'end;', ''].join('\n')
+}

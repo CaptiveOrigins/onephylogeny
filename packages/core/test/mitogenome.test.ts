@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
-import { coveredColumns, geneChecks, geneWindows, parseGenBank, reverseComplement, rotateToReference, type GenBankRecord } from '../src'
+import { coveredColumns, geneChecks, geneCharsets, geneWindows, nexusRanges, parseGenBank, partitionNexus, reverseComplement, rotateToReference, type GenBankRecord } from '../src'
 
 const reference = parseGenBank(readFileSync(new URL('../../../fixtures/NC_080265.1.gb', import.meta.url), 'utf8'))[0]!
 
@@ -92,5 +92,39 @@ describe('rotateToReference and geneChecks on the redfoot reference', () => {
     const len = cox1.end - cox1.start
     const part = ref.slice(0, cox1.start) + '-'.repeat(Math.ceil(len * 0.1)) + ref.slice(cox1.start + Math.ceil(len * 0.1))
     expect(geneChecks(part, ref, [cox1], 2)[0]!.status).toBe('partial')
+  })
+})
+
+describe('gene partitions for trees', () => {
+  const w = (id: string, start: number, end: number, kind: 'cds' | 'rrna' | 'trna', strand: '+' | '-' = '+') => ({ id, label: id, start, end, gene: { kind, strand } })
+
+  it('puts every column in exactly one set: codon positions per gene, minus strand counted from its end, overlaps and non-coding apart', () => {
+    // Columns 0-29: geneA 0-11 (+), overlap 9-11 with geneB 9-20 (-), a tRNA 22-26, non-coding 21 and 27-29.
+    const sets = geneCharsets([w('geneA', 0, 12, 'cds'), w('geneB', 9, 21, 'cds', '-'), w('tRNA-Leu', 22, 27, 'trna')], { start: 0, end: 30 })
+    const all = sets.flatMap((s) => s.columns).sort((a, b) => a - b)
+    expect(all).toEqual(Array.from({ length: 30 }, (_, i) => i + 1))
+    const by = Object.fromEntries(sets.map((s) => [s.name, s.columns]))
+    expect(by.geneA_pos1).toEqual([1, 4, 7])
+    expect(by.overlapping_genes).toEqual([10, 11, 12])
+    // geneB reads from column 21 (1-based) down: 21 is its position 1, 20 position 2, 19 position 3.
+    expect(by.geneB_pos1).toEqual([15, 18, 21])
+    expect(by.tRNA_Leu).toEqual([23, 24, 25, 26, 27])
+    expect(by.noncoding).toEqual([22, 28, 29, 30])
+  })
+
+  it('numbers columns from the start of the tree\'s window, and can keep genes whole', () => {
+    const sets = geneCharsets([w('cytb', 100, 106, 'cds')], { start: 100, end: 106 }, { codonPositions: false })
+    expect(sets).toEqual([{ name: 'cytb', columns: [1, 2, 3, 4, 5, 6] }])
+  })
+
+  it('writes NEXUS ranges with step 1 and step 3', () => {
+    expect(nexusRanges([1, 4, 7, 10, 2, 3, 20])).toBe('1-4 7-10\\3 20')
+    expect(partitionNexus([{ name: 'a_pos1', columns: [1, 4, 7] }, { name: 'nc', columns: [2, 3] }])).toBe('#nexus\nbegin sets;\n  charset a_pos1 = 1-7\\3;\n  charset nc = 2-3;\nend;\n')
+  })
+
+  it('on the redfoot reference, all 16,639 columns are assigned once', () => {
+    const sets = geneCharsets(geneWindows(reference).windows, { start: 0, end: reference.sequence.length })
+    expect(sets.reduce((n, s) => n + s.columns.length, 0)).toBe(reference.sequence.length)
+    expect(sets.find((s) => s.name === 'overlapping_genes')!.columns.length).toBeGreaterThan(0)
   })
 })

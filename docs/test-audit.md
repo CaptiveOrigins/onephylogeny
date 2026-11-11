@@ -2,6 +2,12 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-11: gene partitions for mitogenome trees
+
+- **Promises:** every column in exactly one partition; codon positions counted on each gene's own strand; overlaps kept apart; cytb trees unchanged.
+- **Covered:** `packages/core/test/mitogenome.test.ts` (4 tests: a made-up layout with an overlap, a minus-strand gene, a tRNA and non-coding columns; window-relative numbering and whole genes; NEXUS ranges; the real redfoot reference covering all 16,639 columns once) and `packages/engine/test/mitogenome-golden.test.ts` (IQ-TREE called with `-p partitions.nex` on a mitogenome run, and without it when `partitions` is `none`; a fake tool runner).
+- **Gaps left:** IQ-TREE itself hasn't been run on a partition file here (the tool runner is faked). A partition with very few informative columns may need merging; IQ-TREE's own `-m MFP+MERGE` can do that and is left to the profile's model setting.
+
 ## 2026-11-11: mitogenome panels in the engine
 
 - **Promises (ADR 0009, decisions 1 to 4):** circular, complete records are turned to the reference's start and strand before alignment; a record that can't be turned is excluded with the reason, never guessed; partial records are aligned as they are; a mitogenome panel's windows are the reference's genes unless the profile gives its own; the control region and left-out genes are listed in `notCovered`; a reference with no usable genes fails the build; per-gene frame and stop checks describe records and samples and never change a status; gene (cytb) profiles behave exactly as before.

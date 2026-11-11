@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { parseGenBank, verifyBundle, type Curation, type Profile } from '@captiveorigins/onephylogeny-core'
-import { buildPanelFromRun, EngineError, fetchAndAnchor, loadPanel, profilePaths, runSample, testSample, verifyDataset, type EngineContext, type Store } from '../src/index.js'
+import { buildPanelFromRun, buildTree, EngineError, fetchAndAnchor, loadPanel, profilePaths, runSample, testSample, verifyDataset, type EngineContext, type Store } from '../src/index.js'
 
 // Made-up records (scripts/mitogenome-fixture.mjs): a 1,500-base "mitogenome" with five genes, one on the minus strand,
 // and a control region; north and south haplotypes turned to different starts. Replayed in place of NCBI, as golden.test.ts does.
@@ -130,5 +130,36 @@ describe('golden mitogenome run on made-up records', () => {
     const built = await buildPanelFromRun(ctx, own, curation)
     expect(built.bundle.panel.windows).toEqual(windows)
     expect(built.bundle.panel.notCovered).toEqual(['Made-up records only'])
+  }, 60_000)
+
+  it('partitions a mitogenome tree by gene and codon position, and a cytb-style tree stays unpartitioned', async () => {
+    const ctx = context()
+    const withTree: Profile = { ...profile, tree: { model: 'MFP', bootstrap: 1000, shAlrt: 1000, seed: 1, threads: 1 } }
+    await fetchAndAnchor(ctx, withTree)
+    const calls: { args: string[]; cwd: string }[] = []
+    // A fake IQ-TREE: records how it was called and writes a tree where the engine expects it (the store is in memory).
+    const fake = (store: Store) => ({
+      version: async () => 'IQ-TREE 3 (fake)',
+      run: async (_tool: string, args: string[], { cwd }: { cwd: string }) => {
+        calls.push({ args, cwd })
+        const dir = cwd.replace(/^\/abs\//, '')
+        await store.write(`${dir}/tree.treefile`, '((H0001,H0002),(H0003,H0004));')
+        await store.write(`${dir}/tree.iqtree`, 'fake report')
+        return { code: 0, stdout: '', stderr: '' }
+      },
+    })
+    const tree = await buildTree({ ...ctx, tools: fake(ctx.store) }, withTree, { absoluteDir: '/abs', minCoverage: 0.5 })
+    expect(tree.newick).toContain('(')
+    const args = calls[0]!.args
+    expect(args.slice(args.indexOf('-p'), args.indexOf('-p') + 2)).toEqual(['-p', 'partitions.nex'])
+    const nexus = await ctx.store.read(`${calls[0]!.cwd.replace(/^\/abs\//, '')}/partitions.nex`)
+    expect(nexus).toMatch(/^#nexus\nbegin sets;/)
+    expect(nexus).toMatch(/charset \w+_pos1 = /)
+    expect(nexus).toContain('charset noncoding = ')
+
+    calls.length = 0
+    const whole: Profile = { ...withTree, tree: { ...withTree.tree!, partitions: 'none' } }
+    await buildTree({ ...ctx, tools: fake(ctx.store) }, whole, { absoluteDir: '/abs', minCoverage: 0.5 })
+    expect(calls[0]!.args).not.toContain('-p')
   }, 60_000)
 })
