@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_RULES, fullValidation, parseCuration, type ValidationInput } from '@captiveorigins/onephylogeny-core'
@@ -156,6 +158,37 @@ describe('the Mac app, clicked through', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Build and validate panel' }))
     await screen.findByRole('heading', { name: 'example-panel version 0.1.0' }, { timeout: 20_000 })
   })
+
+  it('tests a usable chromatogram through the ordinary sample test, and never a failed one', async () => {
+    const abi = (name: string) => ({ name, bytes: new Uint8Array(readFileSync(resolve(__dirname, '../../../fixtures/abi', name))) })
+    let picked = [abi('310.ab1')]
+    platform.openChromatograms = async () => picked
+    await openProfile()
+    await fetchRecords()
+    tab('Panel')
+    fireEvent.click(screen.getByRole('button', { name: 'Build and validate panel' }))
+    await screen.findByRole('heading', { name: 'example-panel version 0.1.0' }, { timeout: 60_000 })
+    tab('Test a sample')
+    const outcome = () => screen.getByRole('status', { name: 'Chromatogram outcome' }).textContent
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open .ab1 files' }))
+    await screen.findByRole('article', { name: 'Read 310.ab1' })
+    fireEvent.click(screen.getByRole('button', { name: 'Test reads against panel' }))
+    await waitFor(() => expect(outcome()).toContain('Not tested: 310.ab1 failed'))
+    expect(screen.queryByRole('heading', { name: 'D11F' })).toBeNull()
+    expect(await platform.list(`profiles/${ID}/results`)).toEqual([])
+
+    // The good read is a plasmid, not this made-up gene, so the panel's own checks refuse it: what matters here is that it
+    // went through the same test, under the sample name in the file, and the result was saved like any other.
+    picked = [abi('3730.ab1')]
+    fireEvent.click(screen.getByRole('button', { name: 'Open .ab1 files' }))
+    await screen.findByRole('article', { name: 'Read 3730.ab1' })
+    fireEvent.click(screen.getByRole('button', { name: 'Test reads against panel' }))
+    const result = await screen.findByRole('heading', { name: '226032_C-ME-18_pCAGseqF' }, { timeout: 20_000 })
+    expect(outcome()).toContain('Using 3730.ab1 alone.')
+    expect(result.closest('article')!.textContent).toContain("couldn't be compared with the panel")
+    expect(await platform.list(`profiles/${ID}/results`)).toEqual(['example-panel-0.1.0'])
+  }, 120_000)
 
   describe('Study', () => {
     const openStudy = async () => {

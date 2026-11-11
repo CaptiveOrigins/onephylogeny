@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { resolveResource } from '@tauri-apps/api/path'
 import { open } from '@tauri-apps/plugin-dialog'
-import { exists, mkdir, readDir, readTextFile, remove, rename, writeTextFile } from '@tauri-apps/plugin-fs'
+import { exists, mkdir, readDir, readFile, readTextFile, remove, rename, writeTextFile } from '@tauri-apps/plugin-fs'
 import { fetch as nativeFetch } from '@tauri-apps/plugin-http'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { load } from '@tauri-apps/plugin-store'
@@ -75,6 +75,12 @@ export async function createMacPlatform(): Promise<Platform> {
       const picked = await open({ multiple: false, title: 'Open a sequence file', filters: [{ name: 'FASTA', extensions: ['fasta', 'fa', 'fas', 'fna', 'txt'] }] })
       if (typeof picked !== 'string') return null
       return { name: picked.split('/').pop() ?? picked, text: await readTextFile(picked) }
+    },
+    openChromatograms: async () => {
+      const picked = await open({ multiple: true, title: 'Open one or two chromatograms', filters: [{ name: 'ABI chromatogram', extensions: ['ab1', 'abi'] }] })
+      const paths = picked == null ? [] : Array.isArray(picked) ? picked : [picked]
+      if (!paths.length) return null
+      return Promise.all(paths.map(async (p) => ({ name: p.split('/').pop() ?? p, bytes: await readFile(p) })))
     },
     reveal: (p) => revealItemInDir(full(p)),
     print: () => invoke('print_window'),

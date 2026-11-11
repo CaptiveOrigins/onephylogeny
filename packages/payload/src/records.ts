@@ -1,5 +1,5 @@
 import { anyOf } from './access.js'
-import { parseFasta, sha256Hex, type Result } from '@captiveorigins/onephylogeny-core'
+import { assessRead, ChromatogramError, parseFasta, readAbif, sha256Hex, sha256HexBytes, type Result } from '@captiveorigins/onephylogeny-core'
 import { APIError, type Access, type CollectionBeforeChangeHook, type CollectionConfig, type Field, type Payload, type PayloadRequest, type Where } from 'payload'
 
 /** Settings for the optional `samples` and `sequences` collections. */
@@ -39,8 +39,18 @@ const idOf = (v: unknown) => (v && typeof v === 'object' ? String((v as { id: un
 const relation = (name: string, relationTo: string | undefined, extra: Partial<Field> = {}): Field[] =>
   relationTo ? [{ name, type: 'relationship', relationTo, index: true, ...extra } as Field] : []
 
+/** A field's value for comparison: a related record by its ID, a group by its set values in key order. */
+const comparable = (v: unknown): unknown => {
+  if (v == null) return null
+  if (typeof v !== 'object') return String(v)
+  if (Array.isArray(v)) return v.map(comparable)
+  if ('id' in v) return String((v as { id: unknown }).id)
+  const set = Object.entries(v as Record<string, unknown>).filter(([, x]) => x != null).sort(([a], [b]) => a.localeCompare(b))
+  return set.length ? Object.fromEntries(set.map(([k, x]) => [k, comparable(x)])) : null
+}
+
 const locked = (fields: string[], message: string): CollectionBeforeChangeHook => ({ data, originalDoc, operation }) => {
-  if (operation === 'update') for (const f of fields) if (f in data && JSON.stringify(idOf(data[f]) ?? data[f] ?? null) !== JSON.stringify(idOf(originalDoc[f]) ?? originalDoc[f] ?? null)) fail(message)
+  if (operation === 'update') for (const f of fields) if (f in data && JSON.stringify(comparable(data[f])) !== JSON.stringify(comparable(originalDoc[f]))) fail(message)
   return data
 }
 
@@ -85,8 +95,21 @@ export function recordCollections(o: RecordsOptions, base: { panels: string; ass
       { name: 'length', type: 'number', required: true },
       { name: 'status', type: 'select', required: true, defaultValue: 'received', index: true, options: ['received', 'assigned', 'not-assessable'] },
       { name: 'statusReason', type: 'text', admin: { description: 'Why it couldn\'t be assessed, in plain words.' } },
+      {
+        name: 'trace', type: 'group',
+        admin: { description: 'Set when the sequence came from a Sanger chromatogram (.ab1): how the read was judged. Empty for FASTA.' },
+        fields: [
+          { name: 'status', type: 'select', options: ['usable'], admin: { description: 'Only usable reads are stored; failed and too-short reads are refused.' } },
+          { name: 'keptStart', type: 'number', admin: { description: 'First kept base of the raw read, counting from 1.' } },
+          { name: 'keptEnd', type: 'number', admin: { description: 'Last kept base of the raw read.' } },
+          { name: 'rawLength', type: 'number' },
+          { name: 'meanQuality', type: 'number', admin: { description: 'Mean Phred quality of the kept bases.' } },
+          { name: 'maskedBases', type: 'number', admin: { description: 'Kept bases below Q20, stored as N.' } },
+          { name: 'mixedPeaks', type: 'number', admin: { description: 'Positions with a strong second peak. Empty when the file has no traces to check.' } },
+        ],
+      },
     ],
-    hooks: { beforeChange: [locked(['sample', 'marker', 'file', 'sha256', 'residues', 'recordId', 'length', tenantField], 'A sequence can\'t be edited. Register the corrected file instead.')] },
+    hooks: { beforeChange: [locked(['sample', 'marker', 'file', 'sha256', 'residues', 'recordId', 'length', 'trace', tenantField], 'A sequence can\'t be edited. Register the corrected file instead.')] },
   }
 
   const config: RecordsConfig = {
@@ -105,13 +128,18 @@ const configOf = (payload: Payload): RecordsConfig => {
 /** Reads one FASTA file as one sequence, or says in plain words why it can't. */
 export function readSingleSequence(text: string, marker: string, markers?: RecordsOptions['markers']): { recordId: string; residues: string } {
   if (markers && !markers[marker]) fail(`This site doesn't test the marker "${marker}".`)
-  const { minLength, maxLength } = { ...DEFAULT_LENGTH, ...markers?.[marker] }
   let entries
   try { entries = parseFasta(text.replace(/^﻿/, '')) } catch { return fail('This file isn\'t FASTA: it has bases before the first ">" header line.') }
   if (!entries.length) fail('This file is empty or has no ">" header line, so it isn\'t FASTA.')
   if (entries.length > 1) fail(`This file holds ${entries.length} sequences. Send one file per kit, with one sequence in it.`)
   const entry = entries[0]!
-  const residues = entry.sequence.replace(/[\s\-.]/g, '').toUpperCase()
+  return { recordId: entry.id, residues: checkResidues(entry.sequence.replace(/[\s\-.]/g, '').toUpperCase(), marker, markers) }
+}
+
+/** The checks every stored sequence passes, however it arrived. */
+function checkResidues(residues: string, marker: string, markers?: RecordsOptions['markers']): string {
+  if (markers && !markers[marker]) fail(`This site doesn't test the marker "${marker}".`)
+  const { minLength, maxLength } = { ...DEFAULT_LENGTH, ...markers?.[marker] }
   if (!residues) fail('This file\'s sequence is empty.')
   if (!DNA.test(residues)) {
     const bad = [...new Set(residues.replace(/[ACGTRYKMSWBDHVN]/g, ''))].slice(0, 5).join(' ')
@@ -121,10 +149,31 @@ export function readSingleSequence(text: string, marker: string, markers?: Recor
   if (residues.length > maxLength!) fail(`This sequence is ${residues.length} bases long, longer than the ${maxLength} expected for ${marker}.`)
   const unresolved = (residues.match(/[^ACGT]/g) ?? []).length
   if (unresolved > residues.length / 2) fail(`More than half of this sequence's bases are unresolved (${unresolved} of ${residues.length}).`)
-  return { recordId: entry.id, residues }
+  return residues
 }
 
-export type RegisterSequenceInput = {
+/** How a chromatogram read was judged, as stored on its sequence. Never coordinates or anything else from the file. */
+export type TraceSummary = { status: 'usable'; keptStart: number; keptEnd: number; rawLength: number; meanQuality: number | null; maskedBases: number; mixedPeaks: number | null }
+
+/**
+ * Reads one Sanger chromatogram (.ab1) as one sequence: trimmed by quality, with weak bases as N (`assessRead`'s stated
+ * defaults). Refuses, in plain words, a file that isn't a readable chromatogram and a read that failed or is too short.
+ */
+export function readTrace(bytes: Uint8Array, marker: string, markers?: RecordsOptions['markers']): { recordId: string | null; residues: string; trace: TraceSummary } {
+  let read
+  try { read = readAbif(bytes) } catch (e) { return fail(e instanceof ChromatogramError ? `${e.message}.` : 'This file couldn\'t be read as a chromatogram (.ab1).') }
+  const a = assessRead(read)
+  if (a.status === 'failed') fail(`This read failed, so it isn't stored or tested. ${a.notes[0]}`)
+  if (a.status === 'short') fail(`This read is too short to use: only ${a.sequence.length} bases are good enough, under the ${a.settings.minLength} needed. It isn't stored or tested.`)
+  const residues = checkResidues(a.sequence, marker, markers)
+  return {
+    recordId: read.sampleName,
+    residues,
+    trace: { status: 'usable', keptStart: a.kept!.start + 1, keptEnd: a.kept!.end, rawLength: a.rawLength, meanQuality: a.meanQuality, maskedBases: a.maskedBases, mixedPeaks: a.mixedPeaks ? a.mixedPeaks.length : null },
+  }
+}
+
+type RegisterBase = {
   /** The host's tenant (site), written to the tenant field. */
   tenant?: string | number
   animal: string | number
@@ -136,27 +185,59 @@ export type RegisterSequenceInput = {
   file?: string | number
   /** SHA-256 of the file, as the host computed it from the stored bytes. */
   sha256: string
-  /** The file's text. It must hash to `sha256`. */
-  text: string
   marker: string
   source?: 'kit' | 'upload' | 'historic'
   collectedAt?: string
   req?: PayloadRequest
 }
 
+export type RegisterSequenceInput = RegisterBase & {
+  /** The file's text. It must hash to `sha256`. */
+  text: string
+}
+
+export type RegisterTraceInput = RegisterBase & {
+  /** The chromatogram's bytes. They must hash to `sha256`. */
+  bytes: Uint8Array
+  /** Used as the sequence's record ID when the file carries no sample name. */
+  fileName?: string
+}
+
 /**
  * Records one lab file as a sample and a sequence. It writes with full access, so the caller must already have checked
  * that this person may submit results for this kit. Calling it again with the same kit and file changes nothing.
  */
-export async function registerSequence(payload: Payload, input: RegisterSequenceInput): Promise<{ sample: Record<string, unknown>; sequence: Record<string, unknown>; created: boolean }> {
+export function registerSequence(payload: Payload, input: RegisterSequenceInput): Promise<Registered> {
+  return register(payload, input, (sha256) => {
+    if (sha256Hex(input.text) !== sha256) fail('This file\'s text doesn\'t match its SHA-256. It may have changed after upload; upload it again.')
+    return readSingleSequence(input.text, input.marker, configOf(payload).markers)
+  })
+}
+
+/**
+ * Records one Sanger chromatogram (.ab1) as a sample and a sequence, like `registerSequence`. The read is trimmed by
+ * quality and its weak bases become N; the kept bases are stored with how the read was judged (`trace`). A file that
+ * isn't a chromatogram, or a read that failed or is too short, is refused and nothing is stored. The same access rule
+ * applies: check first that the caller may submit results for this kit.
+ */
+export function registerTrace(payload: Payload, input: RegisterTraceInput): Promise<Registered> {
+  return register(payload, input, (sha256) => {
+    if (sha256HexBytes(input.bytes) !== sha256) fail('This file doesn\'t match its SHA-256. It may have changed after upload; upload it again.')
+    const { recordId, residues, trace } = readTrace(input.bytes, input.marker, configOf(payload).markers)
+    return { recordId: recordId ?? input.fileName ?? 'chromatogram', residues, trace }
+  })
+}
+
+type Registered = { sample: Record<string, unknown>; sequence: Record<string, unknown>; created: boolean }
+
+async function register(payload: Payload, input: RegisterBase, read: (sha256: string) => { recordId: string; residues: string; trace?: TraceSummary }): Promise<Registered> {
   const c = configOf(payload)
   const opts = { req: input.req, overrideAccess: true, depth: 0 } as const
   const sha256 = input.sha256.replace(/^sha256:/i, '').toLowerCase()
   if (!/^[0-9a-f]{64}$/.test(sha256)) fail('The file\'s SHA-256 is missing or malformed.')
-  if (sha256Hex(input.text) !== sha256) fail('This file\'s text doesn\'t match its SHA-256. It may have changed after upload; upload it again.')
+  const { recordId, residues, trace } = read(sha256)
   if ((input.source ?? 'kit') === 'kit' && input.kit == null) fail('A kit sample needs its kit.')
   if (input.animal == null || input.animal === '') fail('This kit isn\'t linked to an animal yet. It has to be activated first.')
-  const { recordId, residues } = readSingleSequence(input.text, input.marker, c.markers)
 
   let taxon = input.taxon
   if (taxon == null && c.hasTaxa) {
@@ -181,7 +262,7 @@ export async function registerSequence(payload: Payload, input: RegisterSequence
     } as never, ...opts }) as unknown as Record<string, unknown>
   }
   const sequence = await payload.create({ collection: c.sequences as never, data: {
-    sample: sample.id, marker: input.marker, sha256, recordId, residues, length: residues.length, status: 'received',
+    sample: sample.id, marker: input.marker, sha256, recordId, residues, length: residues.length, status: 'received', ...(trace ? { trace } : {}),
     ...(c.hasLab && input.lab != null ? { lab: input.lab } : {}), ...(c.hasFiles && input.file != null ? { file: input.file } : {}), ...(input.tenant != null ? { [c.tenantField]: input.tenant } : {}),
   } as never, ...opts }) as unknown as Record<string, unknown>
   return { sample, sequence, created: true }

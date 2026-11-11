@@ -9,6 +9,7 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
   exists: async (p: string) => fs.files.has(p),
   mkdir: async () => {},
   readDir: async () => [],
+  readFile: async (p: string) => (p.endsWith('.ab1') ? new Uint8Array([65, 66, 73, 70]) : Promise.reject(new Error(`no file ${p}`))),
   readTextFile: async (p: string) => fs.files.get(p) ?? Promise.reject(new Error(`no file ${p}`)),
   writeTextFile: async (p: string, text: string, opts?: { append?: boolean }) => {
     fs.written.push(p)
@@ -30,6 +31,7 @@ vi.mock('@tauri-apps/plugin-opener', () => ({ revealItemInDir: vi.fn() }))
 vi.mock('@tauri-apps/plugin-process', () => ({ relaunch: vi.fn() }))
 vi.mock('@tauri-apps/plugin-updater', () => ({ check: vi.fn() }))
 
+import { open } from '@tauri-apps/plugin-dialog'
 import { createMacPlatform } from '../src/platform-mac'
 
 beforeEach(() => {
@@ -88,5 +90,18 @@ describe('the Mac store', () => {
     const none = await createMacPlatform()
     await expect(none.store.write('a.json', 'x')).rejects.toThrow(/workspace folder/)
     expect(fs.files.size).toBe(0)
+  })
+})
+
+describe('opening chromatograms', () => {
+  it('reads the chosen .ab1 files as bytes, and returns null when nothing was chosen', async () => {
+    const platform = await createMacPlatform()
+    vi.mocked(open).mockResolvedValueOnce(['/data/run 1/forward.ab1', '/data/run 1/reverse.ab1'] as never)
+    const files = await platform.openChromatograms!()
+    expect(files?.map((f) => f.name)).toEqual(['forward.ab1', 'reverse.ab1'])
+    expect([...files![0]!.bytes]).toEqual([65, 66, 73, 70])
+    expect(vi.mocked(open).mock.calls[0]![0]).toMatchObject({ multiple: true, filters: [{ extensions: ['ab1', 'abi'] }] })
+    vi.mocked(open).mockResolvedValueOnce(null)
+    expect(await platform.openChromatograms!()).toBeNull()
   })
 })

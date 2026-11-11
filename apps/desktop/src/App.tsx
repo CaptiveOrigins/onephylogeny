@@ -9,6 +9,7 @@ import type { Platform, Settings } from './platform'
 import { PREVIEW_SAMPLE } from './platform-preview'
 import { RegionMapSection } from './RegionMapSection'
 import { emptyStudySession, StudyTab, type StudySession } from './StudyTab'
+import { TraceInput } from './Traces'
 import { validateInWorker } from './validate'
 
 /** Without this, a crash in one tab leaves a blank window with nothing to report. */
@@ -474,16 +475,20 @@ function SampleTab({ profile, platform, hasPanel, attempt, context }: { profile:
   const [text, setText] = useState(platform.kind === 'preview' ? PREVIEW_SAMPLE : '')
   const [out, setOut] = useState<{ id: string; panel: Panel; result: Result | null; diagnostics: Diagnostic[]; aligned?: string }[]>([])
   const P = profilePaths(profile.id)
-  const run = () => attempt('Testing', async () => {
-    const entries = parseFasta(text)
-    if (!entries.length) throw new Error('Paste a FASTA sequence, starting with a line such as >my-sample')
-    const bundle = await loadPanel(platform.store, P.panel(profile.panel!.id, profile.panel!.version))
+  const panelDir = () => P.panel(profile.panel!.id, profile.panel!.version)
+  const testAll = async (entries: { id: string; sequence: string }[]) => {
+    const bundle = await loadPanel(platform.store, panelDir())
     const results = []
     for (const e of entries) {
       const r = await runSample(context(), profile, e.sequence, e.id)
       results.push({ id: e.id, panel: bundle.panel, result: r.result, diagnostics: r.diagnostics, ...(r.result ? { aligned: r.aligned } : {}) })
     }
     setOut(results)
+  }
+  const run = () => attempt('Testing', async () => {
+    const entries = parseFasta(text)
+    if (!entries.length) throw new Error('Paste a FASTA sequence, starting with a line such as >my-sample')
+    await testAll(entries)
   })
   return (
     <section className="pane form">
@@ -493,6 +498,7 @@ function SampleTab({ profile, platform, hasPanel, attempt, context }: { profile:
         <button className="primary" disabled={!hasPanel || !text.trim()} onClick={run}>Test against panel</button>
         {!hasPanel && <span className="muted">Build a panel first.</span>}
       </div>
+      <TraceInput platform={platform} hasPanel={hasPanel} attempt={attempt} reference={async () => (await loadPanel(platform.store, panelDir())).referenceSequence ?? null} onTest={(sequence, id) => testAll([{ id, sequence }])} />
       {out.map((r) => <article key={r.id} className="sample"><h3>{r.id}</h3>{r.result ? <ResultView result={r.result} panel={r.panel} {...(r.aligned ? { queryAligned: r.aligned } : {})} /> : <p className="error">This sample couldn't be compared with the panel.</p>}<Diagnostics items={r.diagnostics.filter((d) => d.severity !== 'info')} /></article>)}
     </section>
   )

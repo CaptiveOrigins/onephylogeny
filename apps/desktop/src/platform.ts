@@ -15,6 +15,8 @@ export type Platform = {
   fetch: FetchLike
   tools?: ToolRunner
   openTextFile: () => Promise<{ name: string; text: string } | null>
+  /** Picks chromatogram (.ab1) files and reads their bytes. Null when nothing was chosen. Absent where files can't be opened, such as the browser preview. */
+  openChromatograms?: () => Promise<{ name: string; bytes: Uint8Array }[] | null>
   reveal: (path: string) => Promise<void>
   print?: () => Promise<void>
   /** The region map's outlines (ADR 0008), read from inside the app. Absent where a copy has none, such as the browser preview. */
