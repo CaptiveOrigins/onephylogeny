@@ -130,7 +130,7 @@ Informed by the techniques research.
 
 1. First npm publish, with trusted publishing and release workflow.
 2. Mac app with signed in-app updates once the signing key is added, and IQ-TREE bundled if licensing review allows. No notarization for now, so the README and every release's notes must give both ways past macOS's warning, Open Anyway in Privacy & Security and `xattr -dr com.apple.quarantine` on that one app.
-3. Documentation: a tutorial with an example dataset, and concept pages for newcomers.
+3. Documentation: a tutorial with an example dataset, and concept pages for newcomers. *Built 2026-11-11: [the tutorial](../tutorial.md) runs offline on `fixtures/tutorial` and the golden records, from fetch to a report, a Sanger trace and a primer check, and `packages/cli/test/tutorial.test.ts` runs its commands and checks their output against the page. [Concept pages](../concepts/README.md) cover panels, windows and sites, statuses, why there are no probabilities, mitochondrial and nuclear data, and privacy. Not yet: the stage check, a stranger following it on a fresh machine.*
 4. Zenodo DOI for citation, and a legal review of licensing.
 
 **Check:** a stranger installs it, follows the tutorial and gets the expected result.

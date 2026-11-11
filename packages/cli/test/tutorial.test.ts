@@ -1,0 +1,82 @@
+import { execFileSync } from 'node:child_process'
+import { existsSync, readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { describe, expect, it } from 'vitest'
+
+// Runs every command in docs/tutorial.md, in order, and checks that key lines appear both in the real output and on the
+// page, so the tutorial can't drift from the code. Needs the CLI built first (`pnpm build`), as CI does.
+const repo = fileURLToPath(new URL('../../../', import.meta.url))
+const page = readFileSync(`${repo}docs/tutorial.md`, 'utf8')
+const offline = `${repo}fixtures/tutorial/offline-ncbi.mjs`
+
+// Each runnable block is a ```sh fence right after a `<!-- step: NAME -->` comment.
+const steps = [...page.matchAll(/<!-- step: ([\w-]+) -->\n```sh\n([\s\S]*?)```/g)].map((m) => ({ name: m[1]!, script: m[2]! }))
+const NOT_RUN = new Set(['install']) // needs the network: cloning and installing are what CI already does
+
+/** Key lines per step. Each must appear in that step's output and somewhere on the page. */
+const expected: Record<string, string[]> = {
+  setup: [],
+  fetch: ['[gate] 14 records passed, 1 excluded', '[anchor] Reference NC_080265.1: 1144 columns', '"status": "succeeded"', '"records": 15', '"passed": 14'],
+  sheet: ['record,group,provenance_class,use,site,study,origin_source,exclude,note,organism,length,title', 'FM165591.1,a,wild-documented,,a-1,'],
+  panel: ['"whole: 6 records, 6 sites"', '"a / d in whole: 30 sites"', '"FAIL sites: 6 and 2 sites, and 4 needed for each"', '"passed": false'],
+  verify: ['"verified": true', '"examples": 6'],
+  tamper: ['"verified": false', 'panel.fasta has changed since the dataset was written', "doesn't match its seal"],
+  test: [
+    `"reason": "Within this group's spread: 0 of 4 allowed over 900 columns in whole; 40 separating sites covered"`,
+    '"result": null',
+    'Only 80 columns align to the reference (minimum 100): probably a different gene or a poor fragment',
+  ],
+  report: [
+    'This result falls outside what the panel has been validated for, so no region is named.',
+    '| Group A | Consistent | 900 |',
+    '| Group D | Ruled out within this panel | 900 |',
+    '| Group B vs Group C | Not separated by the columns this sequence covers (sites-disagree) |',
+    '- Rules are configured values and these statuses are not probabilities',
+  ],
+  'report-2': [
+    'The sequence fits no single group, so no region can be named.',
+    '| Group B | Consistent | 140 |',
+    '| Group C | Inconclusive | 140 |',
+    '| Group A vs Group B | Not separated by the columns this sequence covers (too-few-decisive-sites) |',
+    '- More than one group fits this sequence: Group A, Group B.',
+  ],
+  'report-3': ['This sample was refused, so there is no result to report: Only 80 columns align to the reference (minimum 100)'],
+  sanger: ['Kept bases 15 to 1090 of 1165 by quality.', '10 kept bases below Q20 became N.', '>226032_C-ME-18_pCAGseqF status=usable kept=15-1090', 'TTTNGGCAANANNTGAGCTCTATGGCCACAACCATGGTGAGCAAGGGCGAGGAGGATAACATGGCCATCA'],
+  'sanger-failed': ['fixtures/abi/310.ab1: the read failed, so there is no sequence to use'],
+  'test-read': ['"code": "no-reference-match"', 'Shares no seed with the reference, in either orientation: probably a different gene'],
+  primers: ['"status": "ok"', '"columns": 1050', '"of": 1144'],
+  'primers-refused': ['"status": "refused"', 'The reverse primer matches nowhere in the reference within 3 mismatches.'],
+  cleanup: [],
+}
+
+/** Exit status each step must end with: refusals exit 1 so scripts can stop on them. */
+const exitCodes: Record<string, number> = { tamper: 1, 'report-3': 1, 'sanger-failed': 1, 'primers-refused': 1 }
+
+describe('the tutorial', () => {
+  it('names every runnable block, and the test knows every step', () => {
+    expect(page.match(/```sh\n/g)!.length).toBe(steps.length)
+    expect(steps.map((s) => s.name).filter((n) => !NOT_RUN.has(n))).toEqual(Object.keys(expected))
+  })
+
+  it('runs end to end, offline, and the page shows what the commands print', () => {
+    expect(existsSync(`${repo}packages/cli/dist/index.js`), 'build the CLI first: pnpm build').toBe(true)
+    // One shell, so the setup's function and variables carry through. A marker after each step records its exit status.
+    // Stderr joins stdout, because progress and refusals are printed there.
+    const script = 'exec 2>&1\n' + steps
+      .filter((s) => !NOT_RUN.has(s.name))
+      .map((s) => `echo "@@@step ${s.name}"\n${s.script}echo "@@@exit $?"`)
+      .join('\n')
+    // The offline answers load for every command, not only fetch, so nothing in this test can reach the network.
+    const output = execFileSync('bash', ['-c', script], { cwd: repo, encoding: 'utf8', env: { ...process.env, NODE_OPTIONS: `--import ${offline}` }, stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 1 << 26 })
+    const byStep = new Map([...output.matchAll(/@@@step ([\w-]+)\n([\s\S]*?)@@@exit (\d+)/g)].map((m) => [m[1]!, { text: m[2]!, code: Number(m[3]) }]))
+    expect([...byStep.keys()]).toEqual(Object.keys(expected))
+    for (const [name, lines] of Object.entries(expected)) {
+      const { text, code } = byStep.get(name)!
+      expect(code, `${name} exit status`).toBe(exitCodes[name] ?? 0)
+      for (const line of lines) {
+        expect(text, `${name} output`).toContain(line)
+        expect(page, `${name} on the page`).toContain(line)
+      }
+    }
+  }, 120_000)
+})
