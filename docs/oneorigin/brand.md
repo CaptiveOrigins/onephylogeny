@@ -16,7 +16,7 @@ Both use Captive Origins brown `#4c312c` as ink (connectors, UI structure). Owne
 Shared by every tool:
 
 - Tile: 896 × 896 on a 1024 canvas, corner radius 200, vertical pastel gradient of a Captive Origins color.
-- Blocks: cream `#fbf8f2`, rounded (radius ≈ 36–40), connectors 34 px in Captive Origins brown with square joins.
+- Blocks: cream `#fbf8f2`, rounded (radius ≈ 36–40), connectors 34 px in Captive Origins brown with round joins (owner's choice 2026-11-11, N169: "A: round (Recommended)"; the three icons already drew them round, and the text said square).
 - The Captive Origins heart badge, exactly as in the Captive Origins logo (brown ring, pink disc, white heart; paths copied from the logo), as the maker's mark, placed on "the one" (the focal individual, the selected taxon).
 - Small sizes (16–32 px: menu bar, file lists, favicons): `brand/icon-small.svg`, the same tile and glyph without the badge, a larger tile and heavier lines. From 64 px up, the full icon.
 - Masters: `brand/icon.svg` (source) and `brand/icon-1024.png` (transparent, for app icon generators such as `tauri icon`). A future tool takes a pastel of another Captive Origins color (mauve `#91645d`, a lighter or deeper orange/pink) and its own glyph from the same blocks.

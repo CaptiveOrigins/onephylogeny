@@ -9,7 +9,7 @@
     </linearGradient>
   </defs>
   <rect x="16" y="16" width="992" height="992" rx="220" fill="url(#oy-gs)" />
-  <path d="M250 512H430M430 240V784M430 240H570M430 512H570M430 784H570" fill="none" stroke="#4c312c" stroke-width="72" stroke-linejoin="round" />
+  <path d="M570 240H430V784H570M250 512H570" fill="none" stroke="#4c312c" stroke-width="72" stroke-linejoin="round" />
   <g fill="#fbf8f2">
     <rect x="110" y="420" width="180" height="184" rx="50" />
     <rect x="570" y="150" width="310" height="180" rx="50" />
