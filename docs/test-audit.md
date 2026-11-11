@@ -2,6 +2,12 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-11: temporary-file cleanup in the Mac store
+
+- **Promise:** a save replaces a file whole and never leaves debris; a failed save says what went wrong.
+- **Fixed:** a failed rename in the Mac store (`apps/desktop/src/platform-mac.ts`) left `<file>.tmp` beside the target. A failed write or rename now removes the temporary file and rethrows the original error unchanged, as the CLI store has done since 2026-11-09. Unlike the CLI, a failed removal isn't dropped: the error then says the temporary file couldn't be removed and names it, with the original error as its `cause`. The capabilities now grant `fs:allow-remove`.
+- **Covered** (`apps/desktop/test/platform-mac.test.tsx`, 2 new tests, Tauri file calls mocked): a failed rename leaves only the old file and reports the original error; a failed removal is reported along with the original error. Desktop tests went from 26 to 28, the repo from 445 to 447.
+- **Gaps left:** the file calls and capability check are mocked, so a real failed save in a built app is unchecked.
 ## 2026-11-11: outcomes by window, shown
 
 - **Promises:** counts always come with their tests and interval, never as a bare rate; no-test rows say so; warnings are shown; old reports still render.

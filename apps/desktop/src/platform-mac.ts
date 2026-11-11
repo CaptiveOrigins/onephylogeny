@@ -1,13 +1,16 @@
 import { invoke } from '@tauri-apps/api/core'
 import { resolveResource } from '@tauri-apps/api/path'
 import { open } from '@tauri-apps/plugin-dialog'
-import { exists, mkdir, readDir, readTextFile, rename, writeTextFile } from '@tauri-apps/plugin-fs'
+import { exists, mkdir, readDir, readTextFile, remove, rename, writeTextFile } from '@tauri-apps/plugin-fs'
 import { fetch as nativeFetch } from '@tauri-apps/plugin-http'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { load } from '@tauri-apps/plugin-store'
 import type { Platform } from './platform'
 import { parseEcoregions } from './RegionMapSection'
 import { loadSettings, saveSettings } from './updates'
+
+const describe = (e: unknown) => (e instanceof Error ? e.message : String(e))
+const sentence = (text: string) => (/[.!?]$/.test(text) ? text : `${text}.`)
 
 const settings = () => load('settings.json', { autoSave: true, defaults: {} })
 
@@ -37,8 +40,19 @@ export async function createMacPlatform(): Promise<Platform> {
         const file = full(p)
         await mkdir(file.slice(0, file.lastIndexOf('/')), { recursive: true })
         const temp = `${file}.tmp`
-        await writeTextFile(temp, text)
-        await rename(temp, file)
+        // As in the CLI store: a failed write or rename removes the temporary file and still reports the original
+        // error. Here a failed removal is reported too, so a leftover file is never a surprise.
+        try {
+          await writeTextFile(temp, text)
+          await rename(temp, file)
+        } catch (error) {
+          try {
+            if (await exists(temp)) await remove(temp)
+          } catch (cleanup) {
+            throw new Error(`${sentence(describe(error))} The temporary file ${temp} couldn't be removed either (${describe(cleanup)}); you can delete it.`, { cause: error })
+          }
+          throw error
+        }
       },
       append: async (p, text) => {
         const file = full(p)
