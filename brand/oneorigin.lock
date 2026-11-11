@@ -4,15 +4,15 @@
     "repo": "https://github.com/CaptiveOrigins/onephylogeny",
     "branch": "main",
     "path": "docs/oneorigin",
-    "commit": "3b18be3ced686ad706ccd2fa4179f758b43edb38"
+    "commit": "5ef9baea4f419a146f39e70b433c4a0795fa2a33"
   },
   "copy": "brand/oneorigin",
   "files": {
     "README.md": "sha256:25b8cfbe5df31ba8b18d63138bd82a6511ed88b9c154f081369cd0f003cd8489",
-    "brand.md": "sha256:a9987cd07dd6c820dffa4a5643d6a8ab72babaca07d0414fffe25e8ac4a83410",
-    "guidelines.md": "sha256:657faf130db8d3d3b657671616d03fdcaa08e07a374d5cc463ae0c6b0ecdecfe",
+    "brand.md": "sha256:43994d8e9271f6f1d555967dfb5733e2658c83b6a35dfb830aaad7d1af50b800",
+    "guidelines.md": "sha256:67ba425cdace4af5c9ea903b2da6523db609bade2068e5872a29f66bf84a54ea",
     "icons/block.svg": "sha256:0ebfc31700e1e6ae1ed4c795fc83741503dcb42d73675d120ba3d6d9a0106c12",
-    "icons/connector.svg": "sha256:788c0879979709085eccfab18a4c4e352661d6ab5fa5237a191881a27c83dafe",
+    "icons/connector.svg": "sha256:5e545f134c8514c58282df7dae6c2e97cfab37d404b3df42dc80fe8ba63b0d0d",
     "icons/heart-badge.svg": "sha256:f755eda3873ad972b660f2a8999d22b65965ffc3f4375294dff0c0a065bb9415",
     "icons/tile-onepedigree.svg": "sha256:13729ff38e9957e5234515278bf694eb0c1279d7f0cf85e4b62f120758f79c88",
     "icons/tile-onephylogeny.svg": "sha256:61d6878f648dece5824c96959a2cb1a4a3858a001e8e0ee17284d0d460295f3d",

@@ -244,4 +244,31 @@ describe('this repo', () => {
     }
     assert.ok(icon.includes('stop-color="#e6d6d2"') && icon.includes('stop-color="#c9aca5"'))
   })
+
+  // Owner decision N169: connectors have round joins. A join only applies inside one path, so two strokes that end
+  // on the same point make a corner with a notch in it, whatever stroke-linejoin says.
+  it('its icons draw connectors with round joins and no corner made of two separate strokes, and are labelled', () => {
+    for (const file of ['brand/icon.svg', 'brand/icon-small.svg']) {
+      const icon = readFileSync(join(repo, file), 'utf8')
+      const label = /aria-labelledby="([^"]+)"/.exec(icon)?.[1]
+      assert.ok(label && icon.includes(`<title id="${label}">`), `${file}: aria-labelledby must name its title`)
+      const connector = /<path d="([^"]+)" fill="none" stroke="#4c312c" stroke-width="(\d+)" stroke-linejoin="round" \/>/.exec(icon)
+      assert.ok(connector, `${file}: one brown connector path with round joins`)
+      assert.match(connector[1], /^(?:[MHV][\d. ]+)+$/, `${file}: the connector uses only M, H and V`)
+      const ends = []
+      for (const sub of connector[1].split('M').filter(Boolean)) {
+        const [x0, y0] = sub.match(/^[\d.]+ [\d.]+/)[0].split(' ').map(Number)
+        let [x, y] = [x0, y0]
+        for (const [, cmd, n] of sub.matchAll(/([HV])([\d.]+)/g)) cmd === 'H' ? (x = Number(n)) : (y = Number(n))
+        ends.push(`${x0},${y0}`, `${x},${y}`)
+      }
+      assert.equal(new Set(ends).size, ends.length, `${file}: two strokes end on the same point: ${ends.join(' ')}`)
+    }
+    const widths = { 'brand/icon.svg': tokens.icon.connector.width, 'brand/icon-small.svg': tokens.icon['connector-small'].width }
+    for (const [file, width] of Object.entries(widths)) assert.ok(readFileSync(join(repo, file), 'utf8').includes(`stroke-width="${width}" stroke-linejoin="round"`), file)
+    for (const text of ['guidelines.md', 'brand.md']) {
+      const words = readFileSync(join(repo, SOURCE_PATH, text), 'utf8')
+      assert.ok(words.includes('round joins') && !words.includes('square joins'), text)
+    }
+  })
 })

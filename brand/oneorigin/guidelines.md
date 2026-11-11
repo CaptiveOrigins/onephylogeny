@@ -34,7 +34,7 @@ They exist so the three tools feel like one suite and keep working together as t
 Shared by every tool:
 
 - **Tile:** 896 × 896 on a 1024 canvas, corner radius 200, a vertical pastel gradient of a Captive Origins color.
-- **Blocks and connectors:** cream `#fbf8f2` blocks with radius about 36 to 40, and 34 px Captive Origins brown `#4c312c` connectors with square joins.
+- **Blocks and connectors:** cream `#fbf8f2` blocks with radius about 36 to 40, and 34 px Captive Origins brown `#4c312c` connectors with round joins (owner decision N169, 2026-11-11). Draw a connector's corners as one path, so the join applies; separate strokes that meet at a corner leave a notch.
 - **Badge:** the Captive Origins heart badge, exactly as in the logo, as the maker's mark, placed on "the one": the focal individual, selected taxon or tested sample.
 - **Small sizes:** `brand/icon-small.svg` for 16 to 32 px, with the same tile and glyph, no badge, a larger tile and heavier lines. The full icon is used from 64 px up.
 - **Masters:** every repo must have `brand/icon.svg`, `brand/icon-small.svg` and `brand/icon-1024.png` (transparent, for `tauri icon`).

@@ -2,6 +2,15 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-11: round connector joins
+
+Owner decision N169 (2026-11-11): "A: round (Recommended)". Brand text and OnePhylogeny's two icon masters only; no package changed, so the workspace count is unchanged. The script tests (`node --test scripts/oneorigin.test.mjs`) gained one.
+
+- **Promises:** the brand text says round joins; the icons draw them, with no corner made of two separate strokes (a join only applies inside one path); each icon's `aria-labelledby` names its own title; the copy in `brand/oneorigin/` matches the source and its lock.
+- **Covered** (`scripts/oneorigin.test.mjs`, "this repo"): both icons have one brown connector path with `stroke-linejoin="round"` at the width `tokens.json` gives, built only from M, H and V, with no two strokes ending on the same point; each `aria-labelledby` matches a `<title id>`; `guidelines.md` and `brand.md` say "round joins" and not "square joins". It failed on the old icons (the label, then the shared corner point). The existing test still holds the copy to the lock with no warning.
+- **Gaps left:** the PNG master and the Mac app's icon files are made from the SVG by hand (resvg, then `tauri icon`), so nothing checks they match it; they were looked at once. The icon wasn't seen in the Dock, Finder or at 16 px on a real screen. OneTaxonomy's and OnePedigree's icons already draw round and weren't changed or tested here; their brand copies pick up the new text when they next sync.
+- **Left out as overkill:** comparing rendered pixels in CI, which would need a renderer as a dependency for one corner.
+
 ## 2026-11-11: hypothesis tests in the engine and CLI
 
 Roadmap stage 9, part 2 (task K232, ADR 0013). Tests went from 603 to 629 in the workspace: engine 67 to 80 (`packages/engine/test/hypothesis.test.ts`, 13 new), CLI 27 to 40 (`packages/cli/test/hypothesis.test.ts`, 12 new, and 1 in `store.test.ts` for the store's folder listing), and the tutorial test checks two new steps (still 2 tests). The rest are unchanged.
