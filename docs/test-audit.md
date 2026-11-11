@@ -2,6 +2,12 @@
 
 Each audit lists what this repo promises, the tests that prove it, and the gaps: those closed in the same pass and those left, with why. Audits run after each feature or fix, and at least every 14 days while the repo has commits. Newest first.
 
+## 2026-11-10: mitogenome turning and gene checks
+
+- **Promises:** a record is turned to the reference's start exactly, or refused; each protein-coding gene is read on its own strand; frameshifts and internal stops are flagged; partial genes and genes the reference itself can't read cleanly aren't judged.
+- **Covered** (`packages/core/test/mitogenome.test.ts`, 4 more tests, 11 in all): the real redfoot reference turned by 5,000 bases, and reverse-complemented and turned, comes back exactly, though its own start is a tandem repeat. A record without the anchor is refused. All 13 genes of the reference pass (ND6 on the minus strand), and a made-up stop, frameshift and 10% gap in COX1 are each flagged.
+- **Gaps left:** no real second mitogenome has been turned yet (the next part builds panels from real records). The ambiguous-anchor refusal is covered only through code reading.
+
 ## 2026-11-10: mitogenome gene windows
 
 - **Promises:** windows come only from the reference's annotation; anything that can't be placed plainly is left out with a reason; no control region is invented; overlapping genes count once.
