@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "records": {
+    "FM165591.1": {
+      "group": "a",
+      "provenanceClass": "wild-documented",
+      "site": "a-1"
+    },
+    "FM165592.1": {
+      "group": "a",
+      "provenanceClass": "wild-documented",
+      "site": "a-2"
+    },
+    "FM165593.1": {
+      "group": "a",
+      "provenanceClass": "wild-documented",
+      "site": "a-3"
+    },
+    "FM165594.1": {
+      "group": "a",
+      "provenanceClass": "wild-documented",
+      "site": "a-4"
+    },
+    "FN185746.1": {
+      "group": "a",
+      "provenanceClass": "wild-documented",
+      "site": "a-5"
+    },
+    "FN185748.1": {
+      "group": "a",
+      "provenanceClass": "wild-documented",
+      "site": "a-6"
+    },
+    "FN185750.1": {
+      "group": "b",
+      "provenanceClass": "wild-documented",
+      "site": "b-1"
+    },
+    "FN185751.1": {
+      "group": "b",
+      "provenanceClass": "wild-documented",
+      "site": "b-2"
+    },
+    "FM165598.1": {
+      "group": "c",
+      "provenanceClass": "wild-documented",
+      "site": "c-1"
+    },
+    "FM165599.1": {
+      "group": "c",
+      "provenanceClass": "wild-documented",
+      "site": "c-2"
+    },
+    "FM165600.1": {
+      "group": "c",
+      "provenanceClass": "wild-documented",
+      "site": "c-3"
+    },
+    "FM165601.1": {
+      "group": "d",
+      "provenanceClass": "wild-documented",
+      "site": "d-1"
+    },
+    "FM165602.1": {
+      "group": "d",
+      "provenanceClass": "wild-documented",
+      "site": "d-2"
+    }
+  }
+}
