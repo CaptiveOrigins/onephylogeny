@@ -3,7 +3,7 @@
 // with no network: the check's download path is only reached with a URL, and these tests never give it one.
 import assert from 'node:assert/strict'
 import { execFileSync, spawnSync } from 'node:child_process'
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -92,6 +92,128 @@ describe('tokens.json', () => {
     assert.ok(problems.some((p) => p.includes('tools.onetaxonomy.color.panel.light')))
     assert.ok(problems.some((p) => p.includes('prefix op is used twice')))
     assert.throws(() => buildCss(bad, 'ot'), /tokens.json has problems/)
+  })
+})
+
+// The palette's checks, as the owner approved them on 2026-11-12: any two of the four tool colors and the one stay
+// apart by a CIELAB difference of 15 or more with normal vision and under protanopia, deuteranopia and tritanopia;
+// every text color is 4.5:1 or better on white; the one is 4.5:1 or better on white, and its dark version on the
+// dark backgrounds. Colorblind views use the Machado, Oliveira and Fernandes (2009) matrices at full severity, applied
+// in linear RGB, the same way the approved numbers were worked out.
+const CVD = {
+  protan: [[0.152286, 1.052583, -0.204868], [0.114503, 0.786281, 0.099216], [-0.003882, -0.048116, 1.051998]],
+  deutan: [[0.367322, 0.860646, -0.227968], [0.280085, 0.672501, 0.047413], [-0.01182, 0.04294, 0.968881]],
+  tritan: [[1.255528, -0.076749, -0.178779], [-0.078411, 0.930809, 0.147602], [0.004733, 0.691367, 0.3039]],
+}
+const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+const toLinear = (v) => ((v /= 255) <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)
+const fromLinear = (c) => ((c = Math.min(1, Math.max(0, c))), 255 * (c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055))
+const hexOf = (channels) => '#' + channels.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('')
+const seenAs = (hex, kind) => {
+  if (kind === 'normal') return hex
+  const lin = rgb(hex).map(toLinear)
+  return hexOf(CVD[kind].map((row) => fromLinear(row.reduce((sum, m, j) => sum + m * lin[j], 0))))
+}
+const lab = (hex) => {
+  const [r, g, b] = rgb(hex).map(toLinear)
+  const f = (t) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116)
+  const [x, y, z] = [(0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047, 0.2126 * r + 0.7152 * g + 0.0722 * b, (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883]
+  return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))]
+}
+const deltaE = (a, b) => Math.hypot(...lab(a).map((v, i) => v - lab(b)[i]))
+/** The closest two colors in a set, as seen with one kind of vision. */
+const closest = (colors, kind) => {
+  let best = { d: Infinity }
+  colors.forEach((a, i) => colors.slice(i + 1).forEach((b) => {
+    const d = deltaE(seenAs(a, kind), seenAs(b, kind))
+    if (d < best.d) best = { d, pair: `${a} and ${b}` }
+  }))
+  return best
+}
+/** Moves a color part of the way toward white (or another color), as the level shades are made. */
+const mix = (hex, t, to = [255, 255, 255]) => hexOf(rgb(hex).map((c, i) => c + (to[i] - c) * t))
+
+describe('the palette', () => {
+  const palette = tokens.palette
+  const bases = Object.values(palette.tools).map((t) => t.base)
+  const darkBackgrounds = [palette['dark-background'], tokens.color.background.dark]
+
+  it('has the four tools, OneLineage included, in the approved colors', () => {
+    assert.deepEqual(Object.keys(palette.tools), ['onetaxonomy', 'onephylogeny', 'onelineage', 'onepedigree'])
+    assert.deepEqual(bases, ['#fc9583', '#44a446', '#3fb1e4', '#907be8'])
+    assert.deepEqual([palette['the-one'].light, palette['the-one'].dark, palette.center], ['#1f6f6b', '#3fb3a8', '#fbf8f2'])
+    assert.deepEqual([palette.lines.light, palette.lines.dark], ['#363051', '#ece6f2'])
+  })
+
+  const vision = { normal: 'with normal vision', protan: 'under protanopia', deutan: 'under deuteranopia', tritan: 'under tritanopia' }
+  for (const [kind, words] of Object.entries(vision)) {
+    it(`keeps the four tool colors and the one 15 or more apart, ${words}`, () => {
+      const { d, pair } = closest([...bases, palette['the-one'].light], kind)
+      assert.ok(d >= 15, `${pair} are only ${d.toFixed(1)} apart`)
+    })
+  }
+
+  it('gives every tool a text color of 4.5:1 or better on white, and the one 4.5:1 on white and on the dark backgrounds', () => {
+    for (const [id, tool] of Object.entries(palette.tools)) assert.ok(contrast(tool.text, '#ffffff') >= 4.5, `${id} text ${tool.text}: ${contrast(tool.text, '#ffffff').toFixed(2)}`)
+    assert.ok(contrast(palette['the-one'].light, '#ffffff') >= 4.5, 'the one on white')
+    assert.ok(contrast(palette['the-one'].light, palette.center) >= 4.5, 'the one on the cream center')
+    for (const bg of darkBackgrounds) assert.ok(contrast(palette['the-one'].dark, bg) >= 4.5, `the one, dark, on ${bg}: ${contrast(palette['the-one'].dark, bg).toFixed(2)}`)
+  })
+
+  it('draws lines at 3:1 or better, aubergine on white and pale on the dark backgrounds', () => {
+    assert.ok(contrast(palette.lines.light, '#ffffff') >= 3)
+    for (const bg of darkBackgrounds) assert.ok(contrast(palette.lines.dark, bg) >= 3, bg)
+  })
+
+  it('makes the level shades and text colors from each tool color by the stated rule', () => {
+    for (const [id, tool] of Object.entries(palette.tools)) {
+      assert.equal(tool.level1, mix(tool.base, 0.3), `${id} level 1 is 30% toward white`)
+      assert.equal(tool.level2, mix(tool.base, 0.52), `${id} level 2 is 52% toward white`)
+      // The text color is the base darkened toward black in steps of 2%, stopping at the first that reaches 4.5:1.
+      let t = 0
+      while (contrast(mix(tool.base, t, [0, 0, 0]), '#ffffff') < 4.5 && t < 0.9) t += 0.02
+      assert.equal(tool.text, mix(tool.base, t, [0, 0, 0]), `${id} text`)
+    }
+  })
+})
+
+describe('the marks', () => {
+  const palette = tokens.palette
+  const marks = { oneorigin: 'OneOrigin', onetaxonomy: 'OneTaxonomy', onephylogeny: 'OnePhylogeny', onelineage: 'OneLineage', onepedigree: 'OnePedigree' }
+  const files = readdirSync(join(repo, SOURCE_PATH, 'marks')).sort()
+  const shades = Object.values(palette.tools).flatMap((t) => [t.base, t.level1, t.level2])
+
+  it('are the five marks, each light, dark and small', () => {
+    assert.deepEqual(files, Object.keys(marks).flatMap((m) => ['dark', 'light', 'small'].map((v) => `${m}-${v}.svg`)).sort())
+  })
+
+  for (const [slug, name] of Object.entries(marks)) {
+    it(`${name}: labelled, plain SVG, only palette colors, and the one in teal with a cream center`, () => {
+      for (const variant of ['light', 'dark', 'small']) {
+        const svg = readFileSync(join(repo, SOURCE_PATH, 'marks', `${slug}-${variant}.svg`), 'utf8')
+        const where = `${slug}-${variant}.svg`
+        assert.ok(svg.startsWith('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img"'), where)
+        assert.ok(svg.includes(`aria-label="${name} mark"><title>${name} mark</title>`), `${where}: labelled`)
+        assert.doesNotMatch(svg, /<script|<image|<style|<foreignObject|href=|\son[a-z]+=|opacity/i, `${where}: plain shapes only, always solid`)
+        const mode = variant === 'dark' ? 'dark' : 'light'
+        const allowed = new Set([palette.lines[mode], palette['the-one'][mode], palette.center, ...shades, 'none'])
+        const used = [...svg.matchAll(/(?:fill|stroke)="([^"]+)"/g)].map((m) => m[1])
+        for (const c of used) assert.ok(allowed.has(c), `${where}: ${c} isn't in the palette for ${mode} backgrounds`)
+        const one = new RegExp(`<circle cx="([\\d.]+)" cy="([\\d.]+)" r="[\\d.]+" fill="${palette['the-one'][mode]}"/><circle cx="\\1" cy="\\2" r="[\\d.]+" fill="${palette.center}"/>`)
+        assert.match(svg, one, `${where}: the one, with its cream center`)
+        assert.ok(svg.includes(`stroke="${palette.lines[mode]}"`), `${where}: lines in ${mode === 'dark' ? 'the pale' : 'aubergine'}`)
+      }
+    })
+  }
+
+  it('give each tool mark its own color, and the suite mark all four', () => {
+    for (const [id, tool] of Object.entries(palette.tools)) {
+      const svg = readFileSync(join(repo, SOURCE_PATH, 'marks', `${id}-light.svg`), 'utf8')
+      assert.ok([tool.base, tool.level1, tool.level2].some((c) => svg.includes(`fill="${c}"`)), id)
+      for (const [other, o] of Object.entries(palette.tools)) if (other !== id) for (const c of [o.base, o.level1, o.level2]) assert.ok(!svg.includes(`fill="${c}"`), `${id} uses ${other}'s ${c}`)
+    }
+    const suite = readFileSync(join(repo, SOURCE_PATH, 'marks/oneorigin-light.svg'), 'utf8')
+    for (const tool of Object.values(palette.tools)) assert.ok(suite.includes(`fill="${tool.base}"`), tool.base)
   })
 })
 
@@ -212,7 +334,7 @@ describe('command line', () => {
     const { tool } = fixture()
     const ok = run(['check', '--root', tool, '--offline'])
     assert.equal(ok.status, 0, ok.stdout + ok.stderr)
-    assert.match(ok.stdout, /Warning: Couldn't check[\s\S]*OneOrigin check passed: 11 files match/)
+    assert.match(ok.stdout, /Warning: Couldn't check[\s\S]*OneOrigin check passed: 26 files match/)
     writeFileSync(join(tool, COPY_PATH, 'tokens.json'), '{}\n')
     const bad = run(['check', '--root', tool, '--offline'], { GITHUB_ACTIONS: 'true' })
     assert.equal(bad.status, 1)
