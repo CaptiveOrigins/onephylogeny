@@ -2,9 +2,9 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/CaptiveOrigins/onephylogeny/blob/main/docs/oneorigin/tokens.schema.json",
   "title": "OneOrigin tokens",
-  "description": "The shared look of the OneOrigin tools: colors per mode, radii, sizes, icon parts and each tool's tile.",
+  "description": "The shared look of the OneOrigin tools: colors per mode, the brand palette, radii, sizes, icon parts and each tool's tile.",
   "type": "object",
-  "required": ["schemaVersion", "name", "color", "radius", "size", "icon", "tools"],
+  "required": ["schemaVersion", "name", "color", "palette", "radius", "size", "icon", "tools"],
   "additionalProperties": false,
   "properties": {
     "$schema": { "type": "string" },
@@ -12,6 +12,35 @@
     "name": { "const": "OneOrigin" },
     "about": { "type": "string" },
     "color": { "$ref": "#/$defs/colors" },
+    "palette": {
+      "description": "The brand palette the marks are drawn in: each tool's color with two level shades and a text color, the one, the center and the lines.",
+      "type": "object",
+      "required": ["tools", "the-one", "center", "lines", "dark-background"],
+      "additionalProperties": false,
+      "properties": {
+        "about": { "type": "string" },
+        "tools": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": { "pattern": "^one[a-z]+$" },
+          "additionalProperties": {
+            "type": "object",
+            "required": ["base", "level1", "level2", "text"],
+            "additionalProperties": false,
+            "properties": {
+              "base": { "$ref": "#/$defs/hex" },
+              "level1": { "$ref": "#/$defs/hex" },
+              "level2": { "$ref": "#/$defs/hex" },
+              "text": { "$ref": "#/$defs/hex" }
+            }
+          }
+        },
+        "the-one": { "$ref": "#/$defs/colors/additionalProperties" },
+        "center": { "$ref": "#/$defs/hex" },
+        "lines": { "$ref": "#/$defs/colors/additionalProperties" },
+        "dark-background": { "$ref": "#/$defs/hex" }
+      }
+    },
     "radius": { "$ref": "#/$defs/lengths" },
     "size": { "$ref": "#/$defs/lengths" },
     "icon": {
