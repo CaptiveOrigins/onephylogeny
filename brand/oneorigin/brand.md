@@ -1,10 +1,59 @@
 # Brand
 
-OnePedigree, OneTaxonomy and OnePhylogeny are separate tools from one maker: the [OneOrigin suite](README.md). Like a tool family, they share a backbone and keep their own character. The rules are in the [suite guidelines](guidelines.md); the values below are also in [tokens.json](tokens.json), and the shared icon parts are in [icons/](icons/).
+OneTaxonomy, OnePhylogeny, OneLineage and OnePedigree are separate tools from one maker: the [OneOrigin suite](README.md). Like a tool family, they share a backbone and keep their own character. The rules are in the [suite guidelines](guidelines.md); the values below are also in [tokens.json](tokens.json), the marks are in [marks/](marks/), and the shared icon parts are in [icons/](icons/).
 
 This is the canonical brand text. It lives in OnePhylogeny's `docs/oneorigin/`, and each tool carries a locked copy in `brand/oneorigin/`. Change it in OnePhylogeny, never in a copy.
 
+## Palette
+
+The OneOrigin palette has its own colors, no longer taken from Captive Origins. Approved by the owner on 2026-11-12. The values are in `palette` in [tokens.json](tokens.json).
+
+| | OneTaxonomy | OnePhylogeny | OneLineage | OnePedigree |
+| --- | --- | --- | --- | --- |
+| Base | `#fc9583` | `#44a446` | `#3fb1e4` | `#907be8` |
+| Level 1 (one level away) | `#fdb5a8` | `#7cbf7e` | `#79c8ec` | `#b1a3ef` |
+| Level 2 (two levels away) | `#feccc3` | `#a5d3a6` | `#a3daf2` | `#cac0f4` |
+| Text, on white | `#a66256` (4.66:1) | `#388639` (4.53:1) | `#2c7ca0` (4.67:1) | `#7967c3` (4.62:1) |
+
+Shared by every tool:
+
+| | Light backgrounds | Dark backgrounds |
+| --- | --- | --- |
+| The one | `#1f6f6b` deep teal, 5.92:1 on white | `#3fb3a8`, 6.85:1 on `#1c1820` |
+| Center of the one | `#fbf8f2` cream | `#fbf8f2` cream |
+| Lines | `#363051` aubergine, 12.36:1 on white | `#ece6f2`, 14.30:1 on `#1c1820` |
+
+- **The tool colors form a tetradic rectangle**: two complementary pairs, coral and green, blue and violet. Teal sits apart as the shared accent.
+- **The one is teal with a cream center** in every mark: the selected rank, the sample, the person, the animal, and the suite's origin.
+- **Levels are shades.** Level 1 is the base 30% of the way to white, level 2 is 52% of the way. Siblings share a shade, and each level away from the one is a step lighter. In OneTaxonomy the ranks below are darker, so a parent and its child never match.
+- **Text uses the text color, never the base.** The bases are for fills: on white they reach only 2.15:1 (OneTaxonomy) to 3.40:1 (OnePedigree). Each text color is its base darkened in 2% steps until it reaches 4.5:1 on white.
+- **Lines are aubergine**, a deep shade of the palette's violet, so the structure belongs to the palette. On dark backgrounds they turn pale.
+
+### Checks
+
+These are tests on the tokens and the marks, in `scripts/oneorigin.test.mjs`, so a change that breaks one fails the build:
+
+- **Colorblind distinctness.** Any two of the four tool colors and the one (light) are at least 15 apart (CIELAB ΔE), seen with normal vision and under protanopia, deuteranopia and tritanopia. Today: 40.6, 27.2, 16.9 and 16.9. The closest pairs are blue and violet (deuteranopia) and green and blue (tritanopia). The colorblind views use the Machado, Oliveira and Fernandes (2009) matrices at full severity.
+- **Contrast.** Every text color is 4.5:1 or better on white. The one is 4.5:1 or better on white and on its cream center, and its dark version on both dark backgrounds (`#1c1820`, and `#12151b` in the apps). Lines are 3:1 or better on their background.
+- **The rule.** Level shades and text colors follow the rule above exactly.
+- **The marks.** Each mark is plain SVG, labelled, uses only palette colors for its background, and draws the one in teal with a cream center.
+
+A limit the checks don't cover: on dark backgrounds the one's lighter teal `#3fb3a8` and OneLineage's blue are only 7.0 apart under tritanopia. The cream center tells the one apart by shape, so never draw the one without it.
+
+## Marks
+
+Five marks, each as light, dark and small SVGs in [marks/](marks/): `oneorigin`, `onetaxonomy`, `onephylogeny`, `onelineage` and `onepedigree`, as `<mark>-light.svg`, `<mark>-dark.svg` and `<mark>-small.svg`. They are drawn on a 200 × 200 view box, without a background.
+
+- **Light** is for light backgrounds, and **dark** for dark ones: pale lines and the lighter teal.
+- **Small** is for 48 px and under. It has thicker lines and larger nodes, and OnePhylogeny drops its faint outer generation so it stays clean at icon size. It uses the light colors.
+- **One node size, always solid.** No faded or see-through nodes. The only exception is OnePhylogeny's faint outer generation, which shows that the tree goes on.
+- **Orientation follows each field.** The suite and OneTaxonomy read top-down from one origin. OnePhylogeny is a circular tree, OneLineage a spiral around a person, and OnePedigree reads like a pedigree certificate, with the animal on the left.
+- **The zoom chain.** OneTaxonomy is the widest view, then OnePhylogeny, OneLineage and OnePedigree each zoom closer in.
+- **The suite mark** grows from the one at the top to all four tool colors.
+
 ## App icon
+
+The app icons, their tiles and the heart badge below are the earlier ones, drawn from Captive Origins colors. They stay as they are for now: new app icons, tiles and the maker's mark aren't decided yet.
 
 | | OnePedigree | OneTaxonomy | OnePhylogeny |
 | --- | --- | --- | --- |
@@ -26,6 +75,8 @@ Shared by every tool:
 The shared parts, cut from the three icons without changing a value, are in [icons/](icons/): each tool's tile (`tile-onepedigree.svg`, `tile-onetaxonomy.svg`, `tile-onephylogeny.svg`), a cream block (`block.svg`), a connector (`connector.svg`) and the heart badge (`heart-badge.svg`, its paths exactly as in the logo). Each tool's glyph and the badge's place on it stay in that tool's own `brand/icon.svg`.
 
 ## Interface
+
+The interface colors below are also the earlier ones, from Captive Origins colors, and the apps and React packages still use them. Whether they move to the palette above isn't decided yet.
 
 Both React packages share these (colors from the Captive Origins palette: orange `#cf8137`, pink `#e48185`, brown `#4c312c`), under their own prefixes (`op-`, `ot-`), so neither depends on the other:
 
