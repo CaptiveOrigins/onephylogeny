@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { parseGenBank, reportMarkdown, sampleReport, verifyBundle, type Curation, type Profile } from '@captiveorigins/onephylogeny-core'
+import { parseGenBank, reportMarkdown, sampleReport, verifyBundle, type Curation, type Profile } from '@extantape/onephylogeny-core'
 import { buildPanelFromRun, buildTree, EngineError, fetchAndAnchor, loadPanel, profilePaths, routeSample, runSample, testSample, verifyDataset, type EngineContext, type Store } from '../src/index.js'
 
 // Made-up records (scripts/mitogenome-fixture.mjs): a 1,500-base "mitogenome" with five genes, one on the minus strand,

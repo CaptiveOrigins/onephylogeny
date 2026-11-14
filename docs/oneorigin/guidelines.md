@@ -1,6 +1,6 @@
 # OneOrigin suite guidelines
 
-**Status: accepted by the owner on 2026-11-11 (N105: "A: send it, accept guidelines (Recommended)").** Drafted 2026-11-04. These apply to OnePedigree, OneTaxonomy and OnePhylogeny, the [OneOrigin suite](README.md). The brand text that used to be hand-copied into each repo's `brand/README.md` now lives in [brand.md](brand.md), and the machine-readable values in [tokens.json](tokens.json). Each tool carries a locked copy of this folder (section 10).
+**Status: accepted by the owner on 2026-11-11 ("A: send it, accept guidelines (Recommended)").** Drafted 2026-11-04. These apply to OnePedigree, OneTaxonomy and OnePhylogeny, the [OneOrigin suite](README.md). The brand text that used to be hand-copied into each repo's `brand/README.md` now lives in [brand.md](brand.md), and the machine-readable values in [tokens.json](tokens.json). Each tool carries a locked copy of this folder (section 10).
 
 They exist so the three tools feel like one suite and keep working together as they change, while each stays its own and none depends on another.
 
@@ -39,12 +39,12 @@ The app icons and the interface colors below are the earlier ones. They stay unt
 
 Shared by every tool:
 
-- **Tile:** 896 × 896 on a 1024 canvas, corner radius 200, a vertical pastel gradient of a Captive Origins color.
-- **Blocks and connectors:** cream `#fbf8f2` blocks with radius about 36 to 40, and 34 px Captive Origins brown `#4c312c` connectors with round joins (owner decision N169, 2026-11-11). Draw a connector's corners as one path, so the join applies; separate strokes that meet at a corner leave a notch.
-- **Badge:** the Captive Origins heart badge, exactly as in the logo, as the maker's mark, placed on "the one": the focal individual, selected taxon or tested sample.
+- **Tile:** 896 × 896 on a 1024 canvas, corner radius 200, a vertical pastel gradient of a color from the earlier palette.
+- **Blocks and connectors:** cream `#fbf8f2` blocks with radius about 36 to 40, and 34 px brown `#4c312c` connectors with round joins (owner decision, 2026-11-11). Draw a connector's corners as one path, so the join applies; separate strokes that meet at a corner leave a notch.
+- **Badge:** the heart badge, exactly as in `icons/heart-badge.svg`, as the maker's mark, placed on "the one": the focal individual, selected taxon or tested sample.
 - **Small sizes:** `brand/icon-small.svg` for 16 to 32 px, with the same tile and glyph, no badge, a larger tile and heavier lines. The full icon is used from 64 px up.
 - **Masters:** every repo must have `brand/icon.svg`, `brand/icon-small.svg` and `brand/icon-1024.png` (transparent, for `tauri icon`).
-- **A future tool** takes a pastel of another Captive Origins color and its own glyph from the same blocks.
+- **A future tool** takes a pastel of another color from the earlier palette and its own glyph from the same blocks.
 
 ### Color
 
@@ -76,7 +76,7 @@ The system font stack in every tool, with monospace only for sequences, logs and
 
 - Buttons are 32 px, radius 8, with a 1 px border.
 - Cards and panels have radius 10 and a soft shadow.
-- The focus ring is 2 px: the darker orange `#a65f20` on light backgrounds and `#e7a066` in dark mode. The brand orange `#cf8137` stays for fills, accents and selection. Owner's decision 2026-11-11 (N154, "A: darker orange ring").
+- The focus ring is 2 px: the darker orange `#a65f20` on light backgrounds and `#e7a066` in dark mode. The brand orange `#cf8137` stays for fills, accents and selection. Owner's decision 2026-11-11 ("A: darker orange ring").
 - Interactive canvases have a floating toolbar at the top right. Drag the background to pan, use Ctrl/⌘ + wheel or pinch to zoom, use `+` `-` `0` keys, and offer Fit, Download SVG and Print (chart only).
 
 ### Voice
@@ -155,7 +155,7 @@ fixtures/    small, illustrative, with a README
 
 - pnpm workspaces, Node 22 or later, ESM only, built with tsup and tested with Vitest.
 - Strict TypeScript, with `noUncheckedIndexedAccess` on.
-- **Package names:** `@captiveorigins/<tool>-<part>` and `@captiveorigins/payload-plugin-<tool>`.
+- **Package names:** `@extantape/<tool>-<part>` and `@extantape/payload-plugin-<tool>`.
 - **Dependencies point downward:** `core` has no runtime dependencies and compiles without DOM or Node types. It must not depend on React, Payload, databases or Tauri. Exceptions need an ADR.
 - No empty scaffolding. Planned work lives in the roadmap.
 
@@ -185,8 +185,8 @@ Each decision with alternatives gets an ADR. Limitations are kept current, and n
 - Lockstep versions across a tool's packages.
 - Tag `vx.y.z` runs a workflow that tests and **stages** every package through trusted publishing, with no stored token. A maintainer approves with 2FA.
 - A package's first version is published by hand, then `npm trust` is set up.
-- `package.json` description and keywords are the source of truth, synced to GitHub with `npm run packages:sync` in Captive Origins. Release workflows refuse to stage when they differ.
-- Each repo is registered in `packages-sync.mjs` and `npm-trust.sh`.
+- `package.json` description and keywords are the source of truth, copied to GitHub before each release. Release workflows refuse to stage when they differ.
+- Each repo is registered in the shared description sync and trusted publishing scripts.
 
 ### Mac app
 
@@ -200,7 +200,7 @@ Each decision with alternatives gets an ADR. Limitations are kept current, and n
 - **Bridges:** integration lives in an optional package such as `onephylogeny-onetaxonomy`, which depends on both sides. Sister tools expose generic extension points and never depend on a bridge.
 - **Plain files between apps:** one tool's export is another's import. A tool that can't open a file should say which tool can.
 - **Payload plugins** map onto a host's collections rather than owning them, keep permission-aware endpoints, enforce rules on the server, and never hold exact sensitive locations. Compute that can't run on a host's servers runs elsewhere, and the plugin stores what was computed.
-- **Captive Origins** consumes these packages from npm. Nothing here knows about Captive Origins, and nothing in a tool's core knows about a species or a site.
+- **Sites** install these packages from npm like anyone else. Nothing here knows about any one site, and nothing in a tool's core knows about a species or a site.
 
 ## 9. Parity today
 
@@ -226,7 +226,7 @@ From a review of the three repos on 2026-11-04, updated on 2026-11-07 after the 
 | Cancel for long work | Not checked | n/a | Yes |
 | npm release workflow | Yes | Yes | Yes, first version published by hand |
 | Payload plugin | Yes | **Planned** | Yes |
-| Installed in Captive Origins | Yes | **No** | **No** |
+| Used by a live site | Yes | **No** | **No** |
 | License | PolyForm Noncommercial | PolyForm Noncommercial | PolyForm Noncommercial |
 | `core` compiles without Node types | Yes | Yes | Yes |
 
@@ -234,7 +234,7 @@ From a review of the three repos on 2026-11-04, updated on 2026-11-07 after the 
 
 ## 10. Keeping this true
 
-- **One source:** this folder in OnePhylogeny (`docs/oneorigin/`) is the source of truth. Each tool carries a copy in `brand/oneorigin/`, with `brand/oneorigin.lock` recording the source commit and a checksum of every file. CI fails when a copy is edited by hand, and warns when the source has moved ahead. Copies, not a dependency, so each tool still builds alone. Accepted by the owner on 2026-11-11 (N105).
+- **One source:** this folder in OnePhylogeny (`docs/oneorigin/`) is the source of truth. Each tool carries a copy in `brand/oneorigin/`, with `brand/oneorigin.lock` recording the source commit and a checksum of every file. CI fails when a copy is edited by hand, and warns when the source has moved ahead. Copies, not a dependency, so each tool still builds alone. Accepted by the owner on 2026-11-11.
 - **Changing it:** a pull request here says which tools it affects, and those tools get a parity row until they catch up.
 - **Pull request checklist:**
   - Does this change something the family shares? Then update this page.
@@ -244,6 +244,6 @@ From a review of the three repos on 2026-11-04, updated on 2026-11-07 after the 
 
 ### Open questions for the owner
 
-1. Where should this live long term? Answered 2026-11-11 (N105): here, in `docs/oneorigin/`, copied into each tool.
-2. Should shared look move into a shared package? Answered 2026-11-11 (N105): no. Copies with a lock and a drift check, so no tool depends on another.
+1. Where should this live long term? Answered 2026-11-11: here, in `docs/oneorigin/`, copied into each tool.
+2. Should shared look move into a shared package? Answered 2026-11-11: no. Copies with a lock and a drift check, so no tool depends on another.
 3. Should OnePedigree's green accent change to the family orange?

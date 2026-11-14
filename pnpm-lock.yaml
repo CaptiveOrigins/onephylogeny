@@ -29,27 +29,27 @@ importers:
 
   apps/desktop:
     dependencies:
-      '@captiveorigins/onephylogeny-acquire':
+      '@extantape/onephylogeny-acquire':
         specifier: workspace:^
         version: link:../../packages/acquire
-      '@captiveorigins/onephylogeny-core':
+      '@extantape/onephylogeny-core':
         specifier: workspace:^
         version: link:../../packages/core
-      '@captiveorigins/onephylogeny-engine':
+      '@extantape/onephylogeny-engine':
         specifier: workspace:^
         version: link:../../packages/engine
-      '@captiveorigins/onephylogeny-onetaxonomy':
+      '@extantape/onephylogeny-onetaxonomy':
         specifier: workspace:^
         version: link:../../packages/onetaxonomy
-      '@captiveorigins/onephylogeny-react':
+      '@extantape/onephylogeny-react':
         specifier: workspace:^
         version: link:../../packages/react
-      '@captiveorigins/onetaxonomy-core':
-        specifier: ^0.1.0-alpha.0
-        version: 0.1.0-alpha.0
-      '@captiveorigins/onetaxonomy-import':
-        specifier: ^0.1.0-alpha.0
-        version: 0.1.0-alpha.0
+      '@extantape/onetaxonomy-core':
+        specifier: ^0.1.0-alpha.4
+        version: 0.1.0-alpha.4
+      '@extantape/onetaxonomy-import':
+        specifier: ^0.1.0-alpha.4
+        version: 0.1.0-alpha.4
       '@tauri-apps/api':
         specifier: ^2
         version: 2.12.4
@@ -114,10 +114,10 @@ importers:
 
   apps/playground:
     dependencies:
-      '@captiveorigins/onephylogeny-core':
+      '@extantape/onephylogeny-core':
         specifier: workspace:^
         version: link:../../packages/core
-      '@captiveorigins/onephylogeny-react':
+      '@extantape/onephylogeny-react':
         specifier: workspace:^
         version: link:../../packages/react
       react:
@@ -139,19 +139,19 @@ importers:
 
   packages/acquire:
     dependencies:
-      '@captiveorigins/onephylogeny-core':
+      '@extantape/onephylogeny-core':
         specifier: workspace:^
         version: link:../core
 
   packages/cli:
     dependencies:
-      '@captiveorigins/onephylogeny-acquire':
+      '@extantape/onephylogeny-acquire':
         specifier: workspace:^
         version: link:../acquire
-      '@captiveorigins/onephylogeny-core':
+      '@extantape/onephylogeny-core':
         specifier: workspace:^
         version: link:../core
-      '@captiveorigins/onephylogeny-engine':
+      '@extantape/onephylogeny-engine':
         specifier: workspace:^
         version: link:../engine
     devDependencies:
@@ -163,39 +163,39 @@ importers:
 
   packages/engine:
     dependencies:
-      '@captiveorigins/onephylogeny-acquire':
+      '@extantape/onephylogeny-acquire':
         specifier: workspace:^
         version: link:../acquire
-      '@captiveorigins/onephylogeny-core':
+      '@extantape/onephylogeny-core':
         specifier: workspace:^
         version: link:../core
 
   packages/onepedigree:
     dependencies:
-      '@captiveorigins/onephylogeny-core':
+      '@extantape/onephylogeny-core':
         specifier: workspace:^
         version: link:../core
     devDependencies:
-      '@captiveorigins/onepedigree-core':
-        specifier: ^0.1.0-alpha.11
-        version: 0.1.0-alpha.11
+      '@extantape/onepedigree-core':
+        specifier: ^0.1.0-alpha.22
+        version: 0.1.0-alpha.22
 
   packages/onetaxonomy:
     dependencies:
-      '@captiveorigins/onephylogeny-core':
+      '@extantape/onephylogeny-core':
         specifier: workspace:^
         version: link:../core
     devDependencies:
-      '@captiveorigins/onetaxonomy-core':
-        specifier: ^0.1.0-alpha.0
-        version: 0.1.0-alpha.0
-      '@captiveorigins/onetaxonomy-import':
-        specifier: ^0.1.0-alpha.0
-        version: 0.1.0-alpha.0
+      '@extantape/onetaxonomy-core':
+        specifier: ^0.1.0-alpha.4
+        version: 0.1.0-alpha.4
+      '@extantape/onetaxonomy-import':
+        specifier: ^0.1.0-alpha.4
+        version: 0.1.0-alpha.4
 
   packages/payload:
     dependencies:
-      '@captiveorigins/onephylogeny-core':
+      '@extantape/onephylogeny-core':
         specifier: workspace:^
         version: link:../core
     devDependencies:
@@ -217,7 +217,7 @@ importers:
 
   packages/react:
     dependencies:
-      '@captiveorigins/onephylogeny-core':
+      '@extantape/onephylogeny-core':
         specifier: workspace:^
         version: link:../core
     devDependencies:
@@ -341,18 +341,6 @@ packages:
   '@bramus/specificity@2.4.3':
     resolution: {integrity: sha512-0GEz8qJWokkUVYQYRukmkSHIFNoBH8QTreeHrAFbvz1XFYc3Y+puhMs8PQ5x8GNugiC2l5jvDBXKLbBIByeSBw==}
     hasBin: true
-
-  '@captiveorigins/onepedigree-core@0.1.0-alpha.11':
-    resolution: {integrity: sha512-RQ992aoClPv4eii2WCKIZ8gSXYDi/xie4gBBAaAwytGVRx5crR6LotiIQn7IjJ/sDB6DYB8+A+kL6CzRrk2QPw==}
-    engines: {node: '>=22'}
-
-  '@captiveorigins/onetaxonomy-core@0.1.0-alpha.0':
-    resolution: {integrity: sha512-a2D+yriEjXBJmuXrCnx0yCUbxGKaxXE7w3JaYz0JfRacw0PLyO8PGCmRkP3czmMtiH1KXEZ6gLb8+0xkwj5WHA==}
-    engines: {node: '>=22'}
-
-  '@captiveorigins/onetaxonomy-import@0.1.0-alpha.0':
-    resolution: {integrity: sha512-LaWYlvz3kN5qyyL+S2pjNGKXPjm+2hUNlU+xJ8EPMmtPub+LbLwk6tk3odQSxaeLJf704CxOaxpaWh9MW60fCA==}
-    engines: {node: '>=22'}
 
   '@csstools/color-helpers@6.1.2':
     resolution: {integrity: sha512-grhRy3OKmniaAEKXMjua5z/EODX0MSqBGjunw8+j/3HQjOnahs2AGhvEOIYVUWcU6ScApbhLhVrQTX8XqrMrow==}
@@ -710,6 +698,18 @@ packages:
     peerDependenciesMeta:
       '@noble/hashes':
         optional: true
+
+  '@extantape/onepedigree-core@0.1.0-alpha.22':
+    resolution: {integrity: sha512-3QebhOd6ga3YLW5/yPeCCyyKVFufW5vyR7+EOXKBMcb9+Uk6i20uW/TlNJ6ilb4m74UELcPbjSrdBYJLMA/hRw==}
+    engines: {node: '>=22'}
+
+  '@extantape/onetaxonomy-core@0.1.0-alpha.4':
+    resolution: {integrity: sha512-DmLaDrhyqdbzJNcceAGBhKuNdE+0PiSlk3wf7DScttV4zO0R2Z8N8gXb8RiVAN0jkWsBGCEtMvAD58Z/caauOA==}
+    engines: {node: '>=22'}
+
+  '@extantape/onetaxonomy-import@0.1.0-alpha.4':
+    resolution: {integrity: sha512-oaBQl57vKwWBgYm7HtuyZDPbqh4EjHjIW13LKEFjwoirdLq021L4WEdsgBjJ6MyQ9izxJ8RopDZOlGI6xqG/SA==}
+    engines: {node: '>=22'}
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -2021,6 +2021,7 @@ packages:
 
   tldts-core@7.4.20:
     resolution: {integrity: sha512-C630TWXZCZmLq0F2bW4QqwnaaxCQ/svpAqvJwnC4JvgEM5ohhBnGsEzTLSOXcN+xjz+kEaHS5uoWIw2klnqd0A==}
+    deprecated: Partial release, see https://github.com/remusao/tldts/issues/2735. Use >=7.4.22.
 
   tldts@7.4.19:
     resolution: {integrity: sha512-48dH6aSpQnpbzDUc4vIQZ1VjB8tkK+e8c1yx05/SZK+rkssgjEOlxDd/yU8/a4vGYQ9vRgJr9dwMq9TJ0b3X2Q==}
@@ -2410,14 +2411,6 @@ snapshots:
     dependencies:
       css-tree: 3.2.1
 
-  '@captiveorigins/onepedigree-core@0.1.0-alpha.11': {}
-
-  '@captiveorigins/onetaxonomy-core@0.1.0-alpha.0': {}
-
-  '@captiveorigins/onetaxonomy-import@0.1.0-alpha.0':
-    dependencies:
-      '@captiveorigins/onetaxonomy-core': 0.1.0-alpha.0
-
   '@csstools/color-helpers@6.1.2': {}
 
   '@csstools/css-calc@3.4.3(@csstools/css-parser-algorithms@4.0.2(@csstools/css-tokenizer@4.0.2))(@csstools/css-tokenizer@4.0.2)':
@@ -2599,6 +2592,14 @@ snapshots:
     optional: true
 
   '@exodus/bytes@1.16.0': {}
+
+  '@extantape/onepedigree-core@0.1.0-alpha.22': {}
+
+  '@extantape/onetaxonomy-core@0.1.0-alpha.4': {}
+
+  '@extantape/onetaxonomy-import@0.1.0-alpha.4':
+    dependencies:
+      '@extantape/onetaxonomy-core': 0.1.0-alpha.4
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:

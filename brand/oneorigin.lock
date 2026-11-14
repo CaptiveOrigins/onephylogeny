@@ -1,22 +1,22 @@
 {
-  "about": "Copy of https://github.com/CaptiveOrigins/onephylogeny docs/oneorigin at the commit below. Written by `node scripts/oneorigin.mjs lock`; `check` fails on any file that differs.",
+  "about": "Copy of https://github.com/ExtantApe/OnePhylogeny docs/oneorigin at the commit below. Written by `node scripts/oneorigin.mjs lock`; `check` fails on any file that differs.",
   "source": {
-    "repo": "https://github.com/CaptiveOrigins/onephylogeny",
+    "repo": "https://github.com/ExtantApe/OnePhylogeny",
     "branch": "main",
     "path": "docs/oneorigin",
     "commit": "35c7993d6915fb8c0622035a50f88b3e1970f4eb"
   },
   "copy": "brand/oneorigin",
   "files": {
-    "README.md": "sha256:25b8cfbe5df31ba8b18d63138bd82a6511ed88b9c154f081369cd0f003cd8489",
-    "brand.md": "sha256:94556ff48b6e4c29d65d7939cd6ddd37bc568e7bddb17afe977ee2eea19a5763",
-    "guidelines.md": "sha256:8dfd221189b7d68fcafcb9bc2652830e537374323203fc86436d1936f97fec3f",
+    "README.md": "sha256:f8afbcd53fe2d32e5e85947cab9e0542e44073fe01e2fd1047ef6209276d5994",
+    "brand.md": "sha256:d0ae807c738efecd6235444037d73f9f1a26d9495493e597a911a022a657a6ac",
+    "guidelines.md": "sha256:6f537a0aa4d30dbff6f9004b33d4dfe1f0a51ece985e0707a51b8d80ac80bddb",
     "icons/block.svg": "sha256:0ebfc31700e1e6ae1ed4c795fc83741503dcb42d73675d120ba3d6d9a0106c12",
-    "icons/connector.svg": "sha256:5e545f134c8514c58282df7dae6c2e97cfab37d404b3df42dc80fe8ba63b0d0d",
-    "icons/heart-badge.svg": "sha256:f755eda3873ad972b660f2a8999d22b65965ffc3f4375294dff0c0a065bb9415",
-    "icons/tile-onepedigree.svg": "sha256:13729ff38e9957e5234515278bf694eb0c1279d7f0cf85e4b62f120758f79c88",
-    "icons/tile-onephylogeny.svg": "sha256:61d6878f648dece5824c96959a2cb1a4a3858a001e8e0ee17284d0d460295f3d",
-    "icons/tile-onetaxonomy.svg": "sha256:154bd2e7ce127e6fcf7f6b1ca2ab048f60f22483a7f96608170869de022b991c",
+    "icons/connector.svg": "sha256:3de223d5c838932db727dd05cd7b5469ef2a41f63b1c8e1543419dc19990f85f",
+    "icons/heart-badge.svg": "sha256:65bad1c87b8537e6f7db0854a12ee83fb1b8be10ce9a48d103ca6503c96589db",
+    "icons/tile-onepedigree.svg": "sha256:3bcbed862e7ed45dd80f4c06d57395706e1ce8101d54ee1b533a3a2a03918f77",
+    "icons/tile-onephylogeny.svg": "sha256:2b35565c2b5fe294ff8e98b9f196b480519c8dc91b50ec218b1e5b9f51213504",
+    "icons/tile-onetaxonomy.svg": "sha256:c9992e5369c79332accdcac6d4757e80148eabbbaf83fe9e176096e4acc88047",
     "marks/onelineage-dark.svg": "sha256:fa8f1fa2b94b00c58a855feaaf57ea3e225cb6d55671dfdb30e5dcaa8169af53",
     "marks/onelineage-light.svg": "sha256:16dc0b05e215de1eeb5cfb2e6b8aac1fc9090327f7aa2ab6df47c879d8f05bdf",
     "marks/onelineage-small.svg": "sha256:9d7bd756409427a8a2e5f66cf55ea424f3554e64431bca068d2185489a796a43",
@@ -32,8 +32,8 @@
     "marks/onetaxonomy-dark.svg": "sha256:00a491b0b7acb3372ada4feadc9d1e574e49bd3d7b071055032479819b07e91a",
     "marks/onetaxonomy-light.svg": "sha256:4cd7410ff4cf6b2cc5c953310cbc05349169816f1116574b2b844c19e77cd7e7",
     "marks/onetaxonomy-small.svg": "sha256:ae236afd68280a82d60af711c6be344e5d4cb5c157548d13b830755c7ce6c089",
-    "tokens.json": "sha256:d87f3fc103e7d3e145f72dd145ae0d48dea4208957d0be20e26786b70253b3a2",
-    "tokens.schema.json": "sha256:337fa1a63f1fa77a6a8816ee61cf074941e02a428dd64890b2b57cff3bc7cc9b"
+    "tokens.json": "sha256:9b88e3c0caa75b223860b9ca57c55fb48e0d773c2d1b24abba2aee194637b6bd",
+    "tokens.schema.json": "sha256:e7e38666c36015eab49cb802448567137ef6e44870a335ffe34eb89ed9bea3cc"
   },
   "outputs": {
     "apps/desktop/src/oneorigin.css": "ophy"

@@ -4,4 +4,4 @@
 
 **Decision.** PolyForm Noncommercial 1.0.0, matching OneTaxonomy and OnePedigree, with a `Required Notice` line in each `LICENSE`. A Payload plugin for OnePhylogeny follows the same license.
 
-**Consequences.** The project is source-available, not open source. Commercial use needs a separate license from Captive Origins. Noncommercial users may keep their changes private. The first commit stays available under Apache-2.0. Bundled GPL and AGPL tools keep their own licenses, as separate programs. Needs legal review before the first stable release.
+**Consequences.** The project is source-available, not open source. Commercial use needs a separate license from EXTANT APE. Noncommercial users may keep their changes private. The first commit stays available under Apache-2.0. Bundled GPL and AGPL tools keep their own licenses, as separate programs. Needs legal review before the first stable release.

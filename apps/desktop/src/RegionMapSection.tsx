@@ -1,5 +1,5 @@
-import type { Panel } from '@captiveorigins/onephylogeny-core'
-import { RegionMap, type Ecoregions } from '@captiveorigins/onephylogeny-react'
+import type { Panel } from '@extantape/onephylogeny-core'
+import { RegionMap, type Ecoregions } from '@extantape/onephylogeny-react'
 import { useEffect, useState } from 'react'
 import type { Platform } from './platform'
 

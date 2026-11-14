@@ -1,4 +1,4 @@
-import { parseGenBank, type ExternalId, type GenBankRecord, type Marker, type Selection } from '@captiveorigins/onephylogeny-core'
+import { parseGenBank, type ExternalId, type GenBankRecord, type Marker, type Selection } from '@extantape/onephylogeny-core'
 
 export type FetchLike = (url: string, init?: { method?: string; headers?: Record<string, string>; body?: string }) => Promise<{ ok: boolean; status: number; text(): Promise<string> }>
 

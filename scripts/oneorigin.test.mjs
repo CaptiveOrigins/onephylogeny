@@ -64,7 +64,7 @@ describe('tokens.json', () => {
     assert.deepEqual(validateTokens(tokens), [])
   })
 
-  it('holds the owner\'s focus rule (N154) and the three tools\' tiles, and leaves OneLineage out', () => {
+  it('holds the owner\'s focus rule and the three tools\' tiles, and leaves OneLineage out', () => {
     assert.deepEqual([tokens.color.focus.light, tokens.color.focus.dark, tokens.color.accent.light], ['#a65f20', '#e7a066', '#cf8137'])
     assert.deepEqual(Object.keys(tokens.tools).sort(), ['onepedigree', 'onephylogeny', 'onetaxonomy'])
     assert.deepEqual(Object.values(tokens.tools).map((t) => t.prefix).sort(), ['op', 'ophy', 'ot'])
@@ -256,7 +256,7 @@ describe('lock and check', () => {
     const value = JSON.parse(readFileSync(join(tool, LOCK_PATH), 'utf8'))
     assert.equal(value.source.commit, commit)
     assert.equal(commit, git('rev-parse', 'HEAD'))
-    assert.equal(value.source.repo, 'https://github.com/CaptiveOrigins/onephylogeny')
+    assert.equal(value.source.repo, 'https://github.com/ExtantApe/OnePhylogeny')
     assert.ok(value.files['tokens.json'].startsWith('sha256:'))
     assert.ok(Object.keys(value.files).includes('icons/heart-badge.svg'))
     assert.deepEqual(value.outputs, { 'app/oneorigin.css': 'op' })
@@ -367,7 +367,7 @@ describe('this repo', () => {
     assert.ok(icon.includes('stop-color="#e6d6d2"') && icon.includes('stop-color="#c9aca5"'))
   })
 
-  // Owner decision N169: connectors have round joins. A join only applies inside one path, so two strokes that end
+  // Owner decision: connectors have round joins. A join only applies inside one path, so two strokes that end
   // on the same point make a corner with a notch in it, whatever stroke-linejoin says.
   it('its icons draw connectors with round joins and no corner made of two separate strokes, and are labelled', () => {
     for (const file of ['brand/icon.svg', 'brand/icon-small.svg']) {

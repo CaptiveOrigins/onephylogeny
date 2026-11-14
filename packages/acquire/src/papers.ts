@@ -1,4 +1,4 @@
-import { type GenBankRecord, type LinkedRecord, type Selection, type StudyPaper } from '@captiveorigins/onephylogeny-core'
+import { type GenBankRecord, type LinkedRecord, type Selection, type StudyPaper } from '@extantape/onephylogeny-core'
 import { AcquireError, genomesHoldingMarkerQuery, markerTerm, type FetchLike, type NcbiClient } from './index.js'
 
 /** A paper as a search found it. Nothing joins a Study until someone adds it. */

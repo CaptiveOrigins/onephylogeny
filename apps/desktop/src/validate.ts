@@ -1,5 +1,5 @@
-import type { ValidationInput } from '@captiveorigins/onephylogeny-core'
-import { EngineError, type ValidationReports } from '@captiveorigins/onephylogeny-engine'
+import type { ValidationInput } from '@extantape/onephylogeny-core'
+import { EngineError, type ValidationReports } from '@extantape/onephylogeny-engine'
 
 const cancelled = () => new EngineError('cancelled', 'Cancelled')
 

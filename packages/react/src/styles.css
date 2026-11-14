@@ -34,7 +34,7 @@
 .ophy-icon { flex: none; }
 .ophy-canvas { position: relative; overflow: hidden; touch-action: none; cursor: grab; border: 1px solid var(--ophy-border, #eaddd6); border-radius: 10px; }
 .ophy-canvas:active { cursor: grabbing; }
-/* Focus ring: --ophy-focus, the darker orange on light backgrounds (brand/README.md, owner decision N154); set it to #e7a066 in dark themes. */
+/* Focus ring: --ophy-focus, the darker orange on light backgrounds (brand/README.md, owner decision); set it to #e7a066 in dark themes. */
 .ophy-canvas:focus-visible { outline: 2px solid var(--ophy-focus, #a65f20); outline-offset: 1px; }
 .ophy-canvas-content { transform-origin: 0 0; will-change: transform; }
 .ophy-floating { position: absolute; top: 8px; right: 8px; z-index: 1; display: flex; gap: 4px; }

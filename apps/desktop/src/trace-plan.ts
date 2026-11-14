@@ -1,4 +1,4 @@
-import { alignToReference, assessRead, ChromatogramError, joinReads, readAbif, type Alignment, type ReadAssessment } from '@captiveorigins/onephylogeny-core'
+import { alignToReference, assessRead, ChromatogramError, joinReads, readAbif, type Alignment, type ReadAssessment } from '@extantape/onephylogeny-core'
 
 /** One opened `.ab1` file: its assessment, or why it couldn't be read. */
 export type TraceRead = { name: string; sampleName: string | null; assessment: ReadAssessment } | { name: string; error: string }

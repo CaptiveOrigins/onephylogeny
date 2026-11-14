@@ -1,4 +1,4 @@
-import { LISTING_KINDS, type Count, type Coverage, type ListingKind, type Provenance, type PublicListings } from '@captiveorigins/onephylogeny-acquire'
+import { LISTING_KINDS, type Count, type Coverage, type ListingKind, type Provenance, type PublicListings } from '@extantape/onephylogeny-acquire'
 
 /** Which listings `sources` asks for: the flags given, or all of them when none is. */
 export function chosenKinds(has: (flag: string) => boolean): ListingKind[] {

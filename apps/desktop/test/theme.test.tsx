@@ -1,4 +1,4 @@
-// Focus ring colour, owner decision N154 (2026-11-11, brand/README.md): the darker orange #a65f20 on light backgrounds,
+// Focus ring colour, owner decision (2026-11-11, brand/README.md): the darker orange #a65f20 on light backgrounds,
 // the lighter #e7a066 in dark mode, the brand orange #cf8137 everywhere else. Contrast is computed from the stylesheets;
 // nothing here was looked at in the built app.
 import { readFileSync } from 'node:fs'
@@ -30,7 +30,7 @@ const block = (start: string, css = appCss) => {
   return vars(css.slice(at, css.indexOf('}', at)))
 }
 
-describe('focus ring colour (N154)', () => {
+describe('focus ring colour', () => {
   const light = block(':root {')
   const darks = [block(':root:not('), block(":root[data-appearance='dark'] {")]
   const tokenLight = block(':root {', tokenCss)

@@ -4,3 +4,7 @@ packages:
 allowBuilds:
   esbuild: true
   mongodb-memory-server: true
+minimumReleaseAgeExclude:
+  - '@extantape/onepedigree-core@0.1.0-alpha.22'
+  - '@extantape/onetaxonomy-core@0.1.0-alpha.4'
+  - '@extantape/onetaxonomy-import@0.1.0-alpha.4'

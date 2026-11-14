@@ -1,6 +1,6 @@
 # Brand
 
-OnePedigree, OneTaxonomy and OnePhylogeny share one brand: the [OneOrigin suite](oneorigin/README.md). Its text, rules and values live in one place, OnePhylogeny's [`docs/oneorigin/`](https://github.com/CaptiveOrigins/onephylogeny/tree/main/docs/oneorigin), and each tool carries a copy here:
+OnePedigree, OneTaxonomy and OnePhylogeny share one brand: the [OneOrigin suite](oneorigin/README.md). Its text, rules and values live in one place, OnePhylogeny's [`docs/oneorigin/`](https://github.com/ExtantApe/OnePhylogeny/tree/main/docs/oneorigin), and each tool carries a copy here:
 
 - [oneorigin/brand.md](oneorigin/brand.md): the app icon, colors, controls and the focus ring.
 - [oneorigin/guidelines.md](oneorigin/guidelines.md): the suite guidelines, accepted by the owner on 2026-11-11.

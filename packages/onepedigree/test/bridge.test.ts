@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { PedigreeDocument } from '@captiveorigins/onepedigree-core'
+import type { PedigreeDocument } from '@extantape/onepedigree-core'
 import { checkMaternalLines } from '../src/index.js'
 
 const seq = (c: string) => c.repeat(150)

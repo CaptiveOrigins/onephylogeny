@@ -2,7 +2,7 @@ import { useId, useState } from 'react'
 import {
   CLAIM_CHANGE_TEXT, claimName, claimsText, claimStateText, gateChangeText, OUTCOME_COLUMNS, outcomeCells, outcomeTables, otherFieldsShown, recordsText, schemeText, settingsText, sideText, warningsText,
   type PanelComparison,
-} from '@captiveorigins/onephylogeny-core'
+} from '@extantape/onephylogeny-core'
 
 /**
  * Two panel versions side by side: records that moved, settings that differ, claims that changed and each version's

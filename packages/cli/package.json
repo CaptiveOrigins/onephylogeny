@@ -1,20 +1,20 @@
 {
-  "name": "@captiveorigins/onephylogeny-cli",
-  "version": "0.1.0-alpha.7",
+  "name": "@extantape/onephylogeny-cli",
+  "version": "0.1.0-alpha.8",
   "description": "OnePhylogeny command line: run profiles, build panels, test samples and suggest outgroups.",
   "keywords": [
     "phylogenetics",
     "reference-panel",
     "genbank"
   ],
-  "homepage": "https://github.com/CaptiveOrigins/onephylogeny#readme",
+  "homepage": "https://github.com/ExtantApe/OnePhylogeny#readme",
   "bugs": {
-    "url": "https://github.com/CaptiveOrigins/onephylogeny/issues"
+    "url": "https://github.com/ExtantApe/OnePhylogeny/issues"
   },
   "license": "PolyForm-Noncommercial-1.0.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CaptiveOrigins/onephylogeny.git",
+    "url": "git+https://github.com/ExtantApe/OnePhylogeny.git",
     "directory": "packages/cli"
   },
   "type": "module",
@@ -38,9 +38,9 @@
     "prepack": "pnpm run build"
   },
   "dependencies": {
-    "@captiveorigins/onephylogeny-core": "workspace:^",
-    "@captiveorigins/onephylogeny-acquire": "workspace:^",
-    "@captiveorigins/onephylogeny-engine": "workspace:^"
+    "@extantape/onephylogeny-core": "workspace:^",
+    "@extantape/onephylogeny-acquire": "workspace:^",
+    "@extantape/onephylogeny-engine": "workspace:^"
   },
   "bin": {
     "onephylogeny": "./dist/index.js"

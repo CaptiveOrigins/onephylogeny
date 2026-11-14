@@ -1,6 +1,6 @@
 # 0008: The region map shades whole RESOLVE ecoregions
 
-**Status.** Accepted by the owner, 2026-11-10 (relayed verbatim by the director session: "Ecoregions (Recommended)", which read: "Shade public RESOLVE Ecoregions 2017 outlines (CC BY 4.0, about 850 worldwide), with each group tagged by ecoregion ID. Generalized and citable; about 10-20 MB, loaded only when a map shows.").
+**Status.** Accepted by the owner, 2026-11-10 (relayed verbatim: "Ecoregions (Recommended)", which read: "Shade public RESOLVE Ecoregions 2017 outlines (CC BY 4.0, about 850 worldwide), with each group tagged by ecoregion ID. Generalized and citable; about 10-20 MB, loaded only when a map shows.").
 
 **Context.** Panels hold region names and never geometry (P9, P30), so a region map needs shapes from somewhere, without bringing back the sites the panel was built to hide.
 

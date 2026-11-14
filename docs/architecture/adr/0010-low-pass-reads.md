@@ -1,6 +1,6 @@
 # 0010: Low-pass reads give a mitogenome first; nuclear data only as likelihoods
 
-**Status.** Proposed by Science, 2026-11-11, for task K199. The owner's roadmap (2026-11-10): cytb, then SNPs or an equivalent, then low-pass whole genomes, then high-depth whole genomes, with storage ready for low-pass by about 2027-02-10 (D17). Nothing is built.
+**Status.** Proposed by the maintainers, 2026-11-11. The owner's roadmap (2026-11-10): cytb, then SNPs or an equivalent, then low-pass whole genomes, then high-depth whole genomes, with storage ready for low-pass by about 2027-02-10. Nothing is built.
 
 **Context.** Low-pass sequencing reads each animal's genome thinly, about 0.5× to 2× on average. A tortoise genome is about 2.3 Gb (genomic storage plan, section 1), so 2× is about 4.6 Gb of reads. Two very different kinds of data come out of it:
 

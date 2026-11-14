@@ -1,5 +1,5 @@
-import { HYPOTHESIS_VERDICTS, type HypothesisCitation, type HypothesisClaim, type HypothesisClaimKind, type HypothesisVerdictName, type StatedTest } from '@captiveorigins/onephylogeny-core'
-import type { HypothesisOutcome, HypothesisPlan } from '@captiveorigins/onephylogeny-engine'
+import { HYPOTHESIS_VERDICTS, type HypothesisCitation, type HypothesisClaim, type HypothesisClaimKind, type HypothesisVerdictName, type StatedTest } from '@extantape/onephylogeny-core'
+import type { HypothesisOutcome, HypothesisPlan } from '@extantape/onephylogeny-engine'
 
 export const CLAIM_KINDS: readonly HypothesisClaimKind[] = ['sample-in-group', 'groups-distinct', 'panel-changed-call', 'possibly-novel']
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Curation, Profile } from '@captiveorigins/onephylogeny-core'
+import type { Curation, Profile } from '@extantape/onephylogeny-core'
 import { buildPanelFromRun, fetchAndAnchor, profilePaths, runHypothesis, runSample, testHypothesis, testHypothesisOnPanel, type EngineContext, type Store } from '../src/index.js'
 
 // Hypothesis tests, engine side (ADR 0013). A made-up workspace built by the engine itself, offline: two groups, a

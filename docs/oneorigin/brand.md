@@ -6,7 +6,7 @@ This is the canonical brand text. It lives in OnePhylogeny's `docs/oneorigin/`, 
 
 ## Palette
 
-The OneOrigin palette has its own colors, no longer taken from Captive Origins. Approved by the owner on 2026-11-12. The values are in `palette` in [tokens.json](tokens.json).
+The OneOrigin palette has its own colors, separate from the earlier ones still used by the app icons and the interface below. Approved by the owner on 2026-11-12. The values are in `palette` in [tokens.json](tokens.json).
 
 | | OneTaxonomy | OnePhylogeny | OneLineage | OnePedigree |
 | --- | --- | --- | --- | --- |
@@ -53,42 +53,42 @@ Five marks, each as light, dark and small SVGs in [marks/](marks/): `oneorigin`,
 
 ## App icon
 
-The app icons, their tiles and the heart badge below are the earlier ones, drawn from Captive Origins colors. They stay as they are for now: new app icons, tiles and the maker's mark aren't decided yet.
+The app icons, their tiles and the heart badge below are the earlier ones, drawn from the earlier palette. They stay as they are for now: new app icons, tiles and the maker's mark aren't decided yet.
 
 | | OnePedigree | OneTaxonomy | OnePhylogeny |
 | --- | --- | --- | --- |
-| Tile gradient (top → bottom) | `#f8dcc0` → `#eeb684` (pastel Captive Origins orange) | `#f8d6d7` → `#eda9ac` (pastel Captive Origins pink) | `#e6d6d2` → `#c9aca5` (pastel Captive Origins mauve) |
+| Tile gradient (top → bottom) | `#f8dcc0` → `#eeb684` (pastel orange) | `#f8d6d7` → `#eda9ac` (pastel pink) | `#e6d6d2` → `#c9aca5` (pastel mauve) |
 | Glyph | Two parents joined above one offspring | A rooted tree read left to right | A sample on a branching tree |
 
-Both use Captive Origins brown `#4c312c` as ink (connectors, UI structure). Owner's choice 2026-11-02 (option A of the palette study; the swap, option C, stays possible: exchange the two hues).
+Both use the earlier palette's brown `#4c312c` as ink (connectors, UI structure). Owner's choice 2026-11-02 (option A of the palette study; the swap, option C, stays possible: exchange the two hues).
 
 Shared by every tool:
 
-- Tile: 896 × 896 on a 1024 canvas, corner radius 200, vertical pastel gradient of a Captive Origins color.
-- Blocks: cream `#fbf8f2`, rounded (radius ≈ 36–40), connectors 34 px in Captive Origins brown with round joins (owner's choice 2026-11-11, N169: "A: round (Recommended)"; the three icons already drew them round, and the text said square).
-- The Captive Origins heart badge, exactly as in the Captive Origins logo (brown ring, pink disc, white heart; paths copied from the logo), as the maker's mark, placed on "the one" (the focal individual, the selected taxon).
+- Tile: 896 × 896 on a 1024 canvas, corner radius 200, vertical pastel gradient of a color from the earlier palette.
+- Blocks: cream `#fbf8f2`, rounded (radius ≈ 36–40), connectors 34 px in brown `#4c312c` with round joins (owner's choice 2026-11-11, "A: round (Recommended)"; the three icons already drew them round, and the text said square).
+- The heart badge (brown ring, pink disc, white heart; the paths in `icons/heart-badge.svg`), as the maker's mark, placed on "the one" (the focal individual, the selected taxon).
 - Small sizes (16–32 px: menu bar, file lists, favicons): `brand/icon-small.svg`, the same tile and glyph without the badge, a larger tile and heavier lines. From 64 px up, the full icon.
-- Masters: `brand/icon.svg` (source) and `brand/icon-1024.png` (transparent, for app icon generators such as `tauri icon`). A future tool takes a pastel of another Captive Origins color (mauve `#91645d`, a lighter or deeper orange/pink) and its own glyph from the same blocks.
+- Masters: `brand/icon.svg` (source) and `brand/icon-1024.png` (transparent, for app icon generators such as `tauri icon`). A future tool takes a pastel of another color from the earlier palette (mauve `#91645d`, a lighter or deeper orange/pink) and its own glyph from the same blocks.
 
 ### Icon parts
 
-The shared parts, cut from the three icons without changing a value, are in [icons/](icons/): each tool's tile (`tile-onepedigree.svg`, `tile-onetaxonomy.svg`, `tile-onephylogeny.svg`), a cream block (`block.svg`), a connector (`connector.svg`) and the heart badge (`heart-badge.svg`, its paths exactly as in the logo). Each tool's glyph and the badge's place on it stay in that tool's own `brand/icon.svg`.
+The shared parts, cut from the three icons without changing a value, are in [icons/](icons/): each tool's tile (`tile-onepedigree.svg`, `tile-onetaxonomy.svg`, `tile-onephylogeny.svg`), a cream block (`block.svg`), a connector (`connector.svg`) and the heart badge (`heart-badge.svg`, its paths exactly as in the icons). Each tool's glyph and the badge's place on it stay in that tool's own `brand/icon.svg`.
 
 ## Interface
 
-The interface colors below are also the earlier ones, from Captive Origins colors, and the apps and React packages still use them. Whether they move to the palette above isn't decided yet.
+The interface colors below are also the earlier ones, and the apps and React packages still use them. Whether they move to the palette above isn't decided yet.
 
-Both React packages share these (colors from the Captive Origins palette: orange `#cf8137`, pink `#e48185`, brown `#4c312c`), under their own prefixes (`op-`, `ot-`), so neither depends on the other:
+Both React packages share these (colors from the earlier palette: orange `#cf8137`, pink `#e48185`, brown `#4c312c`), under their own prefixes (`op-`, `ot-`), so neither depends on the other:
 
-- **Icons**: the same 24 × 24 line icons in `icons.tsx`, drawn from Lucide (ISC; the set Captive Origins uses), 1.75 stroke, round caps and joins, `currentColor`. Shown next to text where a label helps; alone only in compact floating toolbars, always with `aria-label` and a visible tooltip on hover and keyboard focus (`data-tip`). Icons standing alone must say the action (a magnifier for zoom, not a bare +). Buttons are at least 32 px (WCAG asks 24); icon strokes keep 3:1 contrast; overlays use shape as well as color.
+- **Icons**: the same 24 × 24 line icons in `icons.tsx`, drawn from Lucide (ISC), 1.75 stroke, round caps and joins, `currentColor`. Shown next to text where a label helps; alone only in compact floating toolbars, always with `aria-label` and a visible tooltip on hover and keyboard focus (`data-tip`). Icons standing alone must say the action (a magnifier for zoom, not a bare +). Buttons are at least 32 px (WCAG asks 24); icon strokes keep 3:1 contrast; overlays use shape as well as color.
 - **Controls**: 32 px buttons, radius 8, 1 px border; floating toolbar at the top right of the canvas; cards and panels radius 10 with a soft shadow; focus ring 2 px, darker orange `#a65f20` on light backgrounds and `#e7a066` in dark mode (see Focus ring below).
 - **Canvas**: drag the background to pan, Ctrl/⌘ + wheel or pinch to zoom, `+` `-` `0` keys, Fit, Download SVG, Print (chart only).
-- **Selection**: Captive Origins orange for the selected item; the darker orange for focus in light mode; brown for structure; pink for the brand mark and highlights.
+- **Selection**: the brand orange for the selected item; the darker orange for focus in light mode; brown for structure; pink for the brand mark and highlights.
 - Each tool keeps its own functionality and layout; only the backbone is shared.
 
 ## Focus ring
 
-Owner's decision 2026-11-11 (N154, option A, "darker orange ring"): "keep the brand orange everywhere else, but use the darker orange #a65f20 for focus rings on light backgrounds (4.6 to 1 or better). Dark mode keeps the lighter orange, which already passes."
+Owner's decision 2026-11-11 (option A, "darker orange ring"): "keep the brand orange everywhere else, but use the darker orange #a65f20 for focus rings on light backgrounds (4.6 to 1 or better). Dark mode keeps the lighter orange, which already passes."
 
 - **Light backgrounds**: focus rings are `#a65f20`. That's 4.91:1 on white and 4.61:1 or better on the cream panels (`#fbf7f4`, `#f7f8fa`, `#fdf7f7`). The brand orange was 3.07:1 on white and 2.88:1 on the panels, under the 3:1 that WCAG 2.2 asks of focus indicators (1.4.11, 2.4.13).
 - **Dark mode**: focus rings stay `#e7a066`, 7.1:1 or better on every dark background the tools use.

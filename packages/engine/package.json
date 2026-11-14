@@ -1,20 +1,20 @@
 {
-  "name": "@captiveorigins/onephylogeny-engine",
-  "version": "0.1.0-alpha.7",
+  "name": "@extantape/onephylogeny-engine",
+  "version": "0.1.0-alpha.8",
   "description": "OnePhylogeny engine: runs profiles end to end with immutable run records and structured logs: fetch, anchor, gate, build panels, validate, test samples and build trees through replaceable ports.",
   "keywords": [
     "phylogenetics",
     "reference-panel",
     "genbank"
   ],
-  "homepage": "https://github.com/CaptiveOrigins/onephylogeny#readme",
+  "homepage": "https://github.com/ExtantApe/OnePhylogeny#readme",
   "bugs": {
-    "url": "https://github.com/CaptiveOrigins/onephylogeny/issues"
+    "url": "https://github.com/ExtantApe/OnePhylogeny/issues"
   },
   "license": "PolyForm-Noncommercial-1.0.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CaptiveOrigins/onephylogeny.git",
+    "url": "git+https://github.com/ExtantApe/OnePhylogeny.git",
     "directory": "packages/engine"
   },
   "type": "module",
@@ -44,7 +44,7 @@
     "prepack": "pnpm run build"
   },
   "dependencies": {
-    "@captiveorigins/onephylogeny-core": "workspace:^",
-    "@captiveorigins/onephylogeny-acquire": "workspace:^"
+    "@extantape/onephylogeny-core": "workspace:^",
+    "@extantape/onephylogeny-acquire": "workspace:^"
   }
 }

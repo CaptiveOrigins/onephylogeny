@@ -1,8 +1,8 @@
-import { type FoundPaper, type LinkProposal, lookupPaper, NcbiClient, paced, searchPapers } from '@captiveorigins/onephylogeny-acquire'
+import { type FoundPaper, type LinkProposal, lookupPaper, NcbiClient, paced, searchPapers } from '@extantape/onephylogeny-acquire'
 import { CompareRuns } from './CompareRuns'
 import { PublicDataSection } from './PublicDataSection'
-import { confirmOutgroup, coverageTrack, dropOn, linkPaper, moveItem, newStudy, parseStudy, postHocOmissions, recordRun, restoreOmitted, studyMethods, studyUse, duplicateStudy, withoutPostHoc, type Curation, type MoveResult, type PanelWindow, type Profile, type Study, type StudyColumn, type StudyItem, type StudyPaper, type StudyRecord } from '@captiveorigins/onephylogeny-core'
-import { findPaperRecords, findRecordStudies, isCancelled, profilePaths, type EngineContext } from '@captiveorigins/onephylogeny-engine'
+import { confirmOutgroup, coverageTrack, dropOn, linkPaper, moveItem, newStudy, parseStudy, postHocOmissions, recordRun, restoreOmitted, studyMethods, studyUse, duplicateStudy, withoutPostHoc, type Curation, type MoveResult, type PanelWindow, type Profile, type Study, type StudyColumn, type StudyItem, type StudyPaper, type StudyRecord } from '@extantape/onephylogeny-core'
+import { findPaperRecords, findRecordStudies, isCancelled, profilePaths, type EngineContext } from '@extantape/onephylogeny-engine'
 import { useEffect, useMemo, useState, type DragEvent, type ReactNode } from 'react'
 import type { Platform } from './platform'
 

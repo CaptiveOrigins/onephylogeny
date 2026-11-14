@@ -1,5 +1,5 @@
-# @captiveorigins/onephylogeny-onepedigree
+# @extantape/onephylogeny-onepedigree
 
 Optional bridge from OnePhylogeny to OnePedigree: checks sequence results against recorded maternal lines and reports conflicts for review, without correcting either side.
 
-See the [repository](https://github.com/CaptiveOrigins/onephylogeny) for documentation.
+See the [repository](https://github.com/ExtantApe/OnePhylogeny) for documentation.

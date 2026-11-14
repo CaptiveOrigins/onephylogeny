@@ -1,5 +1,5 @@
-import { compatibility } from '@captiveorigins/onephylogeny-core'
-import type { Individual, PedigreeDocument } from '@captiveorigins/onepedigree-core'
+import { compatibility } from '@extantape/onephylogeny-core'
+import type { Individual, PedigreeDocument } from '@extantape/onepedigree-core'
 
 export type LineConflict = {
   /** The recorded mother and offspring whose sequences can't be the same maternal haplotype. */

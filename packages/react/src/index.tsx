@@ -1,4 +1,4 @@
-import type { ClaimReport, CountInterval, Finding, FindingStatus, OutcomeRow, PairFinding, Panel, PerWindowReport, Result, RunEvent, StudyOutReport, ValidationReport } from '@captiveorigins/onephylogeny-core'
+import type { ClaimReport, CountInterval, Finding, FindingStatus, OutcomeRow, PairFinding, Panel, PerWindowReport, Result, RunEvent, StudyOutReport, ValidationReport } from '@extantape/onephylogeny-core'
 
 export type Labels = Partial<Record<FindingStatus, string>>
 

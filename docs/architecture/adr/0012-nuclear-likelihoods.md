@@ -1,6 +1,6 @@
 # 0012: Nuclear relatedness and structure from low-pass genotype likelihoods
 
-**Status.** Proposed by Science, 2026-11-11, task K463 (ADR 0010, decision 3). Design only. Nothing is built, and nothing here has been run on tortoise data. Every threshold below is a starting value to be fixed in a preregistered test before use, as in the [analysis protocol](../analysis-protocol.md).
+**Status.** Proposed by the maintainers, 2026-11-11 (ADR 0010, decision 3). Design only. Nothing is built, and nothing here has been run on tortoise data. Every threshold below is a starting value to be fixed in a preregistered test before use, as in the [analysis protocol](../analysis-protocol.md).
 
 ## Context
 

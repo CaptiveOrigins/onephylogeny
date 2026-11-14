@@ -1,4 +1,4 @@
-import type { GroupAgreement, Vcf } from '@captiveorigins/onephylogeny-core'
+import type { GroupAgreement, Vcf } from '@extantape/onephylogeny-core'
 
 /**
  * Reads a groups file: sample ID to group ID. JSON is one object (`{"sample": "group"}`); anything else is read as CSV

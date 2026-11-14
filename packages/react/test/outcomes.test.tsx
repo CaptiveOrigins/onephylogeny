@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import type { OutcomeRow, PerWindowReport, StudyOutReport } from '@captiveorigins/onephylogeny-core'
+import type { OutcomeRow, PerWindowReport, StudyOutReport } from '@extantape/onephylogeny-core'
 import { OutcomesView } from '../src/index.js'
 
 const interval = { method: 'clopper-pearson', level: 0.95, on: 'tests' } as PerWindowReport['interval']

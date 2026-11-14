@@ -1,5 +1,5 @@
 import { anyOf } from './access.js'
-import { assessRead, ChromatogramError, parseFasta, readAbif, sha256Hex, sha256HexBytes, type Result } from '@captiveorigins/onephylogeny-core'
+import { assessRead, ChromatogramError, parseFasta, readAbif, sha256Hex, sha256HexBytes, type Result } from '@extantape/onephylogeny-core'
 import { APIError, type Access, type CollectionBeforeChangeHook, type CollectionConfig, type Field, type Payload, type PayloadRequest, type Where } from 'payload'
 
 /** Settings for the optional `samples` and `sequences` collections. */

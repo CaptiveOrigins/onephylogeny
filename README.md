@@ -8,8 +8,8 @@ OnePhylogeny is part of the [OneOrigin suite](docs/oneorigin/README.md): three i
 
 | Tool | Question it answers |
 | --- | --- |
-| [OneTaxonomy](https://github.com/CaptiveOrigins/onetaxonomy) | What do sources claim, and how do we browse those classifications and trees? |
-| [OnePedigree](https://github.com/CaptiveOrigins/onepedigree) | How is this individual related to known relatives? |
+| [OneTaxonomy](https://github.com/ExtantApe/OneTaxonomy) | What do sources claim, and how do we browse those classifications and trees? |
+| [OnePedigree](https://github.com/ExtantApe/OnePedigree) | How is this individual related to known relatives? |
 | **OnePhylogeny** | Given DNA, what does the evidence support, and where does this sample fit? |
 
 ## Principles
@@ -36,7 +36,7 @@ The full rules are in [scientific invariants](docs/architecture/scientific-invar
 | [`payload-plugin-onephylogeny`](packages/payload) | Payload: immutable panels and reviewed, released results |
 | [`apps/desktop`](apps/desktop) | OnePhylogeny for Mac (Tauri 2) |
 
-All published under `@captiveorigins/`.
+All published under `@extantape/`.
 
 ## How it runs
 
@@ -56,7 +56,7 @@ A profile is plain JSON and holds every choice: taxa, marker, reference, filters
 
 ## Install the Mac app
 
-Download the latest `.dmg` from this repository's [Releases](https://github.com/CaptiveOrigins/onephylogeny/releases) page (tags `desktop-v*`) and drag OnePhylogeny to Applications. The app isn't notarized, so macOS blocks the first launch. Use either way past the warning:
+Download the latest `.dmg` from this repository's [Releases](https://github.com/ExtantApe/OnePhylogeny/releases) page (tags `desktop-v*`) and drag OnePhylogeny to Applications. The app isn't notarized, so macOS blocks the first launch. Use either way past the warning:
 
 - **System Settings:** try to open the app once, then go to System Settings > Privacy & Security, scroll down, click **Open Anyway**, and click **Open** when the warning comes back. Apple says to do this only for an app you trust.
 - **Terminal:** `xattr -dr com.apple.quarantine "/Applications/OnePhylogeny.app"`
@@ -69,7 +69,7 @@ It can't update itself yet: download the newest `.dmg` to update.
 pnpm install
 pnpm build && pnpm typecheck && pnpm test
 pnpm --filter onephylogeny-desktop app:dev   # the Mac app
-pnpm --filter @captiveorigins/onephylogeny-playground build   # every view on invented data: open apps/playground/dist/index.html
+pnpm --filter @extantape/onephylogeny-playground build   # every view on invented data: open apps/playground/dist/index.html
 pnpm --filter onephylogeny-desktop dev       # browser preview with made-up data
 ```
 
@@ -85,4 +85,4 @@ Changes are listed in the [changelog](CHANGELOG.md).
 
 ## License
 
-[PolyForm Noncommercial 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0) for the software: free for noncommercial use, with attribution; commercial use needs a separate license from Captive Origins. Data you import keeps its own license. This software is research tooling and is not forensically validated.
+[PolyForm Noncommercial 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0) for the software: free for noncommercial use, with attribution; commercial use needs a separate license from EXTANT APE. Data you import keeps its own license. This software is research tooling and is not forensically validated.

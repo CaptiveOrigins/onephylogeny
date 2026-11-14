@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Selection } from '@captiveorigins/onephylogeny-core'
+import type { Selection } from '@extantape/onephylogeny-core'
 import { NcbiClient, suggestReference, type FetchLike } from '../src/index.js'
 
 const fast = { sleep: async () => {}, delayMs: 0, retries: 0 }

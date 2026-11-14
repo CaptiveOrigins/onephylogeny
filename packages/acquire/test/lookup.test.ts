@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { StudyPaper } from '@captiveorigins/onephylogeny-core'
+import type { StudyPaper } from '@extantape/onephylogeny-core'
 import { approveLink, LOOKUP_USER_AGENT, lookupPaper, paced, titleMatch, type FetchLike } from '../src/index.js'
 
 const at = '2026-11-10T00:00:00.000Z'

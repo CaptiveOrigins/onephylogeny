@@ -1,6 +1,6 @@
 # 0011: Where low-pass reads are mapped
 
-**Status.** Decided by the owner, 2026-11-11 (N152): "A, and price B as a fallback". The sequencing lab maps the reads to our written spec, and Science prices our own batch job (B) so it's ready if the chosen lab can't map to spec. B was priced the same day ("What B would cost", below). Proposed by Science the same day (task K462; ADR 0010, decision 4). Low-pass storage is to be ready by about 2027-02-10 (D17).
+**Status.** Decided by the owner, 2026-11-11: "A, and price B as a fallback". The sequencing lab maps the reads to our written spec, and the maintainers price our own batch job (B) so it's ready if the chosen lab can't map to spec. B was priced the same day ("What B would cost", below). Proposed by the maintainers the same day (ADR 0010, decision 4). Low-pass storage is to be ready by about 2027-02-10.
 
 **Context.** A low-pass kit gives about 4.6 Gb of reads (2× of a 2.3 Gb tortoise genome). To get the animal's mitogenome (ADR 0010), the reads are mapped to a reference and piled up; OnePhylogeny then builds the consensus from `samtools mpileup` text (`parseMpileup`, `consensusFromPileup`). Mapping is the heavy step.
 
@@ -20,7 +20,7 @@ Mapping only to the mitogenome is fast but unsafe: reads from nuclear copies (NU
 - B is needed only if the lab chosen can't map to spec. It's the same pipeline run by us; it can be built when that's known, priced first, with the plan watcher's cost alerts.
 - C stays a research option. Routine kits should never make a keeper's Mac do hours of work.
 
-**What the owner decided.** A as the routine path, with B priced now as the fallback (2026-11-11, N152). Still to do: write the lab spec when the lab is chosen.
+**What the owner decided.** A as the routine path, with B priced now as the fallback (2026-11-11). Still to do: write the lab spec when the lab is chosen.
 
 **What B would cost** (priced 2026-11-11; nothing is built and nothing was spent).
 

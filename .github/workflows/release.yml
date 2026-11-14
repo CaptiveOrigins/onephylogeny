@@ -1,5 +1,5 @@
 # Release: pushing a version tag (vX.Y.Z) builds, tests and *stages* every package on npm.
-# Nothing goes public until the captiveorigins npm account approves each with 2FA
+# Nothing goes public until the mdgilardi npm account, which owns the @extantape scope, approves each with 2FA
 # (npmjs.com → your avatar → Staged Packages → Approve, or `npm stage approve <id>`).
 # No token is stored: npm trusted publishing (OIDC) lets only this workflow stage.
 name: Release
@@ -27,7 +27,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           test "$(gh api repos/${{ github.repository }} -q .description)" = "$(node -p "require('./package.json').description")" \
-            || { echo "::error::GitHub's description differs from package.json: sync it (npm run packages:sync in captive-origins) and re-tag."; exit 1; }
+            || { echo "::error::GitHub's description differs from package.json: copy the description to GitHub and re-tag."; exit 1; }
       - name: Tag matches every package
         run: for p in core acquire engine cli react onetaxonomy onepedigree payload; do test "${GITHUB_REF_NAME#v}" = "$(node -p "require('./packages/$p/package.json').version")"; done
       - run: pnpm build && pnpm typecheck && pnpm test
