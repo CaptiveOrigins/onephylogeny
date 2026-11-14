@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type ChangeEvent } from 'react'
-import { comparisonMarkdown, type PanelComparison, type Profile } from '@captiveorigins/onephylogeny-core'
-import { panelVersionComparison, panelVersions, profilePaths } from '@captiveorigins/onephylogeny-engine'
-import { ComparisonView } from '@captiveorigins/onephylogeny-react'
+import { comparisonMarkdown, type PanelComparison, type Profile } from '@extantape/onephylogeny-core'
+import { panelVersionComparison, panelVersions, profilePaths } from '@extantape/onephylogeny-engine'
+import { ComparisonView } from '@extantape/onephylogeny-react'
 import type { Platform } from './platform'
 
 const profileFolder = (profile: Profile) => profilePaths(profile.id).profile.replace(/\/profile\.json$/, '')

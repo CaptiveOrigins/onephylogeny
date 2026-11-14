@@ -1,4 +1,4 @@
-import type { FieldSource, StudyPaper } from '@captiveorigins/onephylogeny-core'
+import type { FieldSource, StudyPaper } from '@extantape/onephylogeny-core'
 import { AcquireError, type FetchLike } from './index.js'
 
 /**
@@ -29,7 +29,7 @@ export type ApprovedLink = Pick<LinkProposal, 'doi' | 'pmid'> & { source: FieldS
 
 const CROSSREF = 'https://api.crossref.org/works'
 const EUROPE_PMC = 'https://www.ebi.ac.uk/europepmc/webservices/rest'
-export const LOOKUP_USER_AGENT = 'OnePhylogeny (https://github.com/CaptiveOrigins/onephylogeny)'
+export const LOOKUP_USER_AGENT = 'OnePhylogeny (https://github.com/ExtantApe/OnePhylogeny)'
 
 const words = (t: string) => new Set(t.toLowerCase().replace(/<[^>]+>/g, '').replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean))
 export function titleMatch(a: string, b: string): { score: number; exact: boolean } {

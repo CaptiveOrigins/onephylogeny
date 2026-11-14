@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import { comparePanels, type ClaimReport, type OutcomeRow, type Panel, type PerWindowReport } from '@captiveorigins/onephylogeny-core'
+import { comparePanels, type ClaimReport, type OutcomeRow, type Panel, type PerWindowReport } from '@extantape/onephylogeny-core'
 import { ComparisonView } from '../src/index.js'
 
 // Made-up panels and reports: just enough shape to compare, nothing real.

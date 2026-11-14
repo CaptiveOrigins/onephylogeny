@@ -1,6 +1,6 @@
-import type { FetchLike } from '@captiveorigins/onephylogeny-acquire'
-import type { Store, ToolRunner } from '@captiveorigins/onephylogeny-engine'
-import type { Ecoregions } from '@captiveorigins/onephylogeny-react'
+import type { FetchLike } from '@extantape/onephylogeny-acquire'
+import type { Store, ToolRunner } from '@extantape/onephylogeny-engine'
+import type { Ecoregions } from '@extantape/onephylogeny-react'
 
 /** What the interface needs from the machine. The Mac app and the browser preview each provide one. */
 export type Settings = { autoUpdate: boolean; appearance: 'auto' | 'light' | 'dark' }

@@ -1,5 +1,5 @@
 /**
- * SNP data from a prepared VCF (roadmap stage 6.4, task K198): read genotypes, and compare what they say about
+ * SNP data from a prepared VCF (roadmap stage 6.4): read genotypes, and compare what they say about
  * relatedness with the groups a mitochondrial panel gives the same animals. Description only: no probabilities, and a
  * missing genotype is never a difference.
  */

@@ -1,5 +1,5 @@
 /**
- * A consensus from reads mapped to a reference (ADR 0010, decisions 1 and 2; task K461). The input is `samtools
+ * A consensus from reads mapped to a reference (ADR 0010, decisions 1 and 2). The input is `samtools
  * mpileup` text, which any lab pipeline can make from a BAM or CRAM. Each position's bases are counted (above a base
  * quality), and the consensus base is written only where depth and agreement are enough. Positions with a strong
  * minority base, which can mean a nuclear copy, a mixed sample or heteroplasmy, are reported, never resolved.

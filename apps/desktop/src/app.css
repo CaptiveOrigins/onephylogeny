@@ -2,7 +2,7 @@
 :root {
   color-scheme: light dark;
   --bg: #ffffff; --panel: #fbf7f4; --text: #1d2330; --muted: #5b6577; --border: #eaddd6; --field: #ffffff; --accent: #cf8137;
-  /* Focus rings: the darker orange on light backgrounds (owner decision N154, 2026-11-11), 4.61:1 on the panel. Dark keeps #e7a066. */
+  /* Focus rings: the darker orange on light backgrounds (owner decision, 2026-11-11), 4.61:1 on the panel. Dark keeps #e7a066. */
   --focus: #a65f20;
   /* The --ophy- colors come from oneorigin.css, built from brand/oneorigin/tokens.json; these two keep the library's older names. */
   --ophy-ink: var(--ophy-mauve); --ophy-flag: var(--ophy-error);

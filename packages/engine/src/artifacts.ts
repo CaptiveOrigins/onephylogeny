@@ -1,4 +1,4 @@
-import { canonicalJson, sha256Hex } from '@captiveorigins/onephylogeny-core'
+import { canonicalJson, sha256Hex } from '@extantape/onephylogeny-core'
 import { EngineError } from './errors.js'
 import type { Store } from './context.js'
 

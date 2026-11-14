@@ -3,8 +3,8 @@ import {
   evaluateQuery, sampleQc, toRecordSheet, toSequenceRecord, validatePanel, verifyBundle, validatedScopeFromReport, validateProfile, validateResult, writeFasta,
   geneChecks, geneCharsets, geneWindows, partitionNexus, rotateToReference,
   type Alignment, type Curation, type Diagnostic, type GateSettings, type GenBankRecord, type GeneCheck, type GeneWindows, type GeneticCode, type LinkedRecord, type MarkerPlace, type Panel, type PanelBundle, type PanelComparison, type PanelMember, type PanelSettings, type PanelWindow, type Profile, type Result, type Run, type RunComparison, type SequenceRecord, type Snapshot, type ValidationInput,
-} from '@captiveorigins/onephylogeny-core'
-import { classifyAccessions, genomesHoldingMarkerQuery, linkedAccessions, NcbiClient, selectionQuery, studiesFromRecords, type FoundPaper } from '@captiveorigins/onephylogeny-acquire'
+} from '@extantape/onephylogeny-core'
+import { classifyAccessions, genomesHoldingMarkerQuery, linkedAccessions, NcbiClient, selectionQuery, studiesFromRecords, type FoundPaper } from '@extantape/onephylogeny-acquire'
 import { hashText, loadArtifact, type Artifact, type ArtifactRef } from './artifacts.js'
 import type { EngineContext, Store, ValidationReports } from './context.js'
 import { EngineError, isCancelled } from './errors.js'

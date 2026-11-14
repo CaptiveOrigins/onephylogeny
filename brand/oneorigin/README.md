@@ -2,13 +2,13 @@
 
 **Good tools for understanding where animals come from, without a subscription.**
 
-OneOrigin is a suite of three independent tools from Captive Origins. Each does one job well and works on its own. Use one, two or all three, in whatever combination fits your work.
+OneOrigin is a suite of three independent tools from EXTANT APE. Each does one job well and works on its own. Use one, two or all three, in whatever combination fits your work.
 
 | Tool | The question it answers |
 | --- | --- |
-| [OnePedigree](https://github.com/CaptiveOrigins/onepedigree) | How is this individual related to its known relatives? |
-| [OneTaxonomy](https://github.com/CaptiveOrigins/onetaxonomy) | What do sources claim about how life is organized, and how do we browse it? |
-| [OnePhylogeny](https://github.com/CaptiveOrigins/onephylogeny) | Given DNA, what does the evidence support, and where does this sample fit? |
+| [OnePedigree](https://github.com/ExtantApe/OnePedigree) | How is this individual related to its known relatives? |
+| [OneTaxonomy](https://github.com/ExtantApe/OneTaxonomy) | What do sources claim about how life is organized, and how do we browse it? |
+| [OnePhylogeny](https://github.com/ExtantApe/OnePhylogeny) | Given DNA, what does the evidence support, and where does this sample fit? |
 
 ## Why this exists
 
@@ -22,10 +22,10 @@ So the OneOrigin tools are built differently.
 - **No account needed.** The Mac apps run on your computer. They use the internet only when you ask for public data or check for updates.
 - **Your files stay yours.** Everything is saved as plain, documented files you can open without us. If we vanished tomorrow, your work would still be readable.
 - **Your source files aren't touched.** Your extra information lives beside them.
-- **The code is open to read and improve.** Anyone can read, change and share it for noncommercial use, with attribution, under [PolyForm Noncommercial](https://polyformproject.org/licenses/noncommercial/1.0.0). A business that wants to use it commercially can ask for a separate license. This license makes the code source-available, which isn't quite the same as open source.
+- **The code is open to read and improve.** Anyone can read, change and share it for noncommercial use, with attribution, under [PolyForm Noncommercial](https://polyformproject.org/licenses/noncommercial/1.0.0). A business that wants to use it commercially can ask for a separate license. This license makes the code source-available. It isn't an open source license.
 - **Honesty over polish.** The tools say what they don't know and what a result can't tell you. Unknown stays unknown.
 
-These commitments cover the tools. Services that have real ongoing costs, such as lab testing through Captive Origins, are separate and priced as what they are.
+These commitments cover the tools. Services that have real ongoing costs, such as lab testing, are separate and priced as what they are.
 
 ## Separately or together
 
@@ -50,4 +50,4 @@ The tools share a look, a way of behaving and a set of beliefs. Each keeps its o
 
 - **OneOrigin** is the name of the suite. It isn't a package or a product you install.
 - Each tool keeps its own name, repo and app.
-- Packages stay under each project's scope, such as `@captiveorigins/onephylogeny-core`.
+- Packages stay under each project's scope, such as `@extantape/onephylogeny-core`.

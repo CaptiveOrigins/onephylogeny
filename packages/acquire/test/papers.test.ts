@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { GenBankRecord } from '@captiveorigins/onephylogeny-core'
+import type { GenBankRecord } from '@extantape/onephylogeny-core'
 import { classifyAccessions, linkedAccessions, mergePapers, NcbiClient, searchEuropePmc, searchPapers, studiesFromRecords, type FetchLike, type FoundPaper } from '../src/index.js'
 
 const blank = (id: string, x: Partial<FoundPaper> = {}): FoundPaper => ({ id, label: id, colorIndex: 0, title: `T ${id}`, sources: ['pubmed'], linked: [], linkLookup: 'not-done', ...x })

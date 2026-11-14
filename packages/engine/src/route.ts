@@ -1,4 +1,4 @@
-import { alignToReference, assessAlignment, coveredColumns, DEFAULT_GATES, LOCATE_FLANK, locateMarker, type ExternalId, type Id, type MarkerPlace, type PanelBundle, type PanelStatus } from '@captiveorigins/onephylogeny-core'
+import { alignToReference, assessAlignment, coveredColumns, DEFAULT_GATES, LOCATE_FLANK, locateMarker, type ExternalId, type Id, type MarkerPlace, type PanelBundle, type PanelStatus } from '@extantape/onephylogeny-core'
 
 /**
  * Sample routing (roadmap stage 2, item 5): given a sequence, which installed panels apply? Each panel's own reference

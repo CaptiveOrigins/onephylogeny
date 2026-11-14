@@ -1,6 +1,6 @@
 # OnePhylogeny architecture
 
-OnePhylogeny acquires sequence evidence, curates it, builds reference panels and tests samples against them. It knows nothing about any particular species, or about Captive Origins, Payload or Tauri in its domain packages.
+OnePhylogeny acquires sequence evidence, curates it, builds reference panels and tests samples against them. It knows nothing about any particular species, or about any host site, Payload or Tauri in its domain packages.
 
 ## Layers
 

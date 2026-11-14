@@ -1,4 +1,4 @@
-import { validateResult, type Result } from '@captiveorigins/onephylogeny-core'
+import { validateResult, type Result } from '@extantape/onephylogeny-core'
 import { relationship as validateRelationship } from 'payload/shared'
 import { either } from './access.js'
 import { recordCollections, type RecordsOptions } from './records.js'

@@ -1,4 +1,4 @@
-import type { Panel } from '@captiveorigins/onephylogeny-core'
+import type { Panel } from '@extantape/onephylogeny-core'
 
 import { GROUP_COLORS } from './network.js'
 

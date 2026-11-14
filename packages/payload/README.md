@@ -1,15 +1,15 @@
-# @captiveorigins/payload-plugin-onephylogeny
+# @extantape/payload-plugin-onephylogeny
 
 OnePhylogeny for Payload: immutable reference panels and released results on your own collections, with server-enforced review, safe endpoints and no coordinates.
 
-See the [repository](https://github.com/CaptiveOrigins/onephylogeny) for documentation.
+See the [repository](https://github.com/ExtantApe/OnePhylogeny) for documentation.
 
 ## Samples and sequences
 
 Pass `records` to add `samples` and `sequences`. A lab's file becomes one of each through one call:
 
 ```ts
-import { registerSequence } from '@captiveorigins/payload-plugin-onephylogeny'
+import { registerSequence } from '@extantape/payload-plugin-onephylogeny'
 
 const { sample, sequence, created } = await registerSequence(payload, {
   tenant, animal, kit, lab, file, // your own record IDs; taxon is read from the animal if you leave it out
@@ -24,7 +24,7 @@ It refuses, in plain words, a file whose text doesn't match its SHA-256, a file 
 A Sanger chromatogram goes in the same way, with its bytes instead of text:
 
 ```ts
-import { registerTrace } from '@captiveorigins/payload-plugin-onephylogeny'
+import { registerTrace } from '@extantape/payload-plugin-onephylogeny'
 
 const { sequence } = await registerTrace(payload, { tenant, animal, kit, lab, file, sha256, bytes, fileName: 'K0001-F.ab1', marker: 'cytb' })
 ```

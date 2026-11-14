@@ -1,4 +1,4 @@
-import { alignToReference, joinReads, type Alignment, type ReadAssessment } from '@captiveorigins/onephylogeny-core'
+import { alignToReference, joinReads, type Alignment, type ReadAssessment } from '@extantape/onephylogeny-core'
 
 /** One assessed read, as the CLI holds it: the file it came from and what `assessRead` said. */
 export type AssessedRead = { file: string; sampleName: string | null; assessment: ReadAssessment }

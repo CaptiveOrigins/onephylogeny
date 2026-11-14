@@ -1,4 +1,4 @@
-import { parseCuration, type Curation, type Id, type RecordDecision } from '@captiveorigins/onephylogeny-core'
+import { parseCuration, type Curation, type Id, type RecordDecision } from '@extantape/onephylogeny-core'
 
 import type { Store } from './context.js'
 import { profilePaths } from './run.js'

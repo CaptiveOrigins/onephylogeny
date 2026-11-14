@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { standaloneSvg, TreeCanvas } from '../src/canvas'
 import { Icon } from '../src/icons'
 import { describe, expect, it } from 'vitest'
-import { buildPanel, evaluateQuery, type Result } from '@captiveorigins/onephylogeny-core'
+import { buildPanel, evaluateQuery, type Result } from '@extantape/onephylogeny-core'
 import { CoverageBars, ECOREGIONS_CREDIT, fitLayout, RegionMap, HaplotypeNetworkFigure, layoutNetwork, EventLog, LineageCard, OutgroupLadderView, parseNewickForDisplay, ResultView, StatusBadge, summarizeResult, TreeFigure, ValidationView } from '../src/index.js'
 
 const ref = 'ACGT'.repeat(50)

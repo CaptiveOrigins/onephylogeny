@@ -1,4 +1,4 @@
-import type { HaplotypeNetwork, Panel } from '@captiveorigins/onephylogeny-core'
+import type { HaplotypeNetwork, Panel } from '@extantape/onephylogeny-core'
 
 /** The reference categorical palette, validated for colour blindness, in fixed order. Past its end a group goes gray and keeps its label. */
 export const GROUP_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6']

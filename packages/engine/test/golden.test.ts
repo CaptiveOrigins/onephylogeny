@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { parseGenBank, type Curation, type Profile } from '@captiveorigins/onephylogeny-core'
+import { parseGenBank, type Curation, type Profile } from '@extantape/onephylogeny-core'
 import { buildPanelFromRun, fetchAndAnchor, runSample, type EngineContext, type Store } from '../src/index.js'
 
 const text = readFileSync(new URL('../../../fixtures/golden/records.gb', import.meta.url), 'utf8')

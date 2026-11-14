@@ -3,7 +3,7 @@ import type { SVGProps } from 'react'
 /**
  * The OneOrigin suite's line icons (brand/README.md), the same in OnePedigree, OneTaxonomy and
  * OnePhylogeny: drawings from Lucide (https://lucide.dev, ISC license, © Lucide
- * Contributors), the set Captive Origins already uses, flattened to one path each.
+ * Contributors), flattened to one path each.
  * 24 × 24, 1.75 stroke, round caps and joins, currentColor. Decorative by default
  * (aria-hidden): put the words in the button's text, or in aria-label plus a
  * visible tooltip (`data-tip`) when the icon stands alone.

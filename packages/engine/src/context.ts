@@ -1,6 +1,6 @@
-import type { FullValidation } from '@captiveorigins/onephylogeny-core'
-import type { RunEvent, ValidationInput, ValidationReport } from '@captiveorigins/onephylogeny-core'
-import type { NcbiOptions } from '@captiveorigins/onephylogeny-acquire'
+import type { FullValidation } from '@extantape/onephylogeny-core'
+import type { RunEvent, ValidationInput, ValidationReport } from '@extantape/onephylogeny-core'
+import type { NcbiOptions } from '@extantape/onephylogeny-acquire'
 
 /** Where files live. A folder on disk, in the CLI and the Mac app. */
 export interface Store {

@@ -27,7 +27,7 @@ import { fileURLToPath } from 'node:url'
 export const SOURCE_PATH = 'docs/oneorigin'
 export const COPY_PATH = 'brand/oneorigin'
 export const LOCK_PATH = 'brand/oneorigin.lock'
-export const SOURCE_REPO = 'https://github.com/CaptiveOrigins/onephylogeny'
+export const SOURCE_REPO = 'https://github.com/ExtantApe/OnePhylogeny'
 export const SOURCE_BRANCH = 'main'
 
 const HEX = /^#[0-9a-f]{6}$/

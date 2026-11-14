@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { assessRead, reverseComplement, type ChromatogramRead } from '@captiveorigins/onephylogeny-core'
+import { assessRead, reverseComplement, type ChromatogramRead } from '@extantape/onephylogeny-core'
 import { describe, expect, it } from 'vitest'
 import { joinPair, type AssessedRead } from '../src/sanger'
 

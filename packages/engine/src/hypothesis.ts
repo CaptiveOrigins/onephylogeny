@@ -1,7 +1,7 @@
 import {
   canonicalJson, claimText, parseFasta, planTest, runTest,
   type ArtifactPointer, type HypothesisArtifacts, type HypothesisClaim, type HypothesisPanel, type HypothesisResult, type HypothesisVerdict, type Panel, type PanelBundle, type PanelVersion, type Profile, type Result, type Run, type StatedTest,
-} from '@captiveorigins/onephylogeny-core'
+} from '@extantape/onephylogeny-core'
 import { hashText, readManifest, verifyFiles, type ArtifactRef } from './artifacts.js'
 import type { EngineContext, Store } from './context.js'
 import type { DatasetManifest } from './dataset.js'

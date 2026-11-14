@@ -1,12 +1,12 @@
-import { buildPanel, evaluateQuery, fullValidation } from '@captiveorigins/onephylogeny-core'
-import { EventLog, LineageCard, OutgroupLadderView, PanelSummary, ResultView, ValidationView } from '@captiveorigins/onephylogeny-react'
-import { TreeCanvas } from '@captiveorigins/onephylogeny-react/canvas'
+import { buildPanel, evaluateQuery, fullValidation } from '@extantape/onephylogeny-core'
+import { EventLog, LineageCard, OutgroupLadderView, PanelSummary, ResultView, ValidationView } from '@extantape/onephylogeny-react'
+import { TreeCanvas } from '@extantape/onephylogeny-react/canvas'
 import { useState } from 'react'
 import { createRoot } from 'react-dom/client'
 
 /**
  * Every OnePhylogeny view, on invented sequences and invented group names: nothing here is a finding about
- * any species. Build with `pnpm --filter @captiveorigins/onephylogeny-playground build`, then open dist/index.html.
+ * any species. Build with `pnpm --filter @extantape/onephylogeny-playground build`, then open dist/index.html.
  */
 const reference = 'ACGT'.repeat(50)
 const mutate = (at: number[]) => [...reference].map((c, i) => (at.includes(i) ? (c === 'A' ? 'C' : 'A') : c)).join('')

@@ -1,5 +1,5 @@
 import { createRoot } from 'react-dom/client'
-import '@captiveorigins/onephylogeny-react/styles.css'
+import '@extantape/onephylogeny-react/styles.css'
 import './oneorigin.css'
 import './app.css'
 import { App } from './App'

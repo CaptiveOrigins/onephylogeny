@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { NcbiClient, publicListings, type FetchLike } from '@captiveorigins/onephylogeny-acquire'
+import { NcbiClient, publicListings, type FetchLike } from '@extantape/onephylogeny-acquire'
 import { chosenKinds, ROWS, sourcesText, table } from '../src/sources'
 // Made-up answers for every service. Nothing in this file reaches the network.
 import { FAKE_TAXON, fakeSourcesFetch } from '../../../fixtures/sources/fake-services.mjs'

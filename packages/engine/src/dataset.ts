@@ -1,4 +1,4 @@
-import { canonicalJson, LOCATION_EVIDENCE, type Diagnostic, type FindingStatus, type Id, type PanelBundle } from '@captiveorigins/onephylogeny-core'
+import { canonicalJson, LOCATION_EVIDENCE, type Diagnostic, type FindingStatus, type Id, type PanelBundle } from '@extantape/onephylogeny-core'
 
 import { hashText } from './artifacts.js'
 import type { Store } from './context.js'

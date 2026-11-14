@@ -1,6 +1,6 @@
 # 0013: Hypothesis chat is a deterministic core with an optional language layer
 
-**Status.** The deterministic core is accepted by Science (the area lead), 2026-11-11. The optional language layer is not decided: it needs its own design and the owner's explicit yes before any model is called.
+**Status.** The deterministic core is accepted by the maintainers, 2026-11-11. The optional language layer is not decided: it needs its own design and the owner's explicit yes before any model is called.
 
 ## Context
 

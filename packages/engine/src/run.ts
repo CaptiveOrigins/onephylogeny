@@ -1,11 +1,11 @@
-import type { Profile, Run, RunEvent } from '@captiveorigins/onephylogeny-core'
-import { AcquireError } from '@captiveorigins/onephylogeny-acquire'
+import type { Profile, Run, RunEvent } from '@extantape/onephylogeny-core'
+import { AcquireError } from '@extantape/onephylogeny-acquire'
 import { artifactDir, hashText, openVerified, readManifest, stepKey, verifyFiles, type Artifact, type ArtifactManifest, type ArtifactRef, type ArtifactType, type ToolIdentity } from './artifacts.js'
 import type { EngineContext } from './context.js'
 import { EngineError } from './errors.js'
 
 /** Bump with each engine release. Recorded in every run, panel and result. */
-export const ENGINE_VERSION = '0.1.0-alpha.7'
+export const ENGINE_VERSION = '0.1.0-alpha.8'
 export const ENGINE: ToolIdentity = { name: 'onephylogeny-engine', version: ENGINE_VERSION }
 
 export const profilePaths = (profileId: string) => ({

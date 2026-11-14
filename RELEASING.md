@@ -1,6 +1,6 @@
 # Releasing
 
-Same process as every Captive Origins package. Bump every `packages/*/package.json` to one version, commit as `Release x.y.z`, tag `vx.y.z`, push, then approve the staged packages on npm with 2FA.
+Same process as every EXTANT APE package. Bump every `packages/*/package.json` to one version, commit as `Release x.y.z`, tag `vx.y.z`, push, then approve the staged packages on npm with 2FA, from the `mdgilardi` npm account, which owns the `@extantape` scope.
 
 The first version, `0.1.0-alpha.0`, was published by hand on 2026-11-07. Each package trusts only `release.yml` in this repo, and only to stage, so a `v*` tag can't make anything public without that approval. Packages stage in dependency order: core, acquire, engine, cli, react, onetaxonomy, onepedigree, payload.
 

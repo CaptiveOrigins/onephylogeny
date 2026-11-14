@@ -1,5 +1,5 @@
 {
-  "name": "@captiveorigins/onephylogeny-playground",
+  "name": "@extantape/onephylogeny-playground",
   "private": true,
   "type": "module",
   "scripts": {
@@ -7,8 +7,8 @@
     "build": "esbuild app.tsx --bundle --format=iife --minify --outfile=dist/app.js --jsx=automatic --define:process.env.NODE_ENV='\"production\"' && cp index.html dist/ && cp ../../packages/react/src/styles.css dist/"
   },
   "dependencies": {
-    "@captiveorigins/onephylogeny-core": "workspace:^",
-    "@captiveorigins/onephylogeny-react": "workspace:^",
+    "@extantape/onephylogeny-core": "workspace:^",
+    "@extantape/onephylogeny-react": "workspace:^",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

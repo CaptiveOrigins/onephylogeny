@@ -2,7 +2,7 @@
 name = "onephylogeny"
 version = "0.3.0"
 description = "OnePhylogeny for Mac"
-authors = ["Captive Origins"]
+authors = ["EXTANT APE"]
 license-file = "../../../LICENSE"
 edition = "2021"
 

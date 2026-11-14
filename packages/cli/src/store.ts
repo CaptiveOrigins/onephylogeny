@@ -1,6 +1,6 @@
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import type { Store } from '@captiveorigins/onephylogeny-engine'
+import type { Store } from '@extantape/onephylogeny-engine'
 
 /**
  * The engine's store on the local disk, rooted at the workspace. A write goes to a temporary file that is then

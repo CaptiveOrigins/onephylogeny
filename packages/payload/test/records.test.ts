@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
-import { assessRead, readAbif, sha256Hex, sha256HexBytes, type Result } from '@captiveorigins/onephylogeny-core'
+import { assessRead, readAbif, sha256Hex, sha256HexBytes, type Result } from '@extantape/onephylogeny-core'
 import { MongoMemoryReplSet } from 'mongodb-memory-server'
 import { buildConfig, getPayload, type Payload } from 'payload'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'

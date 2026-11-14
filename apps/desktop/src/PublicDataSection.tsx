@@ -1,6 +1,6 @@
-import { LISTING_KINDS, NcbiClient, publicListings, type Count, type Coverage, type ListingKind, type Provenance, type PublicListings } from '@captiveorigins/onephylogeny-acquire'
-import type { Profile } from '@captiveorigins/onephylogeny-core'
-import type { EngineContext } from '@captiveorigins/onephylogeny-engine'
+import { LISTING_KINDS, NcbiClient, publicListings, type Count, type Coverage, type ListingKind, type Provenance, type PublicListings } from '@extantape/onephylogeny-acquire'
+import type { Profile } from '@extantape/onephylogeny-core'
+import type { EngineContext } from '@extantape/onephylogeny-engine'
 import { useEffect, useId, useState, type ReactNode } from 'react'
 import type { Platform } from './platform'
 

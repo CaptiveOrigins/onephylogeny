@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { Ajv } from 'ajv'
 import { describe, expect, it } from 'vitest'
-import type { Curation, Profile } from '@captiveorigins/onephylogeny-core'
+import type { Curation, Profile } from '@extantape/onephylogeny-core'
 import { buildPanelFromRun, checkExamples, comparePanelVersions, panelVersionComparison, panelVersions, EngineError, ENGINE_VERSION, fetchAndAnchor, loadArtifact, loadPanel, loadRunRecords, historyPath, profilePaths, readCurationHistory, routeSample, runSample, saveCuration, testSample, traceArtifact, verifyDataset, writeDataset, type DatasetManifest, type EngineContext, type PanelExamples, type Store } from '../src/index.js'
 
 const ajv = new Ajv({ allErrors: true, strict: false })

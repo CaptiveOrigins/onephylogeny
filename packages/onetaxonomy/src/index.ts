@@ -1,5 +1,5 @@
-import type { Id, LengthUnit, Phylogeny, Support } from '@captiveorigins/onetaxonomy-core'
-import { parseNewick } from '@captiveorigins/onetaxonomy-import'
+import type { Id, LengthUnit, Phylogeny, Support } from '@extantape/onetaxonomy-core'
+import { parseNewick } from '@extantape/onetaxonomy-import'
 
 export type TreeExportOptions = {
   id: Id

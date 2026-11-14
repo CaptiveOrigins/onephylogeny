@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { AcquireError, genomesHoldingMarkerQuery, markerTerm, NcbiClient, selectionQuery, suggestOutgroups, type FetchLike } from '../src/index.js'
-import type { Selection } from '@captiveorigins/onephylogeny-core'
+import type { Selection } from '@extantape/onephylogeny-core'
 
 const selection: Selection = { id: 's', title: 'S', taxa: [{ source: 'ncbi-taxonomy', id: '100' }], marker: { kind: 'gene', gene: 'g1', synonyms: ['g2'], products: ['product x'], organelle: 'mitochondrion' }, outgroups: [], exclude: [], filters: {} }
 const flat = (name: string, n = 1) => `LOCUS       ${name}  3 bp DNA\nACCESSION   ${name}\nVERSION     ${name}.${n}\nORIGIN\n        1 acg\n//\n`

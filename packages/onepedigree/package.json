@@ -1,19 +1,19 @@
 {
-  "name": "@captiveorigins/onephylogeny-onepedigree",
-  "version": "0.1.0-alpha.7",
+  "name": "@extantape/onephylogeny-onepedigree",
+  "version": "0.1.0-alpha.8",
   "description": "Optional bridge from OnePhylogeny to OnePedigree: checks sequence results against recorded maternal lines and reports conflicts for review, without correcting either side.",
   "keywords": [
     "phylogenetics",
     "reference-panel"
   ],
-  "homepage": "https://github.com/CaptiveOrigins/onephylogeny#readme",
+  "homepage": "https://github.com/ExtantApe/OnePhylogeny#readme",
   "bugs": {
-    "url": "https://github.com/CaptiveOrigins/onephylogeny/issues"
+    "url": "https://github.com/ExtantApe/OnePhylogeny/issues"
   },
   "license": "PolyForm-Noncommercial-1.0.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CaptiveOrigins/onephylogeny.git",
+    "url": "git+https://github.com/ExtantApe/OnePhylogeny.git",
     "directory": "packages/onepedigree"
   },
   "type": "module",
@@ -41,12 +41,12 @@
     "prepack": "pnpm run build"
   },
   "dependencies": {
-    "@captiveorigins/onephylogeny-core": "workspace:^"
+    "@extantape/onephylogeny-core": "workspace:^"
   },
   "peerDependencies": {
-    "@captiveorigins/onepedigree-core": "^0.1.0-alpha.11"
+    "@extantape/onepedigree-core": "^0.1.0-alpha.22"
   },
   "devDependencies": {
-    "@captiveorigins/onepedigree-core": "^0.1.0-alpha.11"
+    "@extantape/onepedigree-core": "^0.1.0-alpha.22"
   }
 }

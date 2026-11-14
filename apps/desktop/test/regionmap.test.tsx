@@ -1,6 +1,6 @@
 import { cleanup, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ECOREGIONS_CREDIT, type Ecoregions } from '@captiveorigins/onephylogeny-react'
+import { ECOREGIONS_CREDIT, type Ecoregions } from '@extantape/onephylogeny-react'
 
 // Mocked Tauri file system and resource path: this checks how the Mac app reads the outlines, not the real bundle.
 const fs = vi.hoisted(() => ({ files: new Map<string, string>(), unreadable: false, reads: 0 }))

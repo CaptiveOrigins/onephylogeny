@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { indexPhylogeny, isMonophyletic } from '@captiveorigins/onetaxonomy-core'
+import { indexPhylogeny, isMonophyletic } from '@extantape/onetaxonomy-core'
 import { treeToPhylogeny } from '../src/index.js'
 
 const base = { id: 't', title: 'T', version: '1', sources: ['s'], rooted: true }

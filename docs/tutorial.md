@@ -12,7 +12,7 @@ You need Node 22 or later, pnpm and git. OnePhylogeny is installed from the repo
 
 <!-- step: install -->
 ```sh
-git clone https://github.com/CaptiveOrigins/onephylogeny.git
+git clone https://github.com/ExtantApe/OnePhylogeny.git
 cd onephylogeny
 pnpm install
 pnpm build

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import type { HypothesisOutcome, HypothesisPlan } from '@captiveorigins/onephylogeny-engine'
+import type { HypothesisOutcome, HypothesisPlan } from '@extantape/onephylogeny-engine'
 import { claimFromFlags, planText, UsageError, verdictText } from '../src/hypothesis'
 
 const repo = fileURLToPath(new URL('../../../', import.meta.url))
