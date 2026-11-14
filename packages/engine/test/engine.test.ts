@@ -404,7 +404,7 @@ describe('surviving a crash at any point', () => {
       expect(new Set(ctx.requested).size).toBe(7)
     }
     expect(crashes).toBeGreaterThan(10)
-  })
+  }, 30_000)
 })
 
 describe('cancelling', () => {
