@@ -192,7 +192,7 @@ Each decision with alternatives gets an ADR. Limitations are kept current, and n
 
 - Tag `desktop-vx.y.z` builds a universal app and publishes a GitHub release with a DMG, plus `latest.json` once the tool has a signing key.
 - Each tool has **its own** updater key in `~/.tauri/<tool>.key`, stored as the repo secret `TAURI_SIGNING_PRIVATE_KEY`. Keys are never shared between tools or committed.
-- App identifiers are `org.captiveorigins.<tool>`.
+- App identifiers are `com.extantape.<tool>`.
 - Notarization is a shared goal, and when one tool adds it, the other apps follow.
 
 ## 8. Working together
